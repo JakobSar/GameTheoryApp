@@ -940,6 +940,7 @@ app_ui = ui.page_fluid(
     :root {
         --header-bg: rgb(213, 236, 240);
         --header-height: 64px;
+        --header-hover: #5f5f5f;
     }
     body {
         padding-top: var(--header-height);
@@ -1011,6 +1012,17 @@ app_ui = ui.page_fluid(
     .impressum-panel a[href^="http"] {
         word-break: break-all;
     }
+    .nav-tabs .impressum-nav-link {
+        display: inline-block;
+        font-style: italic;
+        padding: 0.2rem 0.45rem;
+        font-size: 0.9rem;
+        border: 1px solid #6c757d !important;
+        border-radius: 0.375rem;
+        background-color: #ffffff !important;
+        font-weight: 400;
+        margin-right: 0.4rem;
+    }
     .impressum-panel.open {
         display: block;
     }
@@ -1035,28 +1047,71 @@ app_ui = ui.page_fluid(
         .special-col.game .table td {
             padding: 0.35rem;
         }
+        .impressum-btn {
+            display: none;
+        }
         .tabs-toggle {
             display: inline-flex;
             position: fixed;
-            top: 0.5rem;
-            left: 0.5rem;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--header-height);
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 0.75rem;
             z-index: 1001;
-            background-color: var(--header-bg);
-            border-color: rgb(87, 87, 86);
+            background-color: var(--header-bg) !important;
+            border: none;
+            border-radius: 0 !important;
             color: rgb(87, 87, 86);
             font-weight: 700;
+            text-align: right;
+            font-size: 1.05rem;
+            line-height: 1;
+        }
+        body.tabs-open .tabs-toggle {
+            color: #ffffff;
+            background-color: var(--header-hover) !important;
+        }
+        .tabs-toggle:hover {
+            color: #ffffff;
+            background-color: var(--header-hover) !important;
+            border-radius: 0 !important;
+        }
+        .tabs-toggle:focus,
+        .tabs-toggle:active,
+        body.tabs-open .tabs-toggle:hover,
+        body.tabs-open .tabs-toggle:focus,
+        body.tabs-open .tabs-toggle:active {
+            color: #ffffff;
+            background-color: var(--header-hover) !important;
+            border-radius: 0 !important;
         }
         .nav-tabs {
             display: none;
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            right: 0;
             flex-direction: column;
-            align-items: stretch;
+            align-items: flex-end;
             gap: 6px;
+            padding: 0.5rem 0.75rem 0.75rem;
+            background-color: var(--header-bg);
+            z-index: 1000;
         }
         body.tabs-open .nav-tabs {
             display: flex;
+            background-color: var(--header-bg) !important;
         }
         body.tabs-open .nav-tabs .nav-link {
-            text-align: left;
+            text-align: right;
+        }
+        .impressum-panel {
+            top: calc(var(--header-height) + 0.5rem);
+            right: 0.5rem;
+            bottom: auto;
         }
     }
     body {
@@ -1120,6 +1175,12 @@ app_ui = ui.page_fluid(
     .card-row > * > .card {
         flex: 1 1 auto;
         height: 100%;
+    }
+    @media (max-width: 768px) {
+        .card-row {
+            row-gap: 8px;
+            --bs-gutter-y: 0.5rem;
+        }
     }
     .exercise-row > .exercise-col {
         flex: 1 1 0;
@@ -1208,6 +1269,43 @@ app_ui = ui.page_fluid(
             document.body.classList.remove('tabs-open');
           }
         });
+        document.addEventListener('click', function (e) {
+          var panel = document.getElementById('impressum-panel');
+          var isToggle = e.target.closest('.impressum-btn, .impressum-nav-link');
+          if (panel && panel.classList.contains('open') && !panel.contains(e.target) && !isToggle) {
+            panel.classList.remove('open');
+          }
+        });
+        function ensureImpressumLink() {
+          var navTabs = document.querySelector('.nav-tabs');
+          if (!navTabs) { return; }
+          var isMobile = window.matchMedia('(max-width: 768px)').matches;
+          var existing = navTabs.querySelector('.impressum-nav-link');
+          if (isMobile) {
+            if (!existing) {
+              var item = document.createElement('li');
+              item.className = 'nav-item';
+              var link = document.createElement('a');
+              link.className = 'nav-link impressum-nav-link';
+              link.href = '#';
+              link.textContent = 'Impressum';
+              link.addEventListener('click', function (e) {
+                e.preventDefault();
+                toggleImpressum();
+              });
+              item.appendChild(link);
+              navTabs.appendChild(item);
+            }
+          } else if (existing) {
+            existing.parentElement.remove();
+          }
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+          ensureImpressumLink();
+          var observer = new MutationObserver(ensureImpressumLink);
+          observer.observe(document.body, { childList: true, subtree: true });
+        });
+        window.addEventListener('resize', ensureImpressumLink);
         function toggleImpressum() {
           var panel = document.getElementById('impressum-panel');
           if (panel) {
@@ -1354,7 +1452,7 @@ app_ui = ui.page_fluid(
                         class_="card shadow-sm h-100",
                         style="background-color:#ffffff;",
                     ),
-                    class_="row row-cols-1 row-cols-lg-3 g-4 mt-2 align-items-stretch card-row mb-4",
+                    class_="row row-cols-1 row-cols-lg-3 g-3 mt-2 align-items-stretch card-row mb-4",
                 ),
 
                 # ---- Row 2: Example + notation (same card) ----
@@ -2166,9 +2264,36 @@ def server(input, output, session):
             return ui.tags.div()
         return ui.tags.div(
             ui.tags.div(
-                ui.tags.p(
-                    "Strikt dominant: Eine Strategie ist in jeder Situation strikt besser als alle anderen Strategien.",
-                    class_="text-muted help-text mt-2 mb-0",
+                ui.tags.div(
+                    ui.tags.p(
+                        ui.tags.strong("Ziel: "),
+                        "Prüfe, ob es eine strikt dominante Strategie für Spieler 1 oder Spieler 2 gibt.",
+                        class_="text-muted mb-2",
+                    ),
+                    ui.tags.ul(
+                        ui.tags.li(
+                            ui.tags.strong("Strikt dominant: "),
+                            "Eine Strategie sᵢ ist strikt dominant, wenn sie gegen jede gegnerische Strategie "
+                            "immer einen strikt höheren Nutzen liefert als jede andere eigene Strategie."
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong("Vorgehen Spieler 1: "),
+                            "Vergleiche zeilenweise die u₁-Werte (A/B/C/D) spaltenweise (X/Y/Z). "
+                            "Eine Zeile ist strikt dominant, wenn sie in jeder Spalte strikt höher ist."
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong("Vorgehen Spieler 2: "),
+                            "Vergleiche spaltenweise die u₂-Werte (X/Y/Z) zeilenweise (A/B/C/D). "
+                            "Eine Spalte ist strikt dominant, wenn sie in jeder Zeile strikt höher ist."
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong("Antwortauswahl: "),
+                            "Falls es eine dominante Strategie gibt, wähle die passende Kombination. "
+                            "Gibt es keine, wähle „Nein, keiner“."
+                        ),
+                        class_="text-muted mb-0",
+                    ),
+                    class_="mt-2",
                 ),
                 class_="card-body py-2 exercise-notation-body",
             ),
