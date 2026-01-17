@@ -121,29 +121,29 @@ def notation_ul(rows, cols, payoffs, lang="de"):
     )
 
 def ex5_matrix_ui(rows, cols, lang="de"):
-    choices = [
-        ("yes_not_strict", tr(lang, "ja, nicht strikt", "yes, not strict")),
-        ("yes_strict", tr(lang, "ja, strikt", "yes, strict")),
-        ("no", tr(lang, "nein", "no")),
-    ]
+    choices = {
+        "yes_not_strict": tr(lang, "ja, nicht strikt", "yes, not strict"),
+        "yes_strict": tr(lang, "ja, strikt", "yes, strict"),
+        "no": tr(lang, "nein", "no"),
+    }
     return ui.tags.table(
         ui.tags.thead(
             ui.tags.tr(
-                ui.tags.th(""),
+                ui.tags.th("", style="border-right: 1px solid #222;"),
                 *[ui.tags.th(c) for c in cols],
             )
         ),
         ui.tags.tbody(
             *[
                 ui.tags.tr(
-                    ui.tags.th(r, style="font-weight:600;"),
+                    ui.tags.th(r, style="font-weight:600; border-right: 1px solid #222;"),
                     *[
                         ui.tags.td(
                             ui.input_radio_buttons(
                                 f"ex5_{r}_{c}",
                                 None,
                                 choices=choices,
-                                inline=True,
+                                selected="no",
                             )
                         )
                         for c in cols
@@ -1472,6 +1472,7 @@ app_ui = ui.page_fluid(
         font-family: "Source Sans Pro", Arial, sans-serif;
         margin: 0;
         background-color: #ffffff;
+        padding-bottom: 10em;
     }
 
     /* Radio buttons in two columns */
@@ -1578,11 +1579,73 @@ app_ui = ui.page_fluid(
     }
     .ex5-matrix .shiny-options-group {
         display: flex;
-        flex-wrap: wrap;
-        gap: 0.4rem 0.8rem;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: flex-start;
+        margin-top: 0.3rem !important;
+        margin-left: 0.2rem !important;
+        height: auto;
     }
-    .ex5-matrix .form-check {
-        margin: 0;
+    
+    .ex5-matrix {
+        table-layout: fixed;
+        width: auto !important;
+        display: inline-table;
+    }
+    .ex5-matrix th,
+    .ex5-matrix td {
+        padding: 0.1rem 0.3rem !important;
+        width: 1% !important;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    .ex5-matrix thead th:first-child,
+    .ex5-matrix tbody th {
+        width: 2.5rem !important;
+        min-width: 2.5rem !important;
+        text-align: center;
+    }
+    .ex5-matrix thead th:not(:first-child),
+    .ex5-matrix td {
+        padding-left: 0.4rem !important;
+        padding-right: 0.4rem !important;
+        width: 10rem !important;
+        max-width: 10rem !important;
+    }
+    .ex5-matrix thead th:not(:first-child) {
+        text-align: center;
+        padding-left: 0.8rem !important;
+        padding-right: 0.8rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+    .ex5-matrix td .form-check-label {
+        white-space: normal;
+        line-height: 1.2;
+        display: inline-block;
+    }
+    .ex5-matrix td .form-check-input {
+        margin-top: 0.1rem;
+    }
+    @media (max-width: 768px) {
+        .ex5-matrix thead th:first-child,
+        .ex5-matrix tbody th {
+            width: 2rem !important;
+            min-width: 2rem !important;
+        }
+        .ex5-matrix thead th:not(:first-child),
+        .ex5-matrix td {
+            padding-left: 0.3rem !important;
+            padding-right: 0.3rem !important;
+            width: 7rem !important;
+            max-width: 7rem !important;
+        }
+        .ex5-matrix {
+            font-size: 0.85rem;
+        }
+        .ex5-matrix .shiny-options-group {
+            margin-top: 0.2rem !important;
+            margin-left: 0.1rem !important;
+        }
     }
     .intro-example-body {
         padding-left: 1rem;
@@ -1681,10 +1744,12 @@ app_ui = ui.page_fluid(
         }
         document.addEventListener('click', function (e) {
           var navTabs = document.querySelector('.nav-tabs');
+          var toggleBtn = document.querySelector('.tabs-toggle');
           if (!navTabs) { return; }
-          if (document.body.classList.contains('tabs-open') && navTabs.contains(e.target)) {
-            setTabsOpen(false);
-          }
+          if (!document.body.classList.contains('tabs-open')) { return; }
+          if (navTabs.contains(e.target)) { return; }
+          if (toggleBtn && toggleBtn.contains(e.target)) { return; }
+          setTabsOpen(false);
         });
         document.addEventListener('click', function (e) {
           var panel = document.getElementById('impressum-panel');
@@ -2482,9 +2547,9 @@ ui.nav_panel(
                                 ui.tags.h5("Frage", class_="card-title",
                                            **{"data-i18n-de": "Frage", "data-i18n-en": "Question"}),
                                 ui.tags.p(
-                                    "Für jedes Strategiepaar: Wählen Sie ja, nicht strikt / ja, strikt / nein.",
-                                    **{"data-i18n-de": "Für jedes Strategiepaar: Wählen Sie ja, nicht strikt / ja, strikt / nein.",
-                                       "data-i18n-en": "For each strategy pair: choose yes, not strict / yes, strict / no."},
+                                    "Wählen Sie für jedes Strategiepaar, ob es sich dabei um ein striktes oder nicht striktes Nash GG handelt.",
+                                    **{"data-i18n-de": "Wählen Sie für jedes Strategiepaar, ob es sich dabei um ein striktes oder nicht striktes Nash GG handelt.",
+                                       "data-i18n-en": "For each strategy pair, choose whether it is a strict or non-strict Nash GG."},
                                     class_="mt-2 mb-4",
                                 ),
                                 ui.tags.div(
@@ -3335,7 +3400,7 @@ def server(input, output, session):
         game5.set(generate_random_game_ex4())
         for r in P1_STRATS_EX2:
             for c in P2_STRATS_EX2:
-                ui.update_radio_buttons(f"ex5_{r}_{c}", selected=None)
+                ui.update_radio_buttons(f"ex5_{r}_{c}", selected="no")
         show_fb5.set(False)
 
     @reactive.effect
@@ -3418,90 +3483,171 @@ def server(input, output, session):
 
     @output
     @render.ui
+    def ex5_matrix():
+        lang = current_lang()
+        return ex5_matrix_ui(P1_STRATS_EX2, P2_STRATS_EX2, lang=lang)
+
+    @output
+    @render.ui
     def feedback_5():
         lang = current_lang()
         if not show_fb5.get():
             return ui.tags.div()
-        chosen = set(input.answer_5() or [])
         payoffs = game5.get()
         actual_ne = find_nash_equilibria(payoffs, P1_STRATS_EX2, P2_STRATS_EX2)
         strict_set = set()
         for (r, c) in actual_ne:
             if all(payoffs[(r, c)][0] > payoffs[(r2, c)][0] for r2 in P1_STRATS_EX2 if r2 != r) and \
                all(payoffs[(r, c)][1] > payoffs[(r, c2)][1] for c2 in P2_STRATS_EX2 if c2 != c):
-                strict_set.add(f"({r},{c})")
-        chosen_set = set(chosen)
-        # Compose feedback text
-        if chosen_set == strict_set:
-            # Correct selection
-            if len(strict_set) == 0:
-                correct_text = tr(lang, "Kein striktes Nash-Gleichgewicht vorhanden", "No strict Nash equilibrium present")
-            elif len(strict_set) == 1:
-                combo = list(strict_set)[0]
-                correct_text = tr(lang, f"{combo} ist ein striktes Nash-Gleichgewicht", f"{combo} is a strict Nash equilibrium")
-            else:
-                combos = sorted(strict_set)
-                if len(combos) == 2:
-                    correct_text = tr(lang,
-                                      f"{combos[0]} und {combos[1]} sind strikte Nash-Gleichgewichte",
-                                      f"{combos[0]} and {combos[1]} are strict Nash equilibria")
+                strict_set.add((r, c))
+
+        expected = {}
+        for r in P1_STRATS_EX2:
+            for c in P2_STRATS_EX2:
+                if (r, c) in strict_set:
+                    expected[(r, c)] = "yes_strict"
+                elif (r, c) in actual_ne:
+                    expected[(r, c)] = "yes_not_strict"
                 else:
-                    correct_text = tr(
-                        lang,
-                        (", ".join(combos[:-1]) + " und " + combos[-1] + " sind strikte Nash-Gleichgewichte"),
-                        (", ".join(combos[:-1]) + " and " + combos[-1] + " are strict Nash equilibria")
-                    )
-            expl = ""
-            if len(strict_set) == 0:
-                expl = tr(
-                    lang,
-                    "In jedem Nash-Gleichgewicht dieses Spiels hat mindestens ein Spieler eine alternative Strategie, die ihm die gleiche Auszahlung bietet.",
-                    "In every Nash equilibrium of this game, at least one player has an alternative strategy that yields the same payoff."
-                )
-            else:
-                expl = tr(
-                    lang,
-                    "Bei allen anderen Strategiekombinationen kann sich mindestens ein Spieler durch einseitiges Abweichen strikt verbessern.",
-                    "For all other strategy combinations, at least one player can strictly improve by unilateral deviation."
-                )
+                    expected[(r, c)] = "no"
+
+        missing = 0
+        wrong = 0
+        for r in P1_STRATS_EX2:
+            for c in P2_STRATS_EX2:
+                val = getattr(input, f"ex5_{r}_{c}")()
+                if val is None or val == "":
+                    missing += 1
+                elif val != expected[(r, c)]:
+                    wrong += 1
+
+        if missing > 0:
             return ui.tags.div(
-                ui.tags.div(tr(lang, f"✅ Richtig! {correct_text}.", f"✅ Correct! {correct_text}."), class_="fw-semibold"),
-                ui.tags.div(expl, class_="mt-2"),
+                tr(lang,
+                   f"Bitte beantworte alle Felder. Fehlend: {missing}.",
+                   f"Please answer all fields. Missing: {missing}."),
+                class_="alert alert-warning mt-3",
+            )
+        if wrong == 0:
+            return ui.tags.div(
+                tr(lang, "✅ Richtig! Alle Felder sind korrekt.", "✅ Correct! All fields are correct."),
                 class_="alert alert-success mt-3",
             )
-        else:
-            # Incorrect or incomplete selection
-            if len(strict_set) == 0:
-                correct_text = tr(lang, "kein striktes Nash-Gleichgewicht vorhanden", "no strict Nash equilibrium present")
-            elif len(strict_set) == 1:
-                correct_text = list(strict_set)[0]
-            else:
-                combos = sorted(strict_set)
-                if len(combos) == 2:
-                    correct_text = tr(lang, f"{combos[0]} und {combos[1]}", f"{combos[0]} and {combos[1]}")
-                else:
-                    correct_text = tr(lang, (", ".join(combos[:-1]) + " und " + combos[-1]),
-                                      (", ".join(combos[:-1]) + " and " + combos[-1]))
-            expl = ""
-            if len(strict_set) == 0:
-                expl = tr(
+        def best_responses_p1(col):
+            vals = {r: payoffs[(r, col)][0] for r in P1_STRATS_EX2}
+            m = max(vals.values())
+            return [r for r, v in vals.items() if v == m], m
+
+        def best_responses_p2(row):
+            vals = {c: payoffs[(row, c)][1] for c in P2_STRATS_EX2}
+            m = max(vals.values())
+            return [c for c, v in vals.items() if v == m], m
+
+        def fmt_list(items):
+            return ", ".join(items)
+
+        details = []
+        for r in P1_STRATS_EX2:
+            for c in P2_STRATS_EX2:
+                val = getattr(input, f"ex5_{r}_{c}")()
+                if val is None or val == "" or val == expected[(r, c)]:
+                    continue
+                br1, max_u1 = best_responses_p1(c)
+                br2, max_u2 = best_responses_p2(r)
+                u1, u2 = payoffs[(r, c)]
+                cell = f"({r},{c})"
+
+                if expected[(r, c)] == "no":
+                    reasons = []
+                    if r not in br1:
+                        reasons.append(
+                            tr(
+                                lang,
+                                f"Spieler 1 kann in Spalte {c} zu {fmt_list(br1)} abweichen (u1={u1} < {max_u1}).",
+                                f"Player 1 can deviate in column {c} to {fmt_list(br1)} (u1={u1} < {max_u1}).",
+                            )
+                        )
+                    if c not in br2:
+                        reasons.append(
+                            tr(
+                                lang,
+                                f"Spieler 2 kann in Zeile {r} zu {fmt_list(br2)} abweichen (u2={u2} < {max_u2}).",
+                                f"Player 2 can deviate in row {r} to {fmt_list(br2)} (u2={u2} < {max_u2}).",
+                            )
+                        )
+                    if not reasons:
+                        reasons.append(tr(lang, "Kein Nash-Gleichgewicht.", "Not a Nash equilibrium."))
+                    details.append(
+                        ui.tags.li(
+                            ui.tags.strong(cell + ": "),
+                            " ".join(reasons),
+                        )
+                    )
+                    continue
+
+                if expected[(r, c)] == "yes_not_strict":
+                    if val == "no":
+                        reasons = [
+                            tr(
+                                lang,
+                                f"Beide spielen eine beste Antwort (P1 in Spalte {c}: {fmt_list(br1)}, P2 in Zeile {r}: {fmt_list(br2)}).",
+                                f"Both play a best response (P1 in column {c}: {fmt_list(br1)}, P2 in row {r}: {fmt_list(br2)}).",
+                            )
+                        ]
+                    else:
+                        tie_reasons = []
+                        if len(br1) > 1:
+                            tie_reasons.append(
+                                tr(
+                                    lang,
+                                    f"P1 hat Gleichstand in Spalte {c} ({fmt_list(br1)}).",
+                                    f"P1 has a tie in column {c} ({fmt_list(br1)}).",
+                                )
+                            )
+                        if len(br2) > 1:
+                            tie_reasons.append(
+                                tr(
+                                    lang,
+                                    f"P2 hat Gleichstand in Zeile {r} ({fmt_list(br2)}).",
+                                    f"P2 has a tie in row {r} ({fmt_list(br2)}).",
+                                )
+                            )
+                        reasons = tie_reasons or [tr(lang, "Nicht strikt Nash.", "Not strict Nash.")]
+                    details.append(
+                        ui.tags.li(
+                            ui.tags.strong(cell + ": "),
+                            " ".join(reasons),
+                        )
+                    )
+                    continue
+
+                if expected[(r, c)] == "yes_strict":
+                    reasons = [
+                        tr(
+                            lang,
+                            f"Strikt: P1 eindeutig beste Antwort in Spalte {c} ({r}), P2 eindeutig beste Antwort in Zeile {r} ({c}).",
+                            f"Strict: P1 uniquely best responds in column {c} ({r}), P2 uniquely best responds in row {r} ({c}).",
+                        )
+                    ]
+                    details.append(
+                        ui.tags.li(
+                            ui.tags.strong(cell + ": "),
+                            " ".join(reasons),
+                        )
+                    )
+
+        return ui.tags.div(
+            ui.tags.div(
+                tr(
                     lang,
-                    "In jedem Nash-Gleichgewicht dieses Spiels hat mindestens ein Spieler eine alternative Strategie, die ihm keine geringere Auszahlung bringt.",
-                    "In every Nash equilibrium of this game, at least one player has an alternative strategy that gives no lower payoff."
-                )
-            else:
-                expl = tr(
-                    lang,
-                    "Bei allen anderen Strategiekombinationen kann sich mindestens ein Spieler durch einseitiges Abweichen strikt verbessern.",
-                    "For all other strategy combinations, at least one player can strictly improve by unilateral deviation."
-                )
-            prefix = tr(lang, "Richtig ist: " if len(strict_set) <= 1 else "Richtig sind: ",
-                        "Correct is: " if len(strict_set) <= 1 else "Correct are: ")
-            return ui.tags.div(
-                ui.tags.div(tr(lang, f"❌ Falsch. {prefix}{correct_text}.", f"❌ Incorrect. {prefix}{correct_text}."), class_="fw-semibold"),
-                ui.tags.div(expl, class_="mt-2"),
-                class_="alert alert-danger mt-3",
-            )
+                    f"❌ Falsch. Falsche Antworten: {wrong}.",
+                    f"❌ Incorrect. Wrong answers: {wrong}.",
+                ),
+                class_="fw-semibold",
+            ),
+            ui.tags.ul(*details, class_="mt-2 mb-0"),
+            class_="alert alert-danger mt-3",
+        )
 
     # =======================
     # Exercise 6 state
