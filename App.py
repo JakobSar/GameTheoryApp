@@ -645,6 +645,276 @@ def generate_random_game_ex6():
         payoffs[(r, c)] = (u1[(r, c)], u2[(r, c)])
     return payoffs
 
+from fractions import Fraction
+
+def format_p_fraction(p, allowed):
+    """
+    p: float
+    allowed: list[str] like ["1/7","1/6","1/5","1/4","1/3","1/2"]
+    """
+    frac = Fraction(p).limit_denominator(20)
+
+    frac_str = f"{frac.numerator}/{frac.denominator}"
+
+    if frac_str in allowed:
+        return frac_str
+    return None
+
+# =========================================================
+# Special games rows
+# =========================================================
+SPECIAL_GAMES_ROWS = [
+    ui.tags.div(
+        ui.tags.h4("Gefangenendilemma", class_="mb-2"),
+        ui.tags.div(
+        ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.h5("Beispielspiel", class_="card-title"),
+                    payoff_table(
+                        rows=["Kooperieren", "Defektieren"],
+                        cols=["Kooperieren", "Defektieren"],
+                        payoff_strings={
+                            ("Kooperieren", "Kooperieren"): "3, 3",
+                            ("Kooperieren", "Defektieren"): "0, 5",
+                            ("Defektieren", "Kooperieren"): "5, 0",
+                            ("Defektieren", "Defektieren"): "1, 1",
+                        },
+                    ),
+                    class_="card-body",
+                ),
+                class_="card shadow-sm h-100",
+                style="background-color:#ffffff;",
+            ),
+            class_="special-col game",
+        ),
+        ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.h5("Erklärung", class_="card-title"),
+                    ui.tags.p(
+                        "Jeder Spieler hat unabhängig vom Verhalten des anderen einen Anreiz zu defektieren.",
+                        class_="mb-2",
+                    ),
+                    ui.tags.ul(
+                        ui.tags.li("Defektieren ist strikt dominant für beide Spieler."),
+                        ui.tags.li("Einziges Nash-Gleichgewicht: (Defektieren, Defektieren)."),
+                        ui.tags.li("Pareto-ineffizient."),
+                        class_="mb-0",
+                    ),
+                    class_="card-body",
+                ),
+                class_="card shadow-sm h-100",
+                style="background-color:#ffffff;",
+            ),
+            class_="special-col text",
+        ),
+        class_="special-row",
+        ),
+        class_="mb-4",
+    ),
+    ui.tags.div(
+        ui.tags.h4("Feiglingsspiel (Chicken)", class_="mb-2"),
+        ui.tags.div(
+        ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.h5("Beispielspiel", class_="card-title"),
+                    payoff_table(
+                        rows=["Ausweichen", "Geradeaus"],
+                        cols=["Ausweichen", "Geradeaus"],
+                        payoff_strings={
+                            ("Ausweichen", "Ausweichen"): "2, 2",
+                            ("Ausweichen", "Geradeaus"): "1, 3",
+                            ("Geradeaus", "Ausweichen"): "3, 1",
+                            ("Geradeaus", "Geradeaus"): "0, 0",
+                        },
+                    ),
+                    class_="card-body",
+                ),
+                class_="card shadow-sm h-100",
+                style="background-color:#ffffff;",
+            ),
+            class_="special-col game",
+        ),
+        ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.h5("Erklärung", class_="card-title"),
+                    ui.tags.p(
+                        "Beide wollen nicht ausweichen, aber ein Zusammenstoß ist katastrophal.",
+                        class_="mb-2",
+                    ),
+                    ui.tags.ul(
+                        ui.tags.li("Zwei Nash-Gleichgewichte: (Geradeaus, Ausweichen) und (Ausweichen, Geradeaus)."),
+                        ui.tags.li("Kein strikt dominantes Verhalten."),
+                        ui.tags.li("Commitment/Drohungen sind oft entscheidend."),
+                        class_="mb-0",
+                    ),
+                    class_="card-body",
+                ),
+                class_="card shadow-sm h-100",
+                style="background-color:#ffffff;",
+            ),
+            class_="special-col text",
+        ),
+        class_="special-row",
+        ),
+        class_="mb-4",
+    ),
+    ui.tags.div(
+        ui.tags.h4("Jagdspiel (Stag Hunt)", class_="mb-2"),
+        ui.tags.div(
+        ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.h5("Beispielspiel", class_="card-title"),
+                    payoff_table(
+                        rows=["Hirsch", "Hase"],
+                        cols=["Hirsch", "Hase"],
+                        payoff_strings={
+                            ("Hirsch", "Hirsch"): "4, 4",
+                            ("Hirsch", "Hase"): "0, 3",
+                            ("Hase", "Hirsch"): "3, 0",
+                            ("Hase", "Hase"): "2, 2",
+                        },
+                    ),
+                    class_="card-body",
+                ),
+                class_="card shadow-sm h-100",
+                style="background-color:#ffffff;",
+            ),
+            class_="special-col game",
+        ),
+        ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.h5("Erklärung", class_="card-title"),
+                    ui.tags.p(
+                        "Koordinationsspiel: Die effiziente Option lohnt sich nur, wenn beide mitmachen.",
+                        class_="mb-2",
+                    ),
+                    ui.tags.ul(
+                        ui.tags.li("Zwei Nash-Gleichgewichte: (Hirsch, Hirsch) und (Hase, Hase)."),
+                        ui.tags.li("Effizient aber riskant: (Hirsch, Hirsch)."),
+                        ui.tags.li("Typisch: Vertrauen/Koordination als Schlüsselproblem."),
+                        class_="mb-0",
+                    ),
+                    class_="card-body",
+                ),
+                class_="card shadow-sm h-100",
+                style="background-color:#ffffff;",
+            ),
+            class_="special-col text",
+        ),
+        class_="special-row",
+        ),
+        class_="mb-4",
+    ),
+    ui.tags.div(
+        ui.tags.h4("Ultimatumspiel", class_="mb-2"),
+        ui.tags.div(
+        ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.h5("Beispielspiel", class_="card-title"),
+                    ui.tags.p(
+                        "Vereinfacht: Spieler 1 bietet fair (50/50) oder unfair (90/10). "
+                        "Spieler 2 kann annehmen oder ablehnen.",
+                        class_="text-muted mb-3",
+                    ),
+                    payoff_table(
+                        rows=["Fair", "Unfair"],
+                        cols=["Annehmen", "Ablehnen"],
+                        payoff_strings={
+                            ("Fair", "Annehmen"): "5, 5",
+                            ("Fair", "Ablehnen"): "0, 0",
+                            ("Unfair", "Annehmen"): "9, 1",
+                            ("Unfair", "Ablehnen"): "0, 0",
+                        },
+                    ),
+                    class_="card-body",
+                ),
+                class_="card shadow-sm h-100",
+                style="background-color:#ffffff;",
+            ),
+            class_="special-col game",
+        ),
+        ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.h5("Erklärung", class_="card-title"),
+                    ui.tags.p(
+                        "In der Standardtheorie nimmt Spieler 2 jedes positive Angebot an (Rückwärtsinduktion).",
+                        class_="mb-2",
+                    ),
+                    ui.tags.ul(
+                        ui.tags.li("Theorie: Spieler 1 bietet minimal, Spieler 2 akzeptiert."),
+                        ui.tags.li("Empirie: Unfaire Angebote werden oft abgelehnt (Fairness)."),
+                        ui.tags.li("Wichtiges Beispiel für Modell vs. Verhalten."),
+                        class_="mb-0",
+                    ),
+                    class_="card-body",
+                ),
+                class_="card shadow-sm h-100",
+                style="background-color:#ffffff;",
+            ),
+            class_="special-col text",
+        ),
+        class_="special-row",
+        ),
+        class_="mb-4",
+    ),
+    ui.tags.div(
+        ui.tags.h4("Kampf der Geschlechter", class_="mb-2"),
+        ui.tags.div(
+        ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.h5("Beispielspiel", class_="card-title"),
+                    payoff_table(
+                        rows=["Oper", "Fußball"],
+                        cols=["Oper", "Fußball"],
+                        payoff_strings={
+                            ("Oper", "Oper"): "3, 2",
+                            ("Oper", "Fußball"): "0, 0",
+                            ("Fußball", "Oper"): "0, 0",
+                            ("Fußball", "Fußball"): "2, 3",
+                        },
+                    ),
+                    class_="card-body",
+                ),
+                class_="card shadow-sm h-100",
+                style="background-color:#ffffff;",
+            ),
+            class_="special-col game",
+        ),
+        ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.h5("Erklärung", class_="card-title"),
+                    ui.tags.p(
+                        "Beide wollen sich koordinieren, aber bevorzugen unterschiedliche Aktivitäten.",
+                        class_="mb-2",
+                    ),
+                    ui.tags.ul(
+                        ui.tags.li("Zwei reine Nash-Gleichgewichte: (Oper, Oper) und (Fußball, Fußball)."),
+                        ui.tags.li("Verteilungsproblem: Wer bekommt sein Wunsch-Ergebnis?"),
+                        ui.tags.li("Zusätzlich existiert ein gemischtes Nash-Gleichgewicht."),
+                        class_="mb-0",
+                    ),
+                    class_="card-body",
+                ),
+                class_="card shadow-sm h-100",
+                style="background-color:#ffffff;",
+            ),
+            class_="special-col text",
+        ),
+        class_="special-row",
+        ),
+        class_="mb-4",
+    ),
+]
 # =========================================================
 # UI
 # =========================================================
@@ -667,13 +937,93 @@ app_ui = ui.page_fluid(
   flex: 1 1 auto;
 }
     /* Center the top nav tabs */
+    :root {
+        --header-bg: rgb(213, 236, 240);
+        --header-height: 64px;
+    }
+    body {
+        padding-top: var(--header-height);
+    }
     .nav-tabs {
         display: flex;
         justify-content: center;
+        align-items: center;
         margin-bottom: 8px;
+        width: 100vw;
+        margin-left: calc(50% - 50vw);
+        min-height: var(--header-height);
+        padding: 0 0.75rem;
+        background-color: var(--header-bg);
+        border-radius: 0;
+        border-bottom: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+    }
+    .nav-tabs .nav-link {
+        color: rgb(87, 87, 86);
+        font-weight: 700;
+        background-color: transparent;
+        border: none;
+        font-size: 1.05rem;
+    }
+    .nav-tabs .nav-link:hover {
+        color: #000000;
+    }
+    .nav-tabs .nav-link.active,
+    .nav-tabs .nav-link:focus {
+        color: #000000;
+        background-color: transparent;
+        border: none;
+        box-shadow: none;
+    }
+    .tabs-toggle {
+        display: none;
+    }
+    @media (max-width: 768px) {
+        .container-fluid,
+        .container,
+        .container-fluid.px-4,
+        .container.px-4 {
+            padding-left: 0.1rem !important;
+            padding-right: 0.1rem !important;
+        }
+        .special-col.game .table.w-auto {
+            width: 100% !important;
+        }
+        .special-col.game .table {
+            font-size: 0.85rem;
+        }
+        .special-col.game .table th,
+        .special-col.game .table td {
+            padding: 0.35rem;
+        }
+        .tabs-toggle {
+            display: inline-flex;
+            position: fixed;
+            top: 0.5rem;
+            left: 0.5rem;
+            z-index: 1001;
+        }
+        .nav-tabs {
+            display: none;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 6px;
+        }
+        body.tabs-open .nav-tabs {
+            display: flex;
+        }
+        body.tabs-open .nav-tabs .nav-link {
+            text-align: left;
+        }
     }
     body {
-        font-family: Helvetica, sans-serif, Arial;
+        font-family: source-code-pro, Helvetica, sans-serif, Arial;
+        margin: 0;
+        background-color: #ffffff;
     }
 
     /* Radio buttons in two columns */
@@ -694,6 +1044,11 @@ app_ui = ui.page_fluid(
     }
     .three-col-radios .form-check {
         margin: 0;
+    }
+    @media (max-width: 768px) {
+        .three-col-radios .shiny-options-group {
+            grid-template-columns: 1fr 1fr;
+        }
     }
 
     /* Spacing between boxes + equal-height cards */
@@ -774,9 +1129,56 @@ app_ui = ui.page_fluid(
     .help-text {
         font-size: 1rem;
     }
+                  /* ---------- Besondere Spiele: 40/60 Layout + Gap + Equal Height ---------- */
+.special-row{
+  display:flex;
+  gap:20px;              /* Abstand zwischen den Boxen */
+  align-items:stretch;    /* gleiche Höhe in der Zeile */
+  margin-bottom:20px;
+}
+
+.special-col{
+  display:flex;           /* damit die Card die Höhe füllen kann */
+}
+
+.special-col.game{  flex: 0 0 40%; }
+.special-col.text{  flex: 0 0 60%; }
+
+.special-col .card{
+  flex:1 1 auto;
+  height:100%;
+}
+
+.special-col .card-body{
+  display:flex;
+  flex-direction:column;
+  height:100%;
+}
+
+/* mobil: untereinander */
+@media (max-width: 992px){
+  .special-row{ flex-direction:column; }
+  .special-col.game, .special-col.text{ flex: 1 1 auto; }
+}
     """),
+    ui.tags.script(
+        """
+        document.addEventListener('click', function (e) {
+          var link = e.target.closest('.nav-tabs .nav-link');
+          if (link) {
+            document.body.classList.remove('tabs-open');
+          }
+        });
+        """
+    ),
 
     # ---------- Top navigation ----------
+    ui.tags.button(
+        "Menü",
+        class_="btn btn-outline-secondary tabs-toggle mb-2",
+        type="button",
+        onclick="document.body.classList.toggle('tabs-open');",
+    ),
     ui.navset_tab(
 
         # =================================================
@@ -1091,7 +1493,7 @@ app_ui = ui.page_fluid(
                 "Weiter zu Übung 3",
                 class_="btn btn-primary"
             ),
-            class_="mt-4 text-start"
+            class_="mt-4 text-start mb-3"
         ),
         class_="container-fluid px-4",
     ),
@@ -1180,7 +1582,7 @@ ui.nav_panel(
                 "Weiter zu Übung 4",
                 class_="btn btn-primary"
             ),
-            class_="mt-4 text-start"
+            class_="mt-4 text-start mb-3"
         ),
         class_="container-fluid px-4"
     ),
@@ -1269,7 +1671,7 @@ ui.nav_panel(
                 "Weiter zu Übung 5",
                 class_="btn btn-primary"
             ),
-            class_="mt-4 text-start"
+            class_="mt-4 text-start mb-3"
         ),
         class_="container-fluid px-4"
     ),
@@ -1341,7 +1743,7 @@ ui.nav_panel(
                 ui.tags.div(
                     ui.input_action_button("go_back_ex4", "Zurück", class_="btn btn-outline-secondary me-2"),
                     ui.input_action_button("go_to_ex6", "Weiter zu Übung 6", class_="btn btn-primary"),
-                    class_="mt-4 text-start",
+                    class_="mt-4 text-start mb-3",
                 ),
                 class_="container-fluid px-4",
             ),
@@ -1411,11 +1813,30 @@ ui.nav_panel(
                 ),
                 ui.tags.div(
                     ui.input_action_button("go_back_ex5", "Zurück", class_="btn btn-outline-secondary"),
-                    class_="mt-4 text-start",
+                    ui.input_action_button("go_to_special_games", "Zu besonderen Spielen", class_="btn btn-primary"),
+                    class_="mt-4 text-start mb-3",
                 ),
                 class_="container-fluid px-4",
             ),
             value="ex6",
+        ),
+        
+        # =========================
+        # BESONDERE SPIELE (READ ONLY)
+        # =========================
+        ui.nav_panel(
+            "Besondere Spiele",
+            ui.tags.div(
+                ui.h2("Besondere Spiele der Spieltheorie", class_="exercise-title"),
+                ui.tags.p(
+                    "Links jeweils ein Beispielspiel (Auszahlungen (u₁, u₂)), "
+                    "rechts die zentrale Idee und typische Ergebnisse.",
+                    class_="text-muted mb-4",
+                ),
+                *SPECIAL_GAMES_ROWS,
+                class_="container-fluid px-4",
+            ),
+            value="special_games",
         ),
 
         id="tabs",
@@ -1452,6 +1873,10 @@ def server(input, output, session):
     @reactive.event(input.go_to_ex6)
     def _go_to_ex6():
         ui.update_navset("tabs", selected="ex6")
+    @reactive.effect
+    @reactive.event(input.go_to_special_games)
+    def _go_to_special_games():
+        ui.update_navset("tabs", selected="special_games")
     @reactive.effect
     @reactive.event(input.go_back_ex1)
     def _go_back_ex1():
@@ -1546,9 +1971,16 @@ def server(input, output, session):
     def help_text_1():
         if not show_help1.get():
             return ui.tags.div()
-        return ui.tags.p(
-            "Beste Antwort: Wähle die Strategie, die dir bei gegebener Gegenspieler-Strategie den höchsten eigenen Nutzen bringt.",
-            class_="text-muted help-text mt-2 mb-0",
+        return ui.tags.div(
+            ui.tags.div(
+                ui.tags.p(
+                    "Beste Antwort: Wähle die Strategie, die dir bei gegebener Gegenspieler-Strategie den höchsten eigenen Nutzen bringt.",
+                    class_="text-muted help-text mt-2 mb-0",
+                ),
+                class_="card-body py-2 exercise-notation-body",
+            ),
+            class_="card mt-3",
+            style="background-color:#f7f7f7;",
         )
 
     @output
@@ -1613,9 +2045,16 @@ def server(input, output, session):
     def help_text_2():
         if not show_help2.get():
             return ui.tags.div()
-        return ui.tags.p(
-            "Strikt dominant: Eine Strategie ist in jeder Situation strikt besser als alle anderen Strategien.",
-            class_="text-muted help-text mt-2 mb-0",
+        return ui.tags.div(
+            ui.tags.div(
+                ui.tags.p(
+                    "Strikt dominant: Eine Strategie ist in jeder Situation strikt besser als alle anderen Strategien.",
+                    class_="text-muted help-text mt-2 mb-0",
+                ),
+                class_="card-body py-2 exercise-notation-body",
+            ),
+            class_="card mt-3",
+            style="background-color:#f7f7f7;",
         )
 
     @output
@@ -1725,9 +2164,44 @@ def server(input, output, session):
     def help_text_3():
         if not show_help3.get():
             return ui.tags.div()
-        return ui.tags.p(
-            "Schwach dominant: Nie schlechter und mindestens einmal besser. Strikt dominant: Immer besser.",
-            class_="text-muted help-text mt-2 mb-0",
+
+        return ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.p(
+                        ui.tags.strong("Ziel: "),
+                        "Prüfe, ob ein Spieler eine dominante Strategie hat (strikt oder schwach).",
+                        class_="text-muted mb-2",
+                    ),
+                    ui.tags.ul(
+                        ui.tags.li(
+                            ui.tags.strong("Strikt dominant: "),
+                            "Eine Strategie sᵢ ist strikt dominant, wenn sie gegen jede gegnerische Strategie "
+                            "immer einen strikt höheren Nutzen liefert als jede andere eigene Strategie."
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong("Schwach dominant: "),
+                            "Eine Strategie sᵢ ist schwach dominant, wenn sie gegen jede gegnerische Strategie "
+                            "mindestens so gut ist wie jede andere eigene Strategie, und gegen mindestens eine gegnerische Strategie "
+                            "echt besser als jede Alternative."
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong("Vorgehen: "),
+                            "Vergleiche für Spieler 1 zeilenweise die u₁-Werte (A/B/C/D) spaltenweise (X/Y/Z). "
+                            "Für Spieler 2 vergleichst du spaltenweise die u₂-Werte zeilenweise."
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong("Wichtig: "),
+                            "Pro Spieler kann es höchstens eine dominante Strategie geben."
+                        ),
+                        class_="text-muted mb-0",
+                    ),
+                    class_="mt-2",
+                ),
+                class_="card-body py-2 exercise-notation-body",
+            ),
+            class_="card mt-3",
+            style="background-color:#f7f7f7;",
         )
 
     @output
@@ -1804,9 +2278,44 @@ def server(input, output, session):
     def help_text_4():
         if not show_help4.get():
             return ui.tags.div()
-        return ui.tags.p(
-            "Nash-Gleichgewicht: Keiner kann sich durch einseitiges Abweichen verbessern.",
-            class_="text-muted help-text mt-2 mb-0",
+
+        return ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.p(
+                        ui.tags.strong("Definition: "),
+                        "Ein Strategieprofil (r, c) ist ein Nash-Gleichgewicht in reinen Strategien, "
+                        "wenn keiner der Spieler sich durch einseitiges Abweichen strikt verbessern kann.",
+                        class_="text-muted mb-2",
+                    ),
+                    ui.tags.ul(
+                        ui.tags.li(
+                            ui.tags.strong("Beste Antwort Spieler 1: "),
+                            "Für eine feste Spalte c (Strategie von Spieler 2) ist eine Zeile r eine beste Antwort, "
+                            "wenn u₁(r,c) maximal über alle Zeilen ist."
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong("Beste Antwort Spieler 2: "),
+                            "Für eine feste Zeile r (Strategie von Spieler 1) ist eine Spalte c eine beste Antwort, "
+                            "wenn u₂(r,c) maximal über alle Spalten ist."
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong("Nash-Kriterium: "),
+                            "(r,c) ist Nash ⇔ r ist beste Antwort auf c UND c ist beste Antwort auf r."
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong("Praktischer Tipp: "),
+                            "Markiere zuerst alle besten Antworten von Spieler 1 pro Spalte, dann alle besten Antworten von Spieler 2 pro Zeile. "
+                            "Schnittpunkte sind Nash-Gleichgewichte."
+                        ),
+                        class_="text-muted mb-0",
+                    ),
+                    class_="mt-2",
+                ),
+                class_="card-body py-2 exercise-notation-body",
+            ),
+            class_="card mt-3",
+            style="background-color:#f7f7f7;",
         )
 
     @output
@@ -1903,9 +2412,43 @@ def server(input, output, session):
     def help_text_5():
         if not show_help5.get():
             return ui.tags.div()
-        return ui.tags.p(
-            "Striktes Nash-Gleichgewicht: Kein Spieler kann seine Auszahlung durch einseitiges Abweichen erhöhen.",
-            class_="text-muted help-text mt-2 mb-0",
+
+        return ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.p(
+                        ui.tags.strong("Ziel: "),
+                        "Für jedes Profil (r,c) entscheide: kein Nash / Nash aber nicht strikt / strikt Nash.",
+                        class_="text-muted mb-2",
+                    ),
+                    ui.tags.ul(
+                        ui.tags.li(
+                            ui.tags.strong("Nash (nicht strikt): "),
+                            "(r,c) ist Nash, wenn kein Spieler durch einseitiges Abweichen einen strikt höheren Nutzen bekommt. "
+                            "Es dürfen auch andere Strategien gleich gut sein (Indifferenz)."
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong("Strikt Nash: "),
+                            "(r,c) ist strikt Nash, wenn beide Spieler dort eine strikt beste Antwort spielen, also eindeutig (ohne Gleichstand)."
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong("So prüfst du Spieler 1: "),
+                            "Fixiere c. Vergleiche u₁(·,c). "
+                            "Nash braucht: u₁(r,c) ist maximal. Strikt Nash braucht: u₁(r,c) ist strikt größer als alle anderen."
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong("So prüfst du Spieler 2: "),
+                            "Fixiere r. Vergleiche u₂(r,·). "
+                            "Nash braucht: u₂(r,c) ist maximal. Strikt Nash braucht: u₂(r,c) ist strikt größer als alle anderen."
+                        ),
+                        class_="text-muted mb-0",
+                    ),
+                    class_="mt-2",
+                ),
+                class_="card-body py-2 exercise-notation-body",
+            ),
+            class_="card mt-3",
+            style="background-color:#f7f7f7;",
         )
 
     @output
@@ -2009,9 +2552,41 @@ def server(input, output, session):
     def help_text_6():
         if not show_help6.get():
             return ui.tags.div()
-        return ui.tags.p(
-            "Indifferenzbedingung: p * u₂(A,X) + (1-p) * u₂(B,X) = p * u₂(A,Y) + (1-p) * u₂(B,Y).",
-            class_="text-muted help-text mt-2 mb-0",
+
+        return ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.p(
+                        ui.tags.strong("Idee: "),
+                        "In einem gemischten Nash-Gleichgewicht wählt Spieler 1 A mit Wahrscheinlichkeit p, "
+                        "sodass Spieler 2 zwischen X und Y indifferent ist.",
+                        class_="text-muted mb-2",
+                    ),
+                    ui.tags.ul(
+                        ui.tags.li(
+                            ui.tags.strong("Indifferenzbedingung (für Spieler 2): "),
+                            "Erwarteter Nutzen aus X = Erwarteter Nutzen aus Y."
+                        ),
+                        ui.tags.li(
+                            ui.tags.code("p·u₂(A,X) + (1−p)·u₂(B,X) = p·u₂(A,Y) + (1−p)·u₂(B,Y)")
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong("Löse nach p: "),
+                            "Bringe alle p-Terme auf eine Seite und forme zu p = Zähler / Nenner um."
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong("Warum das funktioniert: "),
+                            "Wenn Spieler 2 indifferent ist, ist es für ihn optimal zu mischen, damit kann Spieler 1 p so wählen, "
+                            "dass Spieler 2 keinen Anreiz hat, seine reine Strategie zu ändern."
+                        ),
+                        class_="text-muted mb-0",
+                    ),
+                    class_="mt-2",
+                ),
+                class_="card-body py-2 exercise-notation-body",
+            ),
+            class_="card mt-3",
+            style="background-color:#f7f7f7;",
         )
 
     @output
@@ -2028,25 +2603,29 @@ def server(input, output, session):
         b = payoffs[("B", "Y")][1] - payoffs[("B", "X")][1]
         if a + b == 0:
             return ui.tags.div("Keine eindeutige Lösung für p.", class_="alert alert-warning mt-3")
+        
         from math import gcd
         num = b
         den = a + b
-        g = gcd(num, den)
+        # 1) Kürzen immer mit positiven Werten
+        g = gcd(abs(num), abs(den))
         num //= g
         den //= g
+        # 2) Vorzeichen normalisieren: Nenner immer positiv
+        if den < 0:
+            num *= -1
+            den *= -1
         correct_frac = f"{num}/{den}"
         expl = "Damit ist Spieler 2 indifferent zwischen X und Y."
         if input.answer_6() == correct_frac:
             return ui.tags.div(
-                ui.tags.div(f"✅ Richtig! p = {correct_frac}.", class_="fw-semibold"),
-                ui.tags.div(expl, class_="mt-2"),
-                class_="alert alert-success mt-3",
+                f"✅ Richtig! p = {correct_frac}. Damit ist Spieler 2 indifferent zwischen X und Y.",
+                class_="alert alert-success mt-3"
             )
         else:
             return ui.tags.div(
-                ui.tags.div(f"❌ Falsch. Richtig ist: p = {correct_frac}.", class_="fw-semibold"),
-                ui.tags.div(expl, class_="mt-2"),
-                class_="alert alert-danger mt-3",
+                f"❌ Falsch. Richtig ist: p = {correct_frac}.",
+                class_="alert alert-danger mt-3"
             )
 
 app = App(app_ui, server)
