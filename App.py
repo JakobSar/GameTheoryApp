@@ -10,6 +10,9 @@ P2_STRATS_EX1 = ["X", "Y", "Z"]
 P1_STRATS_EX2 = ["A", "B", "C", "D"]
 P2_STRATS_EX2 = ["X", "Y", "Z"]
 
+P1_STRATS_EX6 = ["A", "B"]
+P2_STRATS_EX6 = ["X", "Y"]
+
 # =========================================================
 # Intro example (static)
 # =========================================================
@@ -595,13 +598,60 @@ def generate_random_game_ex4(force_prob=0.9):
     return payoffs
 
 # =========================================================
+# Exercise 5 and 6: Strict Nash equilibria & Mixed strategy equilibrium
+# =========================================================
+
+def generate_random_game_ex6():
+    rows = P1_STRATS_EX6
+    cols = P2_STRATS_EX6
+    # Ensure each strategy is a strict best response to one of the opponent's strategies
+    scenario = random.choice(["S1", "S2"])
+    n = random.randint(2, 7)
+    if scenario == "S2":
+        # Scenario like Battle of the Sexes pattern (two pure NE, mixed NE exists)
+        # Enforce p = 1/n for Player 1's mixing by adjusting Player 2's payoffs
+        d2 = random.randint(1, max(1, 9 // max(1, (n-1))))
+        d1 = (n - 1) * d2
+        A_X_u2 = random.randint(0, 9 - d1)
+        A_Y_u2 = A_X_u2 + d1
+        B_Y_u2 = random.randint(0, 9 - d2)
+        B_X_u2 = B_Y_u2 + d2
+        u2 = {("A", "X"): A_X_u2, ("A", "Y"): A_Y_u2, ("B", "X"): B_X_u2, ("B", "Y"): B_Y_u2}
+    else:
+        # Scenario like Matching Pennies pattern (no pure NE, unique mixed NE)
+        c2 = random.randint(1, max(1, 9 // max(1, (n-1))))
+        c1 = (n - 1) * c2
+        A_Y_u2 = random.randint(0, 9 - c1)
+        A_X_u2 = A_Y_u2 + c1
+        B_X_u2 = random.randint(0, 9 - c2)
+        B_Y_u2 = B_X_u2 + c2
+        u2 = {("A", "X"): A_X_u2, ("A", "Y"): A_Y_u2, ("B", "X"): B_X_u2, ("B", "Y"): B_Y_u2}
+    # Player 1 payoffs: assign so that each strategy is a strict best response to one of opponent's strategies
+    if scenario == "S2":
+        # Player 1: B best against X, A best against Y
+        B_X_u1 = random.randint(1, 9)
+        A_X_u1 = random.randint(0, B_X_u1 - 1)
+        A_Y_u1 = random.randint(1, 9)
+        B_Y_u1 = random.randint(0, A_Y_u1 - 1)
+    else:
+        # Player 1: A best against X, B best against Y
+        A_X_u1 = random.randint(1, 9)
+        B_X_u1 = random.randint(0, A_X_u1 - 1)
+        B_Y_u1 = random.randint(1, 9)
+        A_Y_u1 = random.randint(0, B_Y_u1 - 1)
+    u1 = {("A", "X"): A_X_u1, ("A", "Y"): A_Y_u1, ("B", "X"): B_X_u1, ("B", "Y"): B_Y_u1}
+    payoffs = {}
+    for (r, c) in u1:
+        payoffs[(r, c)] = (u1[(r, c)], u2[(r, c)])
+    return payoffs
+
+# =========================================================
 # UI
 # =========================================================
 app_ui = ui.page_fluid(
 
     # ---------- Styles ----------
     ui.tags.style("""
-    @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap');
     /* Make all rows flex containers */
 .equal-height-row {
   display: flex;
@@ -623,7 +673,7 @@ app_ui = ui.page_fluid(
         margin-bottom: 8px;
     }
     body {
-        font-family: "Source Sans 3", Verdana, Helvetica, sans-serif, Arial ;
+        font-family: Helvetica, sans-serif, Arial;
     }
 
     /* Radio buttons in two columns */
@@ -829,7 +879,7 @@ app_ui = ui.page_fluid(
 
                 ui.input_action_button(
                     "start_exercise",
-                    "Zur Übung 1",
+                    "Zu Übung 1",
                     class_="btn btn-primary mt-4",
                 ),
 
@@ -1212,7 +1262,12 @@ ui.nav_panel(
             ui.input_action_button(
                 "go_back_ex3",
                 "Zurück",
-                class_="btn btn-outline-secondary"
+                class_="btn btn-outline-secondary me-2"
+            ),
+            ui.input_action_button(
+                "go_to_ex5",
+                "Weiter zu Übung 5",
+                class_="btn btn-primary"
             ),
             class_="mt-4 text-start"
         ),
@@ -1220,6 +1275,148 @@ ui.nav_panel(
     ),
     value="ex4",
 ),
+
+# =================================================
+        # Übung 5
+        # =================================================
+        ui.nav_panel(
+            "Übung 5",
+            ui.tags.div(
+                ui.h2("Übung 5: Nash-Gleichgewichte in reinen Strategien (strikt)", class_="exercise-title"),
+                ui.tags.div(
+                    # LEFT: Game table + Notation + Buttons
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.div(
+                                ui.tags.h5("Spiel", class_="card-title"),
+                                ui.output_ui("game_table_5"),
+                                ui.tags.div(
+                                    ui.tags.div(
+                                        ui.tags.h6("Notation"),
+                                        ui.output_ui("notation_5"),
+                                        class_="card-body py-2 exercise-notation-body",
+                                    ),
+                                    class_="card mt-3",
+                                    style="background-color:#f7f7f7;",
+                                ),
+                                ui.tags.div(
+                                    ui.input_action_button("new_game_5", "Neues Spiel", class_="btn btn-outline-primary"),
+                                    ui.input_action_button("help_5", "Hilfe", class_="btn btn-outline-primary"),
+                                    class_="d-flex gap-2 mt-3",
+                                ),
+                                ui.output_ui("help_text_5"),
+                                class_="card-body",
+                            ),
+                            class_="card shadow-sm h-100",
+                        ),
+                        class_="col exercise-col",
+                    ),
+                    # RIGHT: Question and answers
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.div(
+                                ui.tags.h5("Frage", class_="card-title"),
+                                ui.tags.p(
+                                    "Finden Sie alle strikten Nash-Gleichgewichte in reinen Strategien.",
+                                    class_="mt-2 mb-4",
+                                ),
+                                ui.tags.div(
+                                    ui.input_checkbox_group(
+                                        "answer_5",
+                                        None,
+                                        choices=[f"({r},{c})" for r in P1_STRATS_EX2 for c in P2_STRATS_EX2],
+                                    ),
+                                    class_="two-col-radios",
+                                ),
+                                ui.input_action_button("check_5", "Antwort prüfen", class_="btn btn-success mt-3"),
+                                ui.output_ui("feedback_5"),
+                                class_="card-body",
+                            ),
+                            class_="card shadow-sm h-100",
+                        ),
+                        class_="col exercise-col",
+                    ),
+                    class_="row row-cols-1 row-cols-lg-2 g-3 mt-2 align-items-stretch exercise-row",
+                ),
+                ui.tags.div(
+                    ui.input_action_button("go_back_ex4", "Zurück", class_="btn btn-outline-secondary me-2"),
+                    ui.input_action_button("go_to_ex6", "Weiter zu Übung 6", class_="btn btn-primary"),
+                    class_="mt-4 text-start",
+                ),
+                class_="container-fluid px-4",
+            ),
+            value="ex5",
+        ),
+        # =================================================
+        # Übung 6
+        # =================================================
+        ui.nav_panel(
+            "Übung 6",
+            ui.tags.div(
+                ui.h2("Übung 6: Nash-Gleichgewicht in gemischten Strategien", class_="exercise-title"),
+                ui.tags.div(
+                    # LEFT: Game table + Notation + Buttons
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.div(
+                                ui.tags.h5("Spiel", class_="card-title"),
+                                ui.output_ui("game_table_6"),
+                                ui.tags.div(
+                                    ui.tags.div(
+                                        ui.tags.h6("Notation"),
+                                        ui.output_ui("notation_6"),
+                                        class_="card-body py-2 exercise-notation-body",
+                                    ),
+                                    class_="card mt-3",
+                                    style="background-color:#f7f7f7;",
+                                ),
+                                ui.tags.div(
+                                    ui.input_action_button("new_game_6", "Neues Spiel", class_="btn btn-outline-primary"),
+                                    ui.input_action_button("help_6", "Hilfe", class_="btn btn-outline-primary"),
+                                    class_="d-flex gap-2 mt-3",
+                                ),
+                                ui.output_ui("help_text_6"),
+                                class_="card-body",
+                            ),
+                            class_="card shadow-sm h-100",
+                        ),
+                        class_="col exercise-col",
+                    ),
+                    # RIGHT: Question and answers
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.div(
+                                ui.tags.h5("Frage", class_="card-title"),
+                                ui.tags.p(
+                                    "Finden Sie ein Nash-Gleichgewicht in gemischten Strategien, in dem Spieler 1 mit Wahrscheinlichkeit p Strategie A wählt. Wie groß ist p?",
+                                    class_="mt-2 mb-4",
+                                ),
+                                ui.tags.div(
+                                    ui.input_radio_buttons(
+                                        "answer_6",
+                                        None,
+                                        choices=["1/7", "1/6", "1/5", "1/4", "1/3", "1/2"],
+                                    ),
+                                    class_="three-col-radios",
+                                ),
+                                ui.input_action_button("check_6", "Antwort prüfen", class_="btn btn-success mt-3"),
+                                ui.output_ui("feedback_6"),
+                                class_="card-body",
+                            ),
+                            class_="card shadow-sm h-100",
+                        ),
+                        class_="col exercise-col",
+                    ),
+                    class_="row row-cols-1 row-cols-lg-2 g-3 mt-2 align-items-stretch exercise-row",
+                ),
+                ui.tags.div(
+                    ui.input_action_button("go_back_ex5", "Zurück", class_="btn btn-outline-secondary"),
+                    class_="mt-4 text-start",
+                ),
+                class_="container-fluid px-4",
+            ),
+            value="ex6",
+        ),
 
         id="tabs",
     ),
@@ -1230,16 +1427,51 @@ ui.nav_panel(
 # SERVER
 # =========================================================
 def server(input, output, session):
-    # -------- Intro button switches to Übung tab --------
+    # -------- Intro and navigation events --------
     @reactive.effect
     @reactive.event(input.start_exercise)
     def _go_to_exercise():
         ui.update_navset("tabs", selected="ex1")
-
     @reactive.effect
     @reactive.event(input.go_to_ex2)
     def _go_to_ex2():
         ui.update_navset("tabs", selected="ex2")
+    @reactive.effect
+    @reactive.event(input.go_to_ex3)
+    def _go_to_ex3():
+        ui.update_navset("tabs", selected="ex3")
+    @reactive.effect
+    @reactive.event(input.go_to_ex4)
+    def _go_to_ex4():
+        ui.update_navset("tabs", selected="ex4")
+    @reactive.effect
+    @reactive.event(input.go_to_ex5)
+    def _go_to_ex5():
+        ui.update_navset("tabs", selected="ex5")
+    @reactive.effect
+    @reactive.event(input.go_to_ex6)
+    def _go_to_ex6():
+        ui.update_navset("tabs", selected="ex6")
+    @reactive.effect
+    @reactive.event(input.go_back_ex1)
+    def _go_back_ex1():
+        ui.update_navset("tabs", selected="ex1")
+    @reactive.effect
+    @reactive.event(input.go_back_ex2)
+    def _go_back_ex2():
+        ui.update_navset("tabs", selected="ex2")
+    @reactive.effect
+    @reactive.event(input.go_back_ex3)
+    def _go_back_ex3():
+        ui.update_navset("tabs", selected="ex3")
+    @reactive.effect
+    @reactive.event(input.go_back_ex4)
+    def _go_back_ex4():
+        ui.update_navset("tabs", selected="ex4")
+    @reactive.effect
+    @reactive.event(input.go_back_ex5)
+    def _go_back_ex5():
+        ui.update_navset("tabs", selected="ex5")
 
     # =======================
     # Exercise 1 state
@@ -1631,6 +1863,190 @@ def server(input, output, session):
                 ui.tags.div(f"❌ Falsch. {richtig_prefix}{correct_text}.", class_="fw-semibold"),
                 ui.tags.div(expl, class_="mt-2"),
                 class_="alert alert-danger mt-3"
+            )
+    # =======================
+    # Exercise 5 state
+    # =======================
+    game5 = reactive.Value(generate_random_game_ex4())
+    show_fb5 = reactive.Value(False)
+    show_help5 = reactive.Value(False)
+
+    @reactive.effect
+    @reactive.event(input.new_game_5)
+    def _new_game_5():
+        game5.set(generate_random_game_ex4())
+        ui.update_checkbox_group("answer_5", selected=None)
+        show_fb5.set(False)
+
+    @reactive.effect
+    @reactive.event(input.check_5)
+    def _check_5():
+        show_fb5.set(True)
+
+    @reactive.effect
+    @reactive.event(input.help_5)
+    def _help_5():
+        show_help5.set(not show_help5.get())
+
+    @output
+    @render.ui
+    def game_table_5():
+        return payoff_table(P1_STRATS_EX2, P2_STRATS_EX2, payoff_strings_from_tuple_payoffs(game5.get()))
+
+    @output
+    @render.ui
+    def notation_5():
+        return notation_ul(P1_STRATS_EX2, P2_STRATS_EX2, game5.get())
+
+    @output
+    @render.ui
+    def help_text_5():
+        if not show_help5.get():
+            return ui.tags.div()
+        return ui.tags.p(
+            "Striktes Nash-Gleichgewicht: Kein Spieler kann seine Auszahlung durch einseitiges Abweichen erhöhen.",
+            class_="text-muted help-text mt-2 mb-0",
+        )
+
+    @output
+    @render.ui
+    def feedback_5():
+        if not show_fb5.get():
+            return ui.tags.div()
+        chosen = set(input.answer_5() or [])
+        payoffs = game5.get()
+        actual_ne = find_nash_equilibria(payoffs, P1_STRATS_EX2, P2_STRATS_EX2)
+        strict_set = set()
+        for (r, c) in actual_ne:
+            if all(payoffs[(r, c)][0] > payoffs[(r2, c)][0] for r2 in P1_STRATS_EX2 if r2 != r) and \
+               all(payoffs[(r, c)][1] > payoffs[(r, c2)][1] for c2 in P2_STRATS_EX2 if c2 != c):
+                strict_set.add(f"({r},{c})")
+        chosen_set = set(chosen)
+        # Compose feedback text
+        if chosen_set == strict_set:
+            # Correct selection
+            if len(strict_set) == 0:
+                correct_text = "Kein striktes Nash-Gleichgewicht vorhanden"
+            elif len(strict_set) == 1:
+                combo = list(strict_set)[0]
+                correct_text = f"{combo} ist ein striktes Nash-Gleichgewicht"
+            else:
+                combos = sorted(strict_set)
+                if len(combos) == 2:
+                    correct_text = f"{combos[0]} und {combos[1]} sind strikte Nash-Gleichgewichte"
+                else:
+                    correct_text = (", ".join(combos[:-1]) + " und " + combos[-1] + " sind strikte Nash-Gleichgewichte")
+            expl = ""
+            if len(strict_set) == 0:
+                expl = "In jedem Nash-Gleichgewicht dieses Spiels hat mindestens ein Spieler eine alternative Strategie, die ihm die gleiche Auszahlung bietet."
+            else:
+                expl = "Bei allen anderen Strategiekombinationen kann sich mindestens ein Spieler durch einseitiges Abweichen strikt verbessern."
+            return ui.tags.div(
+                ui.tags.div(f"✅ Richtig! {correct_text}.", class_="fw-semibold"),
+                ui.tags.div(expl, class_="mt-2"),
+                class_="alert alert-success mt-3",
+            )
+        else:
+            # Incorrect or incomplete selection
+            if len(strict_set) == 0:
+                correct_text = "kein striktes Nash-Gleichgewicht vorhanden"
+            elif len(strict_set) == 1:
+                correct_text = list(strict_set)[0]
+            else:
+                combos = sorted(strict_set)
+                if len(combos) == 2:
+                    correct_text = f"{combos[0]} und {combos[1]}"
+                else:
+                    correct_text = (", ".join(combos[:-1]) + " und " + combos[-1])
+            expl = ""
+            if len(strict_set) == 0:
+                expl = "In jedem Nash-Gleichgewicht dieses Spiels hat mindestens ein Spieler eine alternative Strategie, die ihm keine geringere Auszahlung bringt."
+            else:
+                expl = "Bei allen anderen Strategiekombinationen kann sich mindestens ein Spieler durch einseitiges Abweichen strikt verbessern."
+            prefix = "Richtig ist: " if len(strict_set) <= 1 else "Richtig sind: "
+            return ui.tags.div(
+                ui.tags.div(f"❌ Falsch. {prefix}{correct_text}.", class_="fw-semibold"),
+                ui.tags.div(expl, class_="mt-2"),
+                class_="alert alert-danger mt-3",
+            )
+
+    # =======================
+    # Exercise 6 state
+    # =======================
+    game6 = reactive.Value(generate_random_game_ex6())
+    show_fb6 = reactive.Value(False)
+    show_help6 = reactive.Value(False)
+
+    @reactive.effect
+    @reactive.event(input.new_game_6)
+    def _new_game_6():
+        game6.set(generate_random_game_ex6())
+        ui.update_radio_buttons("answer_6", selected=None)
+        show_fb6.set(False)
+
+    @reactive.effect
+    @reactive.event(input.check_6)
+    def _check_6():
+        show_fb6.set(True)
+
+    @reactive.effect
+    @reactive.event(input.help_6)
+    def _help_6():
+        show_help6.set(not show_help6.get())
+
+    @output
+    @render.ui
+    def game_table_6():
+        return payoff_table(P1_STRATS_EX6, P2_STRATS_EX6, payoff_strings_from_tuple_payoffs(game6.get()))
+
+    @output
+    @render.ui
+    def notation_6():
+        return notation_ul(P1_STRATS_EX6, P2_STRATS_EX6, game6.get())
+
+    @output
+    @render.ui
+    def help_text_6():
+        if not show_help6.get():
+            return ui.tags.div()
+        return ui.tags.p(
+            "Indifferenzbedingung: p * u₂(A,X) + (1-p) * u₂(B,X) = p * u₂(A,Y) + (1-p) * u₂(B,Y).",
+            class_="text-muted help-text mt-2 mb-0",
+        )
+
+    @output
+    @render.ui
+    def feedback_6():
+        if not show_fb6.get():
+            return ui.tags.div()
+        if input.answer_6() is None or input.answer_6() == "":
+            return ui.tags.div(
+                "Bitte wähle zuerst eine Antwort aus.", class_="alert alert-warning mt-3"
+            )
+        payoffs = game6.get()
+        a = payoffs[("A", "X")][1] - payoffs[("A", "Y")][1]
+        b = payoffs[("B", "Y")][1] - payoffs[("B", "X")][1]
+        if a + b == 0:
+            return ui.tags.div("Keine eindeutige Lösung für p.", class_="alert alert-warning mt-3")
+        from math import gcd
+        num = b
+        den = a + b
+        g = gcd(num, den)
+        num //= g
+        den //= g
+        correct_frac = f"{num}/{den}"
+        expl = "Damit ist Spieler 2 indifferent zwischen X und Y."
+        if input.answer_6() == correct_frac:
+            return ui.tags.div(
+                ui.tags.div(f"✅ Richtig! p = {correct_frac}.", class_="fw-semibold"),
+                ui.tags.div(expl, class_="mt-2"),
+                class_="alert alert-success mt-3",
+            )
+        else:
+            return ui.tags.div(
+                ui.tags.div(f"❌ Falsch. Richtig ist: p = {correct_frac}.", class_="fw-semibold"),
+                ui.tags.div(expl, class_="mt-2"),
+                class_="alert alert-danger mt-3",
             )
 
 app = App(app_ui, server)
