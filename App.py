@@ -979,6 +979,41 @@ app_ui = ui.page_fluid(
         border: none;
         box-shadow: none;
     }
+    .impressum-btn {
+        position: fixed;
+        right: 0.75rem;
+        bottom: 0.75rem;
+        z-index: 1002;
+        font-size: 0.85rem;
+        padding: 0.35rem 0.6rem;
+        font-style: italic;
+    }
+    .impressum-panel {
+        position: fixed;
+        right: 0.75rem;
+        bottom: 3rem;
+        width: 360px;
+        background: #ffffff;
+        border: 1px solid #cfcfcf;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        z-index: 1003;
+        display: none;
+    }
+    .impressum-panel a {
+        color: #000000;
+        text-decoration: none;
+    }
+    .impressum-panel a:hover {
+        color: #000000;
+    }
+    .impressum-panel a[href^="http"] {
+        word-break: break-all;
+    }
+    .impressum-panel.open {
+        display: block;
+    }
     .tabs-toggle {
         display: none;
     }
@@ -987,8 +1022,8 @@ app_ui = ui.page_fluid(
         .container,
         .container-fluid.px-4,
         .container.px-4 {
-            padding-left: 0.1rem !important;
-            padding-right: 0.1rem !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
         }
         .special-col.game .table.w-auto {
             width: 100% !important;
@@ -1006,6 +1041,10 @@ app_ui = ui.page_fluid(
             top: 0.5rem;
             left: 0.5rem;
             z-index: 1001;
+            background-color: var(--header-bg);
+            border-color: rgb(87, 87, 86);
+            color: rgb(87, 87, 86);
+            font-weight: 700;
         }
         .nav-tabs {
             display: none;
@@ -1169,6 +1208,33 @@ app_ui = ui.page_fluid(
             document.body.classList.remove('tabs-open');
           }
         });
+        function toggleImpressum() {
+          var panel = document.getElementById('impressum-panel');
+          if (panel) {
+            panel.classList.toggle('open');
+          }
+        }
+        function toggleImpressumEmail(e) {
+          if (e) { e.preventDefault(); }
+          var email = document.getElementById('impressum-email');
+          if (email) {
+            email.style.display = (email.style.display === 'inline') ? 'none' : 'inline';
+          }
+        }
+        function toggleImpressumAddress(e) {
+          if (e) { e.preventDefault(); }
+          var addr = document.getElementById('impressum-address');
+          if (addr) {
+            addr.style.display = (addr.style.display === 'inline') ? 'none' : 'inline';
+          }
+        }
+        function toggleImpressumProject(e) {
+          if (e) { e.preventDefault(); }
+          var link = document.getElementById('impressum-project-link');
+          if (link) {
+            link.style.display = (link.style.display === 'inline') ? 'none' : 'inline';
+          }
+        }
         """
     ),
 
@@ -1178,6 +1244,59 @@ app_ui = ui.page_fluid(
         class_="btn btn-outline-secondary tabs-toggle mb-2",
         type="button",
         onclick="document.body.classList.toggle('tabs-open');",
+    ),
+    ui.input_action_button(
+        "go_to_impressum",
+        "impressum",
+        class_="btn btn-outline-secondary impressum-btn",
+        onclick="toggleImpressum();",
+    ),
+    ui.tags.div(
+        ui.tags.h6("Impressum", class_="mb-2"),
+        ui.tags.p(
+            "Verantwortlich: ",
+            ui.tags.a("Jakob Sarrazin", href="#", onclick="toggleImpressumEmail(event);"),
+            ui.tags.span(
+                ui.tags.br(),
+                ui.tags.a(
+                    "sarrazin.jakob@gmail.com",
+                    href="mailto:sarrazin.jakob@gmail.com",
+                ),
+                id="impressum-email",
+                style="display:none;",
+            ),
+            class_="mb-1",
+        ),
+        ui.tags.p(
+            "Institution: ",
+            ui.tags.a("ZEW Mannheim", href="#", onclick="toggleImpressumAddress(event);"),
+            ui.tags.span(
+                ui.tags.br(),
+                "L 7, 1, 68161 Mannheim",
+                id="impressum-address",
+                style="display:none;",
+            ),
+            class_="mb-1",
+        ),
+        ui.tags.p(
+            "Github Projekt: ",
+            ui.tags.a("GameTheoryApp", href="#", onclick="toggleImpressumProject(event);"),
+            ui.tags.span(
+                ui.tags.br(),
+                ui.tags.a(
+                    "https://github.com/JakobSar/GameTheoryApp",
+                    href="https://github.com/JakobSar/GameTheoryApp",
+                    target="_blank",
+                    rel="noopener",
+                ),
+                id="impressum-project-link",
+                style="display:none;",
+            ),
+            class_="mb-0",
+        ),
+        ui.tags.p("Aus Mannheim für die Welt 🌍", class_="mb-0 mt-1", style="font-style: italic;"),
+        id="impressum-panel",
+        class_="impressum-panel",
     ),
     ui.navset_tab(
 
