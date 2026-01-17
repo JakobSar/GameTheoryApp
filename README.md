@@ -3,6 +3,8 @@
 Eine interaktive Web-App zum Üben zentraler Konzepte der Spieltheorie  
 (Normalformspiele, beste Antworten, dominante Strategien, Nash-Gleichgewichte – auch gemischt).
 
+https://jakobsar.shinyapps.io/game-theory-trainer/
+
 Die App richtet sich insbesondere an Studierende der Volkswirtschaftslehre, Wirtschaftswissenschaften und verwandter Fächer.
 
 ---
