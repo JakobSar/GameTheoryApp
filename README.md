@@ -58,9 +58,33 @@ Die App deckt u. a. folgende spieltheoretische Konzepte ab:
 ```bash
 git clone https://github.com/DEIN_USERNAME/GameTheoryApp.git
 cd GameTheoryApp
+```
 
 ### 2. Virtuelle Umgebung erstellen (empfohlen)
+```bash
 python -m venv .venv
 source .venv/bin/activate   # macOS / Linux
+```
 # oder
+```bash
 .venv\Scripts\activate      # Windows
+```
+
+### 3. Abhängigkeiten installieren
+```bash
+pip install shiny
+```
+
+### 4. App im Terminal starten
+```bash
+shiny run App.py
+```
+Die App läuft anschließend unter:
+```bash
+http://127.0.0.1:8000
+```
+
+
+
+
+
