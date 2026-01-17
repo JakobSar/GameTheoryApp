@@ -30,11 +30,14 @@ INTRO_PAYOFFS = {
 # =========================================================
 # Helpers
 # =========================================================
+def tr(lang, de, en):
+    return en if lang == "en" else de
+
 def payoff_strings_from_tuple_payoffs(payoffs):
     """(row,col)->(u1,u2)  => (row,col)-> 'u1, u2' """
     return {(r, c): f"{payoffs[(r, c)][0]}, {payoffs[(r, c)][1]}" for (r, c) in payoffs}
 
-def payoff_table(rows, cols, payoff_strings):
+def payoff_table(rows, cols, payoff_strings, lang="de", label_i18n=None):
     """
     payoff_strings: dict[(row,col)] -> "u1, u2"  (with or without parentheses)
     """
@@ -44,28 +47,43 @@ def payoff_table(rows, cols, payoff_strings):
     def fmt(v: str) -> str:
         return v if "(" in v else f"({v})"
 
+    def label_attrs(label):
+        if label_i18n and label in label_i18n:
+            return {
+                "data-i18n-de": label_i18n[label]["de"],
+                "data-i18n-en": label_i18n[label]["en"],
+            }
+        return {}
+
     return ui.tags.table(
         ui.tags.thead(
             ui.tags.tr(
                 ui.tags.th("", colspan=2),
-                ui.tags.th("Spieler 2", colspan=n_cols, style="font-weight:600;"),
+                ui.tags.th(
+                    tr(lang, "Spieler 2", "Player 2"),
+                    colspan=n_cols,
+                    style="font-weight:600;",
+                    **{"data-i18n-de": "Spieler 2", "data-i18n-en": "Player 2"},
+                ),
             ),
             ui.tags.tr(
                 ui.tags.th(""),
                 ui.tags.th("", style="border-right: 1px solid #222;"),
-                *[ui.tags.th(c) for c in cols],
+                *[ui.tags.th(c, **label_attrs(c)) for c in cols],
             ),
         ),
         ui.tags.tbody(
             ui.tags.tr(
                 ui.tags.th(
-                    "Spieler 1",
+                    tr(lang, "Spieler 1", "Player 1"),
                     rowspan=n_rows,
                     style="font-weight:600; vertical-align:middle;",
+                    **{"data-i18n-de": "Spieler 1", "data-i18n-en": "Player 1"},
                 ),
                 ui.tags.th(
                     rows[0],
                     style="font-weight:600; border-right: 1px solid #222;",
+                    **label_attrs(rows[0]),
                 ),
                 *[ui.tags.td(fmt(payoff_strings[(rows[0], c)])) for c in cols],
             ),
@@ -74,6 +92,7 @@ def payoff_table(rows, cols, payoff_strings):
                     ui.tags.th(
                         r,
                         style="font-weight:600; border-right: 1px solid #222;",
+                        **label_attrs(r),
                     ),
                     *[ui.tags.td(fmt(payoff_strings[(r, c)])) for c in cols],
                 )
@@ -84,21 +103,56 @@ def payoff_table(rows, cols, payoff_strings):
         style="margin-left: 0; margin-right: 0;",
     )
 
-def notation_ul(rows, cols, payoffs):
+def notation_ul(rows, cols, payoffs, lang="de"):
     row = "A" if "A" in rows else rows[0]
     col = "X" if "X" in cols else cols[0]
     u1, u2 = payoffs[(row, col)]
     return ui.tags.ul(
         ui.tags.li(ui.tags.code("N = {1, 2}")),
-        ui.tags.li("Spieler 1: ", ui.tags.code(f"S₁ = {{{', '.join(rows)}}}")),
-        ui.tags.li("Spieler 2: ", ui.tags.code(f"S₂ = {{{', '.join(cols)}}}")),
+        ui.tags.li(tr(lang, "Spieler 1: ", "Player 1: "), ui.tags.code(f"S₁ = {{{', '.join(rows)}}}")),
+        ui.tags.li(tr(lang, "Spieler 2: ", "Player 2: "), ui.tags.code(f"S₂ = {{{', '.join(cols)}}}")),
         ui.tags.li(
-            "Beispiel: ",
+            tr(lang, "Beispiel: ", "Example: "),
             ui.tags.code(f"s = ({row}, {col})"),
-            " und ",
+            tr(lang, " und ", " and "),
             ui.tags.code(f"u = ({u1}, {u2})"),
         ),
         class_="mb-0",
+    )
+
+def ex5_matrix_ui(rows, cols, lang="de"):
+    choices = [
+        ("yes_not_strict", tr(lang, "ja, nicht strikt", "yes, not strict")),
+        ("yes_strict", tr(lang, "ja, strikt", "yes, strict")),
+        ("no", tr(lang, "nein", "no")),
+    ]
+    return ui.tags.table(
+        ui.tags.thead(
+            ui.tags.tr(
+                ui.tags.th(""),
+                *[ui.tags.th(c) for c in cols],
+            )
+        ),
+        ui.tags.tbody(
+            *[
+                ui.tags.tr(
+                    ui.tags.th(r, style="font-weight:600;"),
+                    *[
+                        ui.tags.td(
+                            ui.input_radio_buttons(
+                                f"ex5_{r}_{c}",
+                                None,
+                                choices=choices,
+                                inline=True,
+                            )
+                        )
+                        for c in cols
+                    ],
+                )
+                for r in rows
+            ]
+        ),
+        class_="table table-bordered align-middle w-auto ex5-matrix",
     )
 
 # =========================================================
@@ -125,23 +179,27 @@ def best_response_set(payoffs, responder, opponent_strat):
         m = max(values.values())
         return {c for c, v in values.items() if v == m}
 
-def subset_label(strats, chosen_set):
+def subset_label(strats, chosen_set, lang="de"):
     s = [x for x in strats if x in chosen_set]
     if len(s) == 0:
-        return "Keine Strategie"
+        return tr(lang, "Keine Strategie", "No strategy")
     if len(s) == 1:
-        return f"Nur {s[0]}"
+        return tr(lang, f"Nur {s[0]}", f"Only {s[0]}")
     if len(s) == 2:
-        return f"{s[0]} und {s[1]}"
-    return f"{s[0]}, {s[1]} und {s[2]}"
+        return tr(lang, f"{s[0]} und {s[1]}", f"{s[0]} and {s[1]}")
+    return tr(lang, f"{s[0]}, {s[1]} und {s[2]}", f"{s[0]}, {s[1]}, and {s[2]}")
 
-def all_subset_labels(strats):
+def all_subset_labels(strats, lang="de"):
     a, b, c = strats
     return [
-        f"Nur {a}", f"Nur {b}", f"Nur {c}",
-        f"{a} und {b}", f"{a} und {c}", f"{b} und {c}",
-        f"{a}, {b} und {c}",
-        "Keine Strategie",
+        tr(lang, f"Nur {a}", f"Only {a}"),
+        tr(lang, f"Nur {b}", f"Only {b}"),
+        tr(lang, f"Nur {c}", f"Only {c}"),
+        tr(lang, f"{a} und {b}", f"{a} and {b}"),
+        tr(lang, f"{a} und {c}", f"{a} and {c}"),
+        tr(lang, f"{b} und {c}", f"{b} and {c}"),
+        tr(lang, f"{a}, {b} und {c}", f"{a}, {b}, and {c}"),
+        tr(lang, "Keine Strategie", "No strategy"),
     ]
 
 # =========================================================
@@ -177,17 +235,17 @@ def strictly_dominant_col(payoffs, rows, cols):
             return c
     return None
 
-def dominance_choices(rows, cols):
+def dominance_choices(rows, cols, lang="de"):
     # exactly your style of choices
     choices = []
     for r in rows:
-        choices.append(f"Ja, {r}")
+        choices.append(tr(lang, f"Ja, {r}", f"Yes, {r}"))
     for c in cols:
-        choices.append(f"Ja, {c}")
+        choices.append(tr(lang, f"Ja, {c}", f"Yes, {c}"))
     for r in rows:
         for c in cols:
-            choices.append(f"Ja, {r} und {c}")
-    choices.append("Nein, keiner")
+            choices.append(tr(lang, f"Ja, {r} und {c}", f"Yes, {r} and {c}"))
+    choices.append(tr(lang, "Nein, keiner", "No, none"))
     return choices
 
 def generate_random_game_ex2(force_prob=0.85):
@@ -264,29 +322,48 @@ def generate_random_game_ex2(force_prob=0.85):
 
     return payoffs
 
-def correct_dominance_label(payoffs):
+def correct_dominance_label(payoffs, lang="de"):
     r = strictly_dominant_row(payoffs, P1_STRATS_EX2, P2_STRATS_EX2)
     c = strictly_dominant_col(payoffs, P1_STRATS_EX2, P2_STRATS_EX2)
 
     if r and c:
-        return f"Ja, {r} und {c}", r, c
+        return tr(lang, f"Ja, {r} und {c}", f"Yes, {r} and {c}"), r, c
     if r:
-        return f"Ja, {r}", r, None
+        return tr(lang, f"Ja, {r}", f"Yes, {r}"), r, None
     if c:
-        return f"Ja, {c}", None, c
-    return "Nein, keiner", None, None
+        return tr(lang, f"Ja, {c}", f"Yes, {c}"), None, c
+    return tr(lang, "Nein, keiner", "No, none"), None, None
 
-def dominance_explanation(r_dom, c_dom):
+def dominance_explanation(r_dom, c_dom, lang="de"):
     if r_dom and c_dom:
-        return (f"Spieler 1 hat mit {r_dom} eine strikt dominante Strategie (u₁ ist in jeder Spalte strikt höher als bei den anderen Zeilen) "
-                f"und Spieler 2 hat mit {c_dom} eine strikt dominante Strategie (u₂ ist in jeder Zeile strikt höher als in den anderen Spalten).")
+        return tr(
+            lang,
+            (f"Spieler 1 hat mit {r_dom} eine strikt dominante Strategie (u₁ ist in jeder Spalte strikt höher als bei den anderen Zeilen) "
+             f"und Spieler 2 hat mit {c_dom} eine strikt dominante Strategie (u₂ ist in jeder Zeile strikt höher als in den anderen Spalten)."),
+            (f"Player 1 has a strictly dominant strategy {r_dom} (u₁ is strictly higher in every column than in the other rows) "
+             f"and Player 2 has a strictly dominant strategy {c_dom} (u₂ is strictly higher in every row than in the other columns).")
+        )
     if c_dom:
-        return (f"{c_dom} ist strikt dominant für Spieler 2: Egal, ob Spieler 1 A, B, C oder D spielt, "
-                f"ist u₂ bei {c_dom} strikt größer als bei den anderen Strategien.")
+        return tr(
+            lang,
+            (f"{c_dom} ist strikt dominant für Spieler 2: Egal, ob Spieler 1 A, B, C oder D spielt, "
+             f"ist u₂ bei {c_dom} strikt größer als bei den anderen Strategien."),
+            (f"{c_dom} is strictly dominant for Player 2: No matter whether Player 1 plays A, B, C, or D, "
+             f"u₂ at {c_dom} is strictly higher than for the other strategies.")
+        )
     if r_dom:
-        return (f"{r_dom} ist strikt dominant für Spieler 1: Egal, ob Spieler 2 X, Y oder Z spielt, "
-                f"ist u₁ bei {r_dom} strikt größer als bei den anderen Strategien.")
-    return "Keine Strategie ist für einen Spieler in allen Fällen strikt besser als jede Alternative."
+        return tr(
+            lang,
+            (f"{r_dom} ist strikt dominant für Spieler 1: Egal, ob Spieler 2 X, Y oder Z spielt, "
+             f"ist u₁ bei {r_dom} strikt größer als bei den anderen Strategien."),
+            (f"{r_dom} is strictly dominant for Player 1: No matter whether Player 2 plays X, Y, or Z, "
+             f"u₁ at {r_dom} is strictly higher than for the other strategies.")
+        )
+    return tr(
+        lang,
+        "Keine Strategie ist für einen Spieler in allen Fällen strikt besser als jede Alternative.",
+        "No strategy is strictly better for a player in all cases than any alternative."
+    )
 
 # Hilfsfunktionen für schwach dominierende Strategien
 def weakly_dominant_row(payoffs, rows, cols):
@@ -337,57 +414,99 @@ def weakly_dominant_col(payoffs, rows, cols):
     return None
 
 # Funktion zur Ermittlung des korrekten Antwort-Labels und der dominanten Strategie(n) in Übung 3
-def correct_dominance_label_weak(payoffs):
+def correct_dominance_label_weak(payoffs, lang="de"):
     r_dom_strict = strictly_dominant_row(payoffs, P1_STRATS_EX2, P2_STRATS_EX2)
     c_dom_strict = strictly_dominant_col(payoffs, P1_STRATS_EX2, P2_STRATS_EX2)
     r_dom_weak = None if r_dom_strict else weakly_dominant_row(payoffs, P1_STRATS_EX2, P2_STRATS_EX2)
     c_dom_weak = None if c_dom_strict else weakly_dominant_col(payoffs, P1_STRATS_EX2, P2_STRATS_EX2)
     r_dom = r_dom_strict or r_dom_weak
     c_dom = c_dom_strict or c_dom_weak
-    r_type = "strikt" if r_dom_strict else ("schwach" if r_dom_weak else None)
-    c_type = "strikt" if c_dom_strict else ("schwach" if c_dom_weak else None)
+    r_type = tr(lang, "strikt", "strictly") if r_dom_strict else (tr(lang, "schwach", "weakly") if r_dom_weak else None)
+    c_type = tr(lang, "strikt", "strictly") if c_dom_strict else (tr(lang, "schwach", "weakly") if c_dom_weak else None)
     # Antwort-Label formen
     if r_dom and c_dom:
-        label = f"Ja, {r_dom} und {c_dom}"
+        label = tr(lang, f"Ja, {r_dom} und {c_dom}", f"Yes, {r_dom} and {c_dom}")
     elif r_dom:
-        label = f"Ja, {r_dom}"
+        label = tr(lang, f"Ja, {r_dom}", f"Yes, {r_dom}")
     elif c_dom:
-        label = f"Ja, {c_dom}"
+        label = tr(lang, f"Ja, {c_dom}", f"Yes, {c_dom}")
     else:
-        label = "Nein, keiner"
+        label = tr(lang, "Nein, keiner", "No, none")
     return label, r_dom, r_type, c_dom, c_type
 
 # Funktion zur Erläuterung für Übung 3 (dominante Strategien)
-def dominance_explanation_weak(r_dom, r_type, c_dom, c_type):
+def dominance_explanation_weak(r_dom, r_type, c_dom, c_type, lang="de"):
     if r_dom and c_dom:
-        expl_r = ("immer mindestens so hoch wie bei den anderen Strategien und mindestens gegen eine Strategie von Spieler 2 echt höher"
-                  if r_type == "schwach" else 
-                  "in jeder Spalte strikt höher als bei den anderen Strategien")
-        expl_c = ("immer mindestens so hoch wie bei den anderen Strategien und mindestens gegen eine Strategie von Spieler 1 echt höher"
-                  if c_type == "schwach" else 
-                  "in jeder Zeile strikt höher als bei den anderen Strategien")
-        return (f"Spieler 1 hat mit {r_dom} eine {r_type} dominante Strategie "
-                f"(egal, ob Spieler 2 X, Y oder Z spielt, ist u₁ bei {r_dom} {expl_r}) "
-                f"und Spieler 2 hat mit {c_dom} eine {c_type} dominante Strategie "
-                f"(egal, ob Spieler 1 A, B, C oder D spielt, ist u₂ bei {c_dom} {expl_c}).")
+        expl_r = tr(
+            lang,
+            "immer mindestens so hoch wie bei den anderen Strategien und mindestens gegen eine Strategie von Spieler 2 echt höher"
+            if r_type == "schwach" else
+            "in jeder Spalte strikt höher als bei den anderen Strategien",
+            "always at least as high as the other strategies and strictly higher against at least one of Player 2's strategies"
+            if r_type == "weakly" else
+            "strictly higher in every column than the other strategies"
+        )
+        expl_c = tr(
+            lang,
+            "immer mindestens so hoch wie bei den anderen Strategien und mindestens gegen eine Strategie von Spieler 1 echt höher"
+            if c_type == "schwach" else
+            "in jeder Zeile strikt höher als bei den anderen Strategien",
+            "always at least as high as the other strategies and strictly higher against at least one of Player 1's strategies"
+            if c_type == "weakly" else
+            "strictly higher in every row than the other strategies"
+        )
+        return tr(
+            lang,
+            (f"Spieler 1 hat mit {r_dom} eine {r_type} dominante Strategie "
+             f"(egal, ob Spieler 2 X, Y oder Z spielt, ist u₁ bei {r_dom} {expl_r}) "
+             f"und Spieler 2 hat mit {c_dom} eine {c_type} dominante Strategie "
+             f"(egal, ob Spieler 1 A, B, C oder D spielt, ist u₂ bei {c_dom} {expl_c})."),
+            (f"Player 1 has a {r_type} dominant strategy {r_dom} "
+             f"(no matter whether Player 2 plays X, Y, or Z, u₁ at {r_dom} is {expl_r}) "
+             f"and Player 2 has a {c_type} dominant strategy {c_dom} "
+             f"(no matter whether Player 1 plays A, B, C, or D, u₂ at {c_dom} is {expl_c}).")
+        )
     if r_dom:
-        if r_type == "schwach":
-            return (f"{r_dom} ist schwach dominant für Spieler 1: Egal, ob Spieler 2 X, Y oder Z spielt, "
-                    f"ist u₁ bei {r_dom} immer mindestens so hoch wie bei den anderen Strategien "
-                    f"und mindestens in einem Fall strikt höher.")
-        else:
-            return (f"{r_dom} ist strikt dominant für Spieler 1: Egal, ob Spieler 2 X, Y oder Z spielt, "
-                    f"ist u₁ bei {r_dom} strikt größer als bei den anderen Strategien.")
+        if r_type == tr(lang, "schwach", "weakly"):
+            return tr(
+                lang,
+                (f"{r_dom} ist schwach dominant für Spieler 1: Egal, ob Spieler 2 X, Y oder Z spielt, "
+                 f"ist u₁ bei {r_dom} immer mindestens so hoch wie bei den anderen Strategien "
+                 f"und mindestens in einem Fall strikt höher."),
+                (f"{r_dom} is weakly dominant for Player 1: No matter whether Player 2 plays X, Y, or Z, "
+                 f"u₁ at {r_dom} is always at least as high as the other strategies "
+                 f"and strictly higher in at least one case.")
+            )
+        return tr(
+            lang,
+            (f"{r_dom} ist strikt dominant für Spieler 1: Egal, ob Spieler 2 X, Y oder Z spielt, "
+             f"ist u₁ bei {r_dom} strikt größer als bei den anderen Strategien."),
+            (f"{r_dom} is strictly dominant for Player 1: No matter whether Player 2 plays X, Y, or Z, "
+             f"u₁ at {r_dom} is strictly higher than the other strategies.")
+        )
     if c_dom:
-        if c_type == "schwach":
-            return (f"{c_dom} ist schwach dominant für Spieler 2: Egal, ob Spieler 1 A, B, C oder D spielt, "
-                    f"ist u₂ bei {c_dom} immer mindestens so hoch wie bei den anderen Strategien "
-                    f"und mindestens in einem Fall strikt höher.")
-        else:
-            return (f"{c_dom} ist strikt dominant für Spieler 2: Egal, ob Spieler 1 A, B, C oder D spielt, "
-                    f"ist u₂ bei {c_dom} strikt größer als bei den anderen Strategien.")
-    return ("Keine Strategie ist für einen Spieler in allen Fällen mindestens so gut wie jede alternative Strategie "
-            "(kein Spieler hat eine dominante Strategie).")
+        if c_type == tr(lang, "schwach", "weakly"):
+            return tr(
+                lang,
+                (f"{c_dom} ist schwach dominant für Spieler 2: Egal, ob Spieler 1 A, B, C oder D spielt, "
+                 f"ist u₂ bei {c_dom} immer mindestens so hoch wie bei den anderen Strategien "
+                 f"und mindestens in einem Fall strikt höher."),
+                (f"{c_dom} is weakly dominant for Player 2: No matter whether Player 1 plays A, B, C, or D, "
+                 f"u₂ at {c_dom} is always at least as high as the other strategies "
+                 f"and strictly higher in at least one case.")
+            )
+        return tr(
+            lang,
+            (f"{c_dom} ist strikt dominant für Spieler 2: Egal, ob Spieler 1 A, B, C oder D spielt, "
+             f"ist u₂ bei {c_dom} strikt größer als bei den anderen Strategien."),
+            (f"{c_dom} is strictly dominant for Player 2: No matter whether Player 1 plays A, B, C, or D, "
+             f"u₂ at {c_dom} is strictly higher than the other strategies.")
+        )
+    return tr(
+        lang,
+        "Keine Strategie ist für einen Spieler in allen Fällen mindestens so gut wie jede alternative Strategie (kein Spieler hat eine dominante Strategie).",
+        "No strategy is at least as good as every alternative in all cases for a player (no player has a dominant strategy)."
+    )
 
 # Funktion zur Generierung eines 4x3-Spiels für Übung 3 
 # (meist mit einer schwach oder strikt dominanten Strategie für einen oder beide Spieler)
@@ -665,12 +784,14 @@ def format_p_fraction(p, allowed):
 # =========================================================
 SPECIAL_GAMES_ROWS = [
     ui.tags.div(
-        ui.tags.h4("Gefangenendilemma", class_="mb-2"),
+        ui.tags.h4("Gefangenendilemma", class_="mb-4",
+                   **{"data-i18n-de": "Gefangenendilemma", "data-i18n-en": "Prisoner's Dilemma"}),
         ui.tags.div(
         ui.tags.div(
             ui.tags.div(
                 ui.tags.div(
-                    ui.tags.h5("Beispielspiel", class_="card-title"),
+                    ui.tags.h5("Beispielspiel", class_="card-title",
+                               **{"data-i18n-de": "Beispielspiel", "data-i18n-en": "Example game"}),
                     payoff_table(
                         rows=["Kooperieren", "Defektieren"],
                         cols=["Kooperieren", "Defektieren"],
@@ -680,6 +801,10 @@ SPECIAL_GAMES_ROWS = [
                             ("Defektieren", "Kooperieren"): "5, 0",
                             ("Defektieren", "Defektieren"): "1, 1",
                         },
+                        label_i18n={
+                            "Kooperieren": {"de": "Kooperieren", "en": "Cooperate"},
+                            "Defektieren": {"de": "Defektieren", "en": "Defect"},
+                        },
                     ),
                     class_="card-body",
                 ),
@@ -691,15 +816,23 @@ SPECIAL_GAMES_ROWS = [
         ui.tags.div(
             ui.tags.div(
                 ui.tags.div(
-                    ui.tags.h5("Erklärung", class_="card-title"),
+                    ui.tags.h5("Erklärung", class_="card-title",
+                               **{"data-i18n-de": "Erklärung", "data-i18n-en": "Explanation"}),
                     ui.tags.p(
                         "Jeder Spieler hat unabhängig vom Verhalten des anderen einen Anreiz zu defektieren.",
+                        **{"data-i18n-de": "Jeder Spieler hat unabhängig vom Verhalten des anderen einen Anreiz zu defektieren.",
+                           "data-i18n-en": "Each player has an incentive to defect regardless of the other's behavior."},
                         class_="mb-2",
                     ),
                     ui.tags.ul(
-                        ui.tags.li("Defektieren ist strikt dominant für beide Spieler."),
-                        ui.tags.li("Einziges Nash-Gleichgewicht: (Defektieren, Defektieren)."),
-                        ui.tags.li("Pareto-ineffizient."),
+                        ui.tags.li("Defektieren ist strikt dominant für beide Spieler.",
+                                   **{"data-i18n-de": "Defektieren ist strikt dominant für beide Spieler.",
+                                      "data-i18n-en": "Defecting is strictly dominant for both players."}),
+                        ui.tags.li("Einziges Nash-Gleichgewicht: (Defektieren, Defektieren).",
+                                   **{"data-i18n-de": "Einziges Nash-Gleichgewicht: (Defektieren, Defektieren).",
+                                      "data-i18n-en": "Unique Nash equilibrium: (Defect, Defect)."}),
+                        ui.tags.li("Pareto-ineffizient.",
+                                   **{"data-i18n-de": "Pareto-ineffizient.", "data-i18n-en": "Pareto-inefficient."}),
                         class_="mb-0",
                     ),
                     class_="card-body",
@@ -714,12 +847,14 @@ SPECIAL_GAMES_ROWS = [
         class_="mb-4",
     ),
     ui.tags.div(
-        ui.tags.h4("Feiglingsspiel (Chicken)", class_="mb-2"),
+        ui.tags.h4("Feiglingsspiel (Chicken)", class_="mb-4",
+                   **{"data-i18n-de": "Feiglingsspiel (Chicken)", "data-i18n-en": "Chicken game"}),
         ui.tags.div(
         ui.tags.div(
             ui.tags.div(
                 ui.tags.div(
-                    ui.tags.h5("Beispielspiel", class_="card-title"),
+                    ui.tags.h5("Beispielspiel", class_="card-title",
+                               **{"data-i18n-de": "Beispielspiel", "data-i18n-en": "Example game"}),
                     payoff_table(
                         rows=["Ausweichen", "Geradeaus"],
                         cols=["Ausweichen", "Geradeaus"],
@@ -729,54 +864,9 @@ SPECIAL_GAMES_ROWS = [
                             ("Geradeaus", "Ausweichen"): "3, 1",
                             ("Geradeaus", "Geradeaus"): "0, 0",
                         },
-                    ),
-                    class_="card-body",
-                ),
-                class_="card shadow-sm h-100",
-                style="background-color:#ffffff;",
-            ),
-            class_="special-col game",
-        ),
-        ui.tags.div(
-            ui.tags.div(
-                ui.tags.div(
-                    ui.tags.h5("Erklärung", class_="card-title"),
-                    ui.tags.p(
-                        "Beide wollen nicht ausweichen, aber ein Zusammenstoß ist katastrophal.",
-                        class_="mb-2",
-                    ),
-                    ui.tags.ul(
-                        ui.tags.li("Zwei Nash-Gleichgewichte: (Geradeaus, Ausweichen) und (Ausweichen, Geradeaus)."),
-                        ui.tags.li("Kein strikt dominantes Verhalten."),
-                        ui.tags.li("Commitment/Drohungen sind oft entscheidend."),
-                        class_="mb-0",
-                    ),
-                    class_="card-body",
-                ),
-                class_="card shadow-sm h-100",
-                style="background-color:#ffffff;",
-            ),
-            class_="special-col text",
-        ),
-        class_="special-row",
-        ),
-        class_="mb-4",
-    ),
-    ui.tags.div(
-        ui.tags.h4("Jagdspiel (Stag Hunt)", class_="mb-2"),
-        ui.tags.div(
-        ui.tags.div(
-            ui.tags.div(
-                ui.tags.div(
-                    ui.tags.h5("Beispielspiel", class_="card-title"),
-                    payoff_table(
-                        rows=["Hirsch", "Hase"],
-                        cols=["Hirsch", "Hase"],
-                        payoff_strings={
-                            ("Hirsch", "Hirsch"): "4, 4",
-                            ("Hirsch", "Hase"): "0, 3",
-                            ("Hase", "Hirsch"): "3, 0",
-                            ("Hase", "Hase"): "2, 2",
+                        label_i18n={
+                            "Ausweichen": {"de": "Ausweichen", "en": "Swerve"},
+                            "Geradeaus": {"de": "Geradeaus", "en": "Straight"},
                         },
                     ),
                     class_="card-body",
@@ -789,15 +879,24 @@ SPECIAL_GAMES_ROWS = [
         ui.tags.div(
             ui.tags.div(
                 ui.tags.div(
-                    ui.tags.h5("Erklärung", class_="card-title"),
+                    ui.tags.h5("Erklärung", class_="card-title",
+                               **{"data-i18n-de": "Erklärung", "data-i18n-en": "Explanation"}),
                     ui.tags.p(
-                        "Koordinationsspiel: Die effiziente Option lohnt sich nur, wenn beide mitmachen.",
+                        "Beide wollen nicht ausweichen, aber ein Zusammenstoß ist katastrophal.",
+                        **{"data-i18n-de": "Beide wollen nicht ausweichen, aber ein Zusammenstoß ist katastrophal.",
+                           "data-i18n-en": "Both want to stay straight, but a crash is catastrophic."},
                         class_="mb-2",
                     ),
                     ui.tags.ul(
-                        ui.tags.li("Zwei Nash-Gleichgewichte: (Hirsch, Hirsch) und (Hase, Hase)."),
-                        ui.tags.li("Effizient aber riskant: (Hirsch, Hirsch)."),
-                        ui.tags.li("Typisch: Vertrauen/Koordination als Schlüsselproblem."),
+                        ui.tags.li("Zwei Nash-Gleichgewichte: (Geradeaus, Ausweichen) und (Ausweichen, Geradeaus).",
+                                   **{"data-i18n-de": "Zwei Nash-Gleichgewichte: (Geradeaus, Ausweichen) und (Ausweichen, Geradeaus).",
+                                      "data-i18n-en": "Two Nash equilibria: (Straight, Swerve) and (Swerve, Straight)."}),
+                        ui.tags.li("Kein strikt dominantes Verhalten.",
+                                   **{"data-i18n-de": "Kein strikt dominantes Verhalten.",
+                                      "data-i18n-en": "No strictly dominant behavior."}),
+                        ui.tags.li("Commitment/Drohungen sind oft entscheidend.",
+                                   **{"data-i18n-de": "Commitment/Drohungen sind oft entscheidend.",
+                                      "data-i18n-en": "Commitment/threats are often decisive."}),
                         class_="mb-0",
                     ),
                     class_="card-body",
@@ -812,15 +911,83 @@ SPECIAL_GAMES_ROWS = [
         class_="mb-4",
     ),
     ui.tags.div(
-        ui.tags.h4("Ultimatumspiel", class_="mb-2"),
+        ui.tags.h4("Jagdspiel (Stag Hunt)", class_="mb-4",
+                   **{"data-i18n-de": "Jagdspiel (Stag Hunt)", "data-i18n-en": "Stag Hunt"}),
         ui.tags.div(
         ui.tags.div(
             ui.tags.div(
                 ui.tags.div(
-                    ui.tags.h5("Beispielspiel", class_="card-title"),
+                    ui.tags.h5("Beispielspiel", class_="card-title",
+                               **{"data-i18n-de": "Beispielspiel", "data-i18n-en": "Example game"}),
+                    payoff_table(
+                        rows=["Hirsch", "Hase"],
+                        cols=["Hirsch", "Hase"],
+                        payoff_strings={
+                            ("Hirsch", "Hirsch"): "4, 4",
+                            ("Hirsch", "Hase"): "0, 3",
+                            ("Hase", "Hirsch"): "3, 0",
+                            ("Hase", "Hase"): "2, 2",
+                        },
+                        label_i18n={
+                            "Hirsch": {"de": "Hirsch", "en": "Stag"},
+                            "Hase": {"de": "Hase", "en": "Hare"},
+                        },
+                    ),
+                    class_="card-body",
+                ),
+                class_="card shadow-sm h-100",
+                style="background-color:#ffffff;",
+            ),
+            class_="special-col game",
+        ),
+        ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.h5("Erklärung", class_="card-title",
+                               **{"data-i18n-de": "Erklärung", "data-i18n-en": "Explanation"}),
+                    ui.tags.p(
+                        "Koordinationsspiel: Die effiziente Option lohnt sich nur, wenn beide mitmachen.",
+                        **{"data-i18n-de": "Koordinationsspiel: Die effiziente Option lohnt sich nur, wenn beide mitmachen.",
+                           "data-i18n-en": "Coordination game: the efficient option pays off only if both participate."},
+                        class_="mb-2",
+                    ),
+                    ui.tags.ul(
+                        ui.tags.li("Zwei Nash-Gleichgewichte: (Hirsch, Hirsch) und (Hase, Hase).",
+                                   **{"data-i18n-de": "Zwei Nash-Gleichgewichte: (Hirsch, Hirsch) und (Hase, Hase).",
+                                      "data-i18n-en": "Two Nash equilibria: (Stag, Stag) and (Hare, Hare)."}),
+                        ui.tags.li("Effizient aber riskant: (Hirsch, Hirsch).",
+                                   **{"data-i18n-de": "Effizient aber riskant: (Hirsch, Hirsch).",
+                                      "data-i18n-en": "Efficient but risky: (Stag, Stag)."}),
+                        ui.tags.li("Typisch: Vertrauen/Koordination als Schlüsselproblem.",
+                                   **{"data-i18n-de": "Typisch: Vertrauen/Koordination als Schlüsselproblem.",
+                                      "data-i18n-en": "Typical: trust/coordination is the key problem."}),
+                        class_="mb-0",
+                    ),
+                    class_="card-body",
+                ),
+                class_="card shadow-sm h-100",
+                style="background-color:#ffffff;",
+            ),
+            class_="special-col text",
+        ),
+        class_="special-row",
+        ),
+        class_="mb-4",
+    ),
+    ui.tags.div(
+        ui.tags.h4("Ultimatumspiel", class_="mb-4",
+                   **{"data-i18n-de": "Ultimatumspiel", "data-i18n-en": "Ultimatum game"}),
+        ui.tags.div(
+        ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.h5("Beispielspiel", class_="card-title",
+                               **{"data-i18n-de": "Beispielspiel", "data-i18n-en": "Example game"}),
                     ui.tags.p(
                         "Vereinfacht: Spieler 1 bietet fair (50/50) oder unfair (90/10). "
                         "Spieler 2 kann annehmen oder ablehnen.",
+                        **{"data-i18n-de": "Vereinfacht: Spieler 1 bietet fair (50/50) oder unfair (90/10). Spieler 2 kann annehmen oder ablehnen.",
+                           "data-i18n-en": "Simplified: Player 1 offers fair (50/50) or unfair (90/10). Player 2 can accept or reject."},
                         class_="text-muted mb-3",
                     ),
                     payoff_table(
@@ -832,6 +999,12 @@ SPECIAL_GAMES_ROWS = [
                             ("Unfair", "Annehmen"): "9, 1",
                             ("Unfair", "Ablehnen"): "0, 0",
                         },
+                        label_i18n={
+                            "Fair": {"de": "Fair", "en": "Fair"},
+                            "Unfair": {"de": "Unfair", "en": "Unfair"},
+                            "Annehmen": {"de": "Annehmen", "en": "Accept"},
+                            "Ablehnen": {"de": "Ablehnen", "en": "Reject"},
+                        },
                     ),
                     class_="card-body",
                 ),
@@ -843,15 +1016,24 @@ SPECIAL_GAMES_ROWS = [
         ui.tags.div(
             ui.tags.div(
                 ui.tags.div(
-                    ui.tags.h5("Erklärung", class_="card-title"),
+                    ui.tags.h5("Erklärung", class_="card-title",
+                               **{"data-i18n-de": "Erklärung", "data-i18n-en": "Explanation"}),
                     ui.tags.p(
                         "In der Standardtheorie nimmt Spieler 2 jedes positive Angebot an (Rückwärtsinduktion).",
+                        **{"data-i18n-de": "In der Standardtheorie nimmt Spieler 2 jedes positive Angebot an (Rückwärtsinduktion).",
+                           "data-i18n-en": "In standard theory, Player 2 accepts any positive offer (backward induction)."},
                         class_="mb-2",
                     ),
                     ui.tags.ul(
-                        ui.tags.li("Theorie: Spieler 1 bietet minimal, Spieler 2 akzeptiert."),
-                        ui.tags.li("Empirie: Unfaire Angebote werden oft abgelehnt (Fairness)."),
-                        ui.tags.li("Wichtiges Beispiel für Modell vs. Verhalten."),
+                        ui.tags.li("Theorie: Spieler 1 bietet minimal, Spieler 2 akzeptiert.",
+                                   **{"data-i18n-de": "Theorie: Spieler 1 bietet minimal, Spieler 2 akzeptiert.",
+                                      "data-i18n-en": "Theory: Player 1 offers minimally, Player 2 accepts."}),
+                        ui.tags.li("Empirie: Unfaire Angebote werden oft abgelehnt (Fairness).",
+                                   **{"data-i18n-de": "Empirie: Unfaire Angebote werden oft abgelehnt (Fairness).",
+                                      "data-i18n-en": "Evidence: Unfair offers are often rejected (fairness)."}),
+                        ui.tags.li("Wichtiges Beispiel für Modell vs. Verhalten.",
+                                   **{"data-i18n-de": "Wichtiges Beispiel für Modell vs. Verhalten.",
+                                      "data-i18n-en": "Important example of model vs. behavior."}),
                         class_="mb-0",
                     ),
                     class_="card-body",
@@ -866,12 +1048,14 @@ SPECIAL_GAMES_ROWS = [
         class_="mb-4",
     ),
     ui.tags.div(
-        ui.tags.h4("Kampf der Geschlechter", class_="mb-2"),
+        ui.tags.h4("Kampf der Geschlechter", class_="mb-4",
+                   **{"data-i18n-de": "Kampf der Geschlechter", "data-i18n-en": "Battle of the Sexes"}),
         ui.tags.div(
         ui.tags.div(
             ui.tags.div(
                 ui.tags.div(
-                    ui.tags.h5("Beispielspiel", class_="card-title"),
+                    ui.tags.h5("Beispielspiel", class_="card-title",
+                               **{"data-i18n-de": "Beispielspiel", "data-i18n-en": "Example game"}),
                     payoff_table(
                         rows=["Oper", "Fußball"],
                         cols=["Oper", "Fußball"],
@@ -880,6 +1064,10 @@ SPECIAL_GAMES_ROWS = [
                             ("Oper", "Fußball"): "0, 0",
                             ("Fußball", "Oper"): "0, 0",
                             ("Fußball", "Fußball"): "2, 3",
+                        },
+                        label_i18n={
+                            "Oper": {"de": "Oper", "en": "Opera"},
+                            "Fußball": {"de": "Fußball", "en": "Football"},
                         },
                     ),
                     class_="card-body",
@@ -892,15 +1080,24 @@ SPECIAL_GAMES_ROWS = [
         ui.tags.div(
             ui.tags.div(
                 ui.tags.div(
-                    ui.tags.h5("Erklärung", class_="card-title"),
+                    ui.tags.h5("Erklärung", class_="card-title",
+                               **{"data-i18n-de": "Erklärung", "data-i18n-en": "Explanation"}),
                     ui.tags.p(
                         "Beide wollen sich koordinieren, aber bevorzugen unterschiedliche Aktivitäten.",
+                        **{"data-i18n-de": "Beide wollen sich koordinieren, aber bevorzugen unterschiedliche Aktivitäten.",
+                           "data-i18n-en": "Both want to coordinate, but they prefer different activities."},
                         class_="mb-2",
                     ),
                     ui.tags.ul(
-                        ui.tags.li("Zwei reine Nash-Gleichgewichte: (Oper, Oper) und (Fußball, Fußball)."),
-                        ui.tags.li("Verteilungsproblem: Wer bekommt sein Wunsch-Ergebnis?"),
-                        ui.tags.li("Zusätzlich existiert ein gemischtes Nash-Gleichgewicht."),
+                        ui.tags.li("Zwei reine Nash-Gleichgewichte: (Oper, Oper) und (Fußball, Fußball).",
+                                   **{"data-i18n-de": "Zwei reine Nash-Gleichgewichte: (Oper, Oper) und (Fußball, Fußball).",
+                                      "data-i18n-en": "Two pure Nash equilibria: (Opera, Opera) and (Football, Football)."}),
+                        ui.tags.li("Verteilungsproblem: Wer bekommt sein Wunsch-Ergebnis?",
+                                   **{"data-i18n-de": "Verteilungsproblem: Wer bekommt sein Wunsch-Ergebnis?",
+                                      "data-i18n-en": "Distribution problem: Who gets their preferred outcome?"}),
+                        ui.tags.li("Zusätzlich existiert ein gemischtes Nash-Gleichgewicht.",
+                                   **{"data-i18n-de": "Zusätzlich existiert ein gemischtes Nash-Gleichgewicht.",
+                                      "data-i18n-en": "Additionally, there is a mixed Nash equilibrium."}),
                         class_="mb-0",
                     ),
                     class_="card-body",
@@ -922,6 +1119,8 @@ app_ui = ui.page_fluid(
 
     # ---------- Styles ----------
     ui.tags.style("""
+    @import url("https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap");
+
     /* Make all rows flex containers */
 .equal-height-row {
   display: flex;
@@ -980,6 +1179,63 @@ app_ui = ui.page_fluid(
         border: none;
         box-shadow: none;
     }
+    .lang-switch {
+        position: fixed;
+        top: 0;
+        right: 0.75rem;
+        height: var(--header-height);
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        z-index: 1002;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: rgb(87, 87, 86);
+        pointer-events: none;
+    }
+    .lang-switch * {
+        pointer-events: auto;
+    }
+    .lang-switch .switch {
+        position: relative;
+        display: inline-block;
+        width: 38px;
+        height: 20px;
+    }
+    .lang-switch .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .lang-switch .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #c0c0c0;
+        transition: 0.2s;
+        border-radius: 999px;
+    }
+    .lang-switch .slider:before {
+        position: absolute;
+        content: "";
+        height: 14px;
+        width: 14px;
+        left: 3px;
+        top: 3px;
+        background-color: #ffffff;
+        transition: 0.2s;
+        border-radius: 50%;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+    .lang-switch .switch input:checked + .slider {
+        background-color: #7a7a7a;
+    }
+    .lang-switch .switch input:checked + .slider:before {
+        transform: translateX(18px);
+    }
     .impressum-btn {
         position: fixed;
         right: 0.75rem;
@@ -1029,7 +1285,7 @@ app_ui = ui.page_fluid(
     .tabs-toggle {
         display: none;
     }
-    @media (max-width: 768px) {
+    @media (max-width: 1024px) {
         .container-fluid,
         .container,
         .container-fluid.px-4,
@@ -1049,6 +1305,10 @@ app_ui = ui.page_fluid(
         }
         .impressum-btn {
             display: none;
+        }
+        .lang-switch {
+            left: 0.75rem;
+            right: auto;
         }
         .tabs-toggle {
             display: inline-flex;
@@ -1079,6 +1339,11 @@ app_ui = ui.page_fluid(
             background-color: var(--header-hover) !important;
             border-radius: 0 !important;
         }
+        .tabs-toggle:hover ~ .lang-switch,
+        .tabs-toggle:focus ~ .lang-switch,
+        .tabs-toggle:active ~ .lang-switch {
+            color: #ffffff;
+        }
         .tabs-toggle:focus,
         .tabs-toggle:active,
         body.tabs-open .tabs-toggle:hover,
@@ -1089,7 +1354,7 @@ app_ui = ui.page_fluid(
             border-radius: 0 !important;
         }
         .nav-tabs {
-            display: none;
+            display: flex;
             position: fixed;
             top: var(--header-height);
             left: 0;
@@ -1102,8 +1367,11 @@ app_ui = ui.page_fluid(
             z-index: 1000;
         }
         body.tabs-open .nav-tabs {
-            display: flex;
+            display: flex !important;
             background-color: var(--header-bg) !important;
+        }
+        body.tabs-closed .nav-tabs {
+            display: none !important;
         }
         body.tabs-open .nav-tabs .nav-link {
             text-align: right;
@@ -1113,9 +1381,95 @@ app_ui = ui.page_fluid(
             right: 0.5rem;
             bottom: auto;
         }
+        body.tabs-open .lang-switch {
+            color: #ffffff;
+        }
+    }
+    @media (max-aspect-ratio: 1/1) {
+        .impressum-btn {
+            display: none;
+        }
+        .lang-switch {
+            left: 0.75rem;
+            right: auto;
+        }
+        .tabs-toggle {
+            display: inline-flex;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--header-height);
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 0.75rem;
+            z-index: 1001;
+            background-color: var(--header-bg) !important;
+            border: none;
+            border-radius: 0 !important;
+            color: rgb(87, 87, 86);
+            font-weight: 700;
+            text-align: right;
+            font-size: 1.05rem;
+            line-height: 1;
+        }
+        body.tabs-open .tabs-toggle {
+            color: #ffffff;
+            background-color: var(--header-hover) !important;
+        }
+        .tabs-toggle:hover {
+            color: #ffffff;
+            background-color: var(--header-hover) !important;
+            border-radius: 0 !important;
+        }
+        .tabs-toggle:hover ~ .lang-switch,
+        .tabs-toggle:focus ~ .lang-switch,
+        .tabs-toggle:active ~ .lang-switch {
+            color: #ffffff;
+        }
+        .tabs-toggle:focus,
+        .tabs-toggle:active,
+        body.tabs-open .tabs-toggle:hover,
+        body.tabs-open .tabs-toggle:focus,
+        body.tabs-open .tabs-toggle:active {
+            color: #ffffff;
+            background-color: var(--header-hover) !important;
+            border-radius: 0 !important;
+        }
+        .nav-tabs {
+            display: flex;
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            right: 0;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+            padding: 0.5rem 0.75rem 0.75rem;
+            background-color: var(--header-bg);
+            z-index: 1000;
+        }
+        body.tabs-open .nav-tabs {
+            display: flex !important;
+            background-color: var(--header-bg) !important;
+        }
+        body.tabs-closed .nav-tabs {
+            display: none !important;
+        }
+        body.tabs-open .nav-tabs .nav-link {
+            text-align: right;
+        }
+        .impressum-panel {
+            top: calc(var(--header-height) + 0.5rem);
+            right: 0.5rem;
+            bottom: auto;
+        }
+        body.tabs-open .lang-switch {
+            color: #ffffff;
+        }
     }
     body {
-        font-family: source-code-pro, Helvetica, sans-serif, Arial;
+        font-family: "Source Sans Pro", Arial, sans-serif;
         margin: 0;
         background-color: #ffffff;
     }
@@ -1139,7 +1493,7 @@ app_ui = ui.page_fluid(
     .three-col-radios .form-check {
         margin: 0;
     }
-    @media (max-width: 768px) {
+    @media (max-width: 1024px) {
         .three-col-radios .shiny-options-group {
             grid-template-columns: 1fr 1fr;
         }
@@ -1176,7 +1530,7 @@ app_ui = ui.page_fluid(
         flex: 1 1 auto;
         height: 100%;
     }
-    @media (max-width: 768px) {
+    @media (max-width: 1024px) {
         .card-row {
             row-gap: 8px;
             --bs-gutter-y: 0.5rem;
@@ -1196,11 +1550,11 @@ app_ui = ui.page_fluid(
         flex: 1 1 auto;
     }
     .intro-title {
-        margin-top: 16px;
+        margin-top: 24px;
         margin-bottom: 8px;
     }
     .exercise-title {
-        margin-top: 16px;
+        margin-top: 24px;
         margin-bottom: 0px;
     }
     .text-muted{
@@ -1211,8 +1565,8 @@ app_ui = ui.page_fluid(
         padding-right: 0.5rem;
     }
     .exercise-row .card-body {
-        padding-left: 1.4rem;
-        padding-right: 1.4rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
     }
     .exercise-notation-body {
         padding-left: 0.5rem;
@@ -1222,9 +1576,17 @@ app_ui = ui.page_fluid(
         padding-left: 0.5rem;
         margin-left: 0.5rem;
     }
+    .ex5-matrix .shiny-options-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem 0.8rem;
+    }
+    .ex5-matrix .form-check {
+        margin: 0;
+    }
     .intro-example-body {
-        padding-left: 1.4rem;
-        padding-right: 1.4rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
     }
     .help-text {
         font-size: 1rem;
@@ -1253,6 +1615,8 @@ app_ui = ui.page_fluid(
   display:flex;
   flex-direction:column;
   height:100%;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
 /* mobil: untereinander */
@@ -1263,10 +1627,63 @@ app_ui = ui.page_fluid(
     """),
     ui.tags.script(
         """
-        document.addEventListener('click', function (e) {
-          var link = e.target.closest('.nav-tabs .nav-link');
-          if (link) {
+        var currentLang = "de";
+        function applyLanguage(lang) {
+          currentLang = lang;
+          document.querySelectorAll('[data-i18n-html-en]').forEach(function (el) {
+            var attr = (lang === 'en') ? 'data-i18n-html-en' : 'data-i18n-html-de';
+            var html = el.getAttribute(attr);
+            if (html !== null) {
+              el.innerHTML = html;
+            }
+          });
+          document.querySelectorAll('[data-i18n-en]').forEach(function (el) {
+            var attr = (lang === 'en') ? 'data-i18n-en' : 'data-i18n-de';
+            var text = el.getAttribute(attr);
+            if (text !== null) {
+              el.textContent = text;
+            }
+          });
+          ensureImpressumLink();
+        }
+        function isMobileMenu() {
+          return window.matchMedia('(max-width: 1024px), (max-aspect-ratio: 1/1)').matches;
+        }
+        function setTabsOpen(open) {
+          if (open) {
+            document.body.classList.add('tabs-open');
+            document.body.classList.remove('tabs-closed');
+          } else {
             document.body.classList.remove('tabs-open');
+            document.body.classList.add('tabs-closed');
+          }
+        }
+        window.toggleTabsMenu = function () {
+          if (!isMobileMenu()) { return; }
+          var isOpen = document.body.classList.contains('tabs-open');
+          setTabsOpen(!isOpen);
+        };
+        function initLanguageToggle() {
+          var toggle = document.getElementById('lang_toggle');
+          if (!toggle) { return; }
+          var lang = toggle.checked ? 'en' : 'de';
+          applyLanguage(lang);
+          if (window.Shiny && Shiny.setInputValue) {
+            Shiny.setInputValue('lang_toggle', toggle.checked, {priority: 'event'});
+          }
+          toggle.addEventListener('change', function () {
+            var nextLang = toggle.checked ? 'en' : 'de';
+            applyLanguage(nextLang);
+            if (window.Shiny && Shiny.setInputValue) {
+              Shiny.setInputValue('lang_toggle', toggle.checked, {priority: 'event'});
+            }
+          });
+        }
+        document.addEventListener('click', function (e) {
+          var navTabs = document.querySelector('.nav-tabs');
+          if (!navTabs) { return; }
+          if (document.body.classList.contains('tabs-open') && navTabs.contains(e.target)) {
+            setTabsOpen(false);
           }
         });
         document.addEventListener('click', function (e) {
@@ -1279,7 +1696,7 @@ app_ui = ui.page_fluid(
         function ensureImpressumLink() {
           var navTabs = document.querySelector('.nav-tabs');
           if (!navTabs) { return; }
-          var isMobile = window.matchMedia('(max-width: 768px)').matches;
+          var isMobile = isMobileMenu();
           var existing = navTabs.querySelector('.impressum-nav-link');
           if (isMobile) {
             if (!existing) {
@@ -1288,24 +1705,54 @@ app_ui = ui.page_fluid(
               var link = document.createElement('a');
               link.className = 'nav-link impressum-nav-link';
               link.href = '#';
-              link.textContent = 'Impressum';
+              link.textContent = (currentLang === 'en') ? 'Imprint' : 'Impressum';
               link.addEventListener('click', function (e) {
                 e.preventDefault();
                 toggleImpressum();
               });
               item.appendChild(link);
               navTabs.appendChild(item);
+            } else {
+              var label = (currentLang === 'en') ? 'Imprint' : 'Impressum';
+              if (existing.textContent !== label) {
+                existing.textContent = label;
+              }
             }
           } else if (existing) {
             existing.parentElement.remove();
           }
         }
         document.addEventListener('DOMContentLoaded', function () {
+          initLanguageToggle();
           ensureImpressumLink();
-          var observer = new MutationObserver(ensureImpressumLink);
-          observer.observe(document.body, { childList: true, subtree: true });
+          var navTabs = document.querySelector('.nav-tabs');
+          if (navTabs) {
+            var observer = new MutationObserver(ensureImpressumLink);
+            observer.observe(navTabs, { childList: true });
+          }
+          if (isMobileMenu()) {
+            setTabsOpen(false);
+          } else {
+            document.body.classList.remove('tabs-open');
+            document.body.classList.remove('tabs-closed');
+          }
+          handleResize();
         });
-        window.addEventListener('resize', ensureImpressumLink);
+        var lastIsMobile = null;
+        function handleResize() {
+          ensureImpressumLink();
+          var isMobile = isMobileMenu();
+          if (isMobile) {
+            if (!document.body.classList.contains('tabs-open')) {
+              document.body.classList.add('tabs-closed');
+            }
+          } else {
+            document.body.classList.remove('tabs-open');
+            document.body.classList.remove('tabs-closed');
+          }
+          lastIsMobile = isMobile;
+        }
+        window.addEventListener('resize', handleResize);
         function toggleImpressum() {
           var panel = document.getElementById('impressum-panel');
           if (panel) {
@@ -1341,18 +1788,34 @@ app_ui = ui.page_fluid(
         "Menü",
         class_="btn btn-outline-secondary tabs-toggle mb-2",
         type="button",
-        onclick="document.body.classList.toggle('tabs-open');",
+        onclick="toggleTabsMenu();",
+        **{"data-i18n-de": "Menü", "data-i18n-en": "Menu"},
+    ),
+    ui.tags.div(
+        ui.tags.span("DE"),
+        ui.tags.label(
+            ui.tags.input(
+                id="lang_toggle",
+                type="checkbox",
+                role="switch",
+                aria_label="Sprache umschalten / Switch language",
+            ),
+            ui.tags.span(class_="slider"),
+            class_="switch",
+        ),
+        ui.tags.span("EN"),
+        class_="lang-switch",
     ),
     ui.input_action_button(
         "go_to_impressum",
-        "impressum",
+        ui.tags.span("Impressum", **{"data-i18n-de": "Impressum", "data-i18n-en": "Imprint"}),
         class_="btn btn-outline-secondary impressum-btn",
         onclick="toggleImpressum();",
     ),
     ui.tags.div(
-        ui.tags.h6("Impressum", class_="mb-2"),
+        ui.tags.h6("Impressum", class_="mb-2", **{"data-i18n-de": "Impressum", "data-i18n-en": "Imprint"}),
         ui.tags.p(
-            "Verantwortlich: ",
+            ui.tags.span("Verantwortlich: ", **{"data-i18n-de": "Verantwortlich: ", "data-i18n-en": "Responsible: "}),
             ui.tags.a("Jakob Sarrazin", href="#", onclick="toggleImpressumEmail(event);"),
             ui.tags.span(
                 ui.tags.br(),
@@ -1366,18 +1829,25 @@ app_ui = ui.page_fluid(
             class_="mb-1",
         ),
         ui.tags.p(
-            "Institution: ",
+            ui.tags.span("Institution: ", **{"data-i18n-de": "Institution: ", "data-i18n-en": "Institution: "}),
             ui.tags.a("ZEW Mannheim", href="#", onclick="toggleImpressumAddress(event);"),
             ui.tags.span(
                 ui.tags.br(),
                 "L 7, 1, 68161 Mannheim",
+                ui.tags.br(),
+                ui.tags.a(
+                    "https://www.zew.de/forschung/marktdesign",
+                    href="https://www.zew.de/forschung/marktdesign",
+                    target="_blank",
+                    rel="noopener",
+                ),
                 id="impressum-address",
                 style="display:none;",
             ),
             class_="mb-1",
         ),
         ui.tags.p(
-            "Github Projekt: ",
+            ui.tags.span("Github Projekt: ", **{"data-i18n-de": "Github Projekt: ", "data-i18n-en": "GitHub project: "}),
             ui.tags.a("GameTheoryApp", href="#", onclick="toggleImpressumProject(event);"),
             ui.tags.span(
                 ui.tags.br(),
@@ -1392,7 +1862,12 @@ app_ui = ui.page_fluid(
             ),
             class_="mb-0",
         ),
-        ui.tags.p("Aus Mannheim für die Welt 🌍", class_="mb-0 mt-1", style="font-style: italic;"),
+        ui.tags.p(
+            "Aus Mannheim für die Welt 🌍",
+            class_="mb-0 mt-1",
+            style="font-style: italic;",
+            **{"data-i18n-de": "Aus Mannheim für die Welt 🌍", "data-i18n-en": "From Mannheim to the world 🌍"},
+        ),
         id="impressum-panel",
         class_="impressum-panel",
     ),
@@ -1402,12 +1877,15 @@ app_ui = ui.page_fluid(
         # Erklärung
         # =================================================
         ui.nav_panel(
-            "Erklärung",
+            ui.tags.span("Erklärung", **{"data-i18n-de": "Erklärung", "data-i18n-en": "Explanation"}),
             ui.tags.div(
-                ui.h2("Einführung: Normalformspiele", class_="intro-title"),
+                ui.h2("Einführung: Normalformspiele", class_="intro-title",
+                      **{"data-i18n-de": "Einführung: Normalformspiele", "data-i18n-en": "Introduction: Normal-form Games"}),
                 ui.tags.p(
                     "Ein Normalformspiel beschreibt eine Situation, in der alle Spieler gleichzeitig "
                     "eine Strategie wählen und daraus Auszahlungen entstehen.",
+                    **{"data-i18n-de": "Ein Normalformspiel beschreibt eine Situation, in der alle Spieler gleichzeitig eine Strategie wählen und daraus Auszahlungen entstehen.",
+                       "data-i18n-en": "A normal-form game describes a situation in which all players choose a strategy simultaneously and payoffs result."},
                     class_="text-muted",
                 ),
 
@@ -1415,10 +1893,13 @@ app_ui = ui.page_fluid(
                 ui.tags.div(
                     ui.tags.div(
                         ui.tags.div(
-                            ui.tags.h5("1) Spielermenge", class_="card-title"),
+                            ui.tags.h5("1) Spielermenge", class_="card-title",
+                                       **{"data-i18n-de": "1) Spielermenge", "data-i18n-en": "1) Player set"}),
                             ui.tags.p(
                                 "Die Spielermenge ist N = {1, 2}. "
                                 "In allen Beispielen gibt es genau zwei Spieler.",
+                                **{"data-i18n-de": "Die Spielermenge ist N = {1, 2}. In allen Beispielen gibt es genau zwei Spieler.",
+                                   "data-i18n-en": "The player set is N = {1, 2}. In all examples there are exactly two players."},
                                 class_="mb-0",
                             ),
                             class_="card-body",
@@ -1428,10 +1909,13 @@ app_ui = ui.page_fluid(
                     ),
                     ui.tags.div(
                         ui.tags.div(
-                            ui.tags.h5("2) Strategiemengen", class_="card-title"),
+                            ui.tags.h5("2) Strategiemengen", class_="card-title",
+                                       **{"data-i18n-de": "2) Strategiemengen", "data-i18n-en": "2) Strategy sets"}),
                             ui.tags.p(
                                 "Jeder Spieler verfügt über eine endliche Menge an Strategien, "
                                 "aus denen er eine auswählt.",
+                                **{"data-i18n-de": "Jeder Spieler verfügt über eine endliche Menge an Strategien, aus denen er eine auswählt.",
+                                   "data-i18n-en": "Each player has a finite set of strategies from which they choose one."},
                                 class_="mb-0",
                             ),
                             class_="card-body",
@@ -1441,10 +1925,13 @@ app_ui = ui.page_fluid(
                     ),
                     ui.tags.div(
                         ui.tags.div(
-                            ui.tags.h5("3) Nutzenfunktionen", class_="card-title"),
+                            ui.tags.h5("3) Nutzenfunktionen", class_="card-title",
+                                       **{"data-i18n-de": "3) Nutzenfunktionen", "data-i18n-en": "3) Payoff functions"}),
                             ui.tags.p(
                                 "Jeder Strategiekombination wird ein Nutzen zugeordnet. "
                                 "Bei zwei Spielern schreibt man (u₁, u₂).",
+                                **{"data-i18n-de": "Jeder Strategiekombination wird ein Nutzen zugeordnet. Bei zwei Spielern schreibt man (u₁, u₂).",
+                                   "data-i18n-en": "Each strategy profile is assigned a payoff. With two players we write (u₁, u₂)."},
                                 class_="mb-0",
                             ),
                             class_="card-body",
@@ -1460,10 +1947,13 @@ app_ui = ui.page_fluid(
                     ui.tags.div(
                         ui.tags.div(
                             ui.tags.div(
-                                ui.tags.h5("Beispiel-Spiel", class_="card-title"),
+                                ui.tags.h5("Beispiel-Spiel", class_="card-title",
+                                           **{"data-i18n-de": "Beispiel-Spiel", "data-i18n-en": "Example game"}),
                                 ui.tags.p(
                                     "Spieler 1 wählt A oder B, Spieler 2 wählt X, Y oder Z. "
                                     "In jeder Zelle steht (u₁, u₂).",
+                                    **{"data-i18n-de": "Spieler 1 wählt A oder B, Spieler 2 wählt X, Y oder Z. In jeder Zelle steht (u₁, u₂).",
+                                       "data-i18n-en": "Player 1 chooses A or B, Player 2 chooses X, Y or Z. Each cell shows (u₁, u₂)."},
                                     class_="text-muted mb-3",
                                 ),
                                 payoff_table(INTRO_ROWS, INTRO_COLS, INTRO_PAYOFFS),
@@ -1472,13 +1962,41 @@ app_ui = ui.page_fluid(
                             ui.tags.div(
                                 ui.tags.div(
                                     ui.tags.div(
-                                        ui.tags.h5("Notation", class_="mb-2"),
+                                        ui.tags.h5("Notation", class_="mb-2",
+                                                   **{"data-i18n-de": "Notation", "data-i18n-en": "Notation"}),
                                         ui.tags.ul(
-                                            ui.tags.li(ui.tags.code("N = {1, 2}"), ": Zwei Spieler (Spieler 1 und Spieler 2)."),
-                                            ui.tags.li(ui.tags.code("S₁ = {A, B}"), ": Strategiemenge von Spieler 1."),
-                                            ui.tags.li(ui.tags.code("S₂ = {X, Y, Z}"), ": Strategiemenge von Spieler 2."),
-                                            ui.tags.li(ui.tags.code("s = (s₁, s₂)"), ": z.B. ", ui.tags.code("(A, Y)"), "."),
-                                            ui.tags.li(ui.tags.code("u = (u₁, u₂)"), ": z.B. ", ui.tags.code("(2, 8)"), ": Auszahlung (Spieler 1, Spieler 2)."),
+                                            ui.tags.li(
+                                                ui.tags.code("N = {1, 2}"),
+                                                ui.tags.span(": Zwei Spieler (Spieler 1 und Spieler 2).",
+                                                             **{"data-i18n-de": ": Zwei Spieler (Spieler 1 und Spieler 2).",
+                                                                "data-i18n-en": ": Two players (Player 1 and Player 2)."})
+                                            ),
+                                            ui.tags.li(
+                                                ui.tags.code("S₁ = {A, B}"),
+                                                ui.tags.span(": Strategiemenge von Spieler 1.",
+                                                             **{"data-i18n-de": ": Strategiemenge von Spieler 1.",
+                                                                "data-i18n-en": ": Strategy set of Player 1."})
+                                            ),
+                                            ui.tags.li(
+                                                ui.tags.code("S₂ = {X, Y, Z}"),
+                                                ui.tags.span(": Strategiemenge von Spieler 2.",
+                                                             **{"data-i18n-de": ": Strategiemenge von Spieler 2.",
+                                                                "data-i18n-en": ": Strategy set of Player 2."})
+                                            ),
+                                            ui.tags.li(
+                                                ui.tags.code("s = (s₁, s₂)"),
+                                                ui.tags.span(": z.B. ", **{"data-i18n-de": ": z.B. ", "data-i18n-en": ": e.g. "}),
+                                                ui.tags.code("(A, Y)"),
+                                                ui.tags.span(".", **{"data-i18n-de": ".", "data-i18n-en": "."}),
+                                            ),
+                                            ui.tags.li(
+                                                ui.tags.code("u = (u₁, u₂)"),
+                                                ui.tags.span(": z.B. ", **{"data-i18n-de": ": z.B. ", "data-i18n-en": ": e.g. "}),
+                                                ui.tags.code("(2, 8)"),
+                                                ui.tags.span(": Auszahlung (Spieler 1, Spieler 2).",
+                                                             **{"data-i18n-de": ": Auszahlung (Spieler 1, Spieler 2).",
+                                                                "data-i18n-en": ": Payoff (Player 1, Player 2)."}),
+                                            ),
                                             class_="mb-0",
                                         ),
                                         class_="card-body",
@@ -1498,7 +2016,7 @@ app_ui = ui.page_fluid(
 
                 ui.input_action_button(
                     "start_exercise",
-                    "Zu Übung 1",
+                    ui.tags.span("Zu Übung 1", **{"data-i18n-de": "Zu Übung 1", "data-i18n-en": "Go to Exercise 1"}),
                     class_="btn btn-primary mt-4",
                 ),
 
@@ -1511,21 +2029,23 @@ app_ui = ui.page_fluid(
         # Übung 1
         # =================================================
         ui.nav_panel(
-            "Übung 1",
+            ui.tags.span("Übung 1", **{"data-i18n-de": "Übung 1", "data-i18n-en": "Exercise 1"}),
             ui.tags.div(
-                ui.h2("Übung 1: Beste Antworten", class_="exercise-title"),
+                ui.h2("Übung 1: Beste Antworten", class_="exercise-title",
+                      **{"data-i18n-de": "Übung 1: Beste Antworten", "data-i18n-en": "Exercise 1: Best responses"}),
 
                 ui.tags.div(
                     # ---- LEFT: Game ----
                     ui.tags.div(
                         ui.tags.div(
                             ui.tags.div(
-                                ui.tags.h5("Spiel", class_="card-title"),
+                                ui.tags.h5("Spiel", class_="card-title",
+                                           **{"data-i18n-de": "Spiel", "data-i18n-en": "Game"}),
                                 ui.output_ui("game_table_1"),
 
                                 ui.tags.div(
                                     ui.tags.div(
-                                        ui.tags.h6("Notation"),
+                                        ui.tags.h6("Notation", **{"data-i18n-de": "Notation", "data-i18n-en": "Notation"}),
                                         ui.output_ui("notation_1"),
                                         class_="card-body py-2 exercise-notation-body",
                                     ),
@@ -1536,12 +2056,12 @@ app_ui = ui.page_fluid(
                                 ui.tags.div(
                                     ui.input_action_button(
                                         "new_game_1",
-                                        "Neues Spiel",
+                                        ui.tags.span("Neues Spiel", **{"data-i18n-de": "Neues Spiel", "data-i18n-en": "New game"}),
                                         class_="btn btn-outline-primary",
                                     ),
                                     ui.input_action_button(
                                         "help_1",
-                                        "Hilfe",
+                                        ui.tags.span("Hilfe", **{"data-i18n-de": "Hilfe", "data-i18n-en": "Help"}),
                                         class_="btn btn-outline-primary",
                                     ),
                                     class_="d-flex gap-2 mt-3",
@@ -1560,7 +2080,8 @@ app_ui = ui.page_fluid(
                     ui.tags.div(
                         ui.tags.div(
                             ui.tags.div(
-                                ui.tags.h5("Frage", class_="card-title"),
+                                ui.tags.h5("Frage", class_="card-title",
+                                           **{"data-i18n-de": "Frage", "data-i18n-en": "Question"}),
                                 ui.output_ui("question_text_1"),
 
                                 ui.tags.div(
@@ -1579,7 +2100,7 @@ app_ui = ui.page_fluid(
 
                                 ui.input_action_button(
                                     "check_1",
-                                    "Antwort prüfen",
+                                    ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
                                     class_="btn btn-success mt-3",
                                 ),
 
@@ -1598,12 +2119,12 @@ app_ui = ui.page_fluid(
 
                 ui.input_action_button(
                     "go_back_intro",
-                    "Zurück",
+                    ui.tags.span("Zurück", **{"data-i18n-de": "Zurück", "data-i18n-en": "Back"}),
                     class_="btn btn-outline-secondary me-2 mt-4",
                 ),
                 ui.input_action_button(
                     "go_to_ex2",
-                    "Weiter zu Übung 2",
+                    ui.tags.span("Weiter zu Übung 2", **{"data-i18n-de": "Weiter zu Übung 2", "data-i18n-en": "Next to Exercise 2"}),
                     class_="btn btn-primary mt-4",
                 ),
 
@@ -1616,21 +2137,23 @@ app_ui = ui.page_fluid(
         # Übung 2
         # =================================================
         ui.nav_panel(
-            "Übung 2",
+            ui.tags.span("Übung 2", **{"data-i18n-de": "Übung 2", "data-i18n-en": "Exercise 2"}),
             ui.tags.div(
-                ui.h2("Übung 2: Strikt dominante Strategien", class_="exercise-title"),
+                ui.h2("Übung 2: Strikt dominante Strategien", class_="exercise-title",
+                      **{"data-i18n-de": "Übung 2: Strikt dominante Strategien", "data-i18n-en": "Exercise 2: Strictly dominant strategies"}),
 
                 ui.tags.div(
                     # ---- LEFT ----
                     ui.tags.div(
                         ui.tags.div(
                             ui.tags.div(
-                                ui.tags.h5("Spiel", class_="card-title"),
+                                ui.tags.h5("Spiel", class_="card-title",
+                                           **{"data-i18n-de": "Spiel", "data-i18n-en": "Game"}),
                                 ui.output_ui("game_table_2"),
 
                                 ui.tags.div(
                                     ui.tags.div(
-                                        ui.tags.h6("Notation"),
+                                        ui.tags.h6("Notation", **{"data-i18n-de": "Notation", "data-i18n-en": "Notation"}),
                                         ui.output_ui("notation_2"),
                                         class_="card-body py-2 exercise-notation-body",
                                     ),
@@ -1641,12 +2164,12 @@ app_ui = ui.page_fluid(
                                 ui.tags.div(
                                     ui.input_action_button(
                                         "new_game_2",
-                                        "Neues Spiel",
+                                        ui.tags.span("Neues Spiel", **{"data-i18n-de": "Neues Spiel", "data-i18n-en": "New game"}),
                                         class_="btn btn-outline-primary",
                                     ),
                                     ui.input_action_button(
                                         "help_2",
-                                        "Hilfe",
+                                        ui.tags.span("Hilfe", **{"data-i18n-de": "Hilfe", "data-i18n-en": "Help"}),
                                         class_="btn btn-outline-primary",
                                     ),
                                     class_="d-flex gap-2 mt-3",
@@ -1665,9 +2188,12 @@ app_ui = ui.page_fluid(
                     ui.tags.div(
                         ui.tags.div(
                             ui.tags.div(
-                                ui.tags.h5("Frage", class_="card-title"),
+                                ui.tags.h5("Frage", class_="card-title",
+                                           **{"data-i18n-de": "Frage", "data-i18n-en": "Question"}),
                                 ui.tags.p(
                                     "Hat einer der Spieler (oder haben beide) eine strikt dominante Strategie?",
+                                    **{"data-i18n-de": "Hat einer der Spieler (oder haben beide) eine strikt dominante Strategie?",
+                                       "data-i18n-en": "Does either player (or both) have a strictly dominant strategy?"},
                                     class_="mt-2 mb-4",
                                 ),
 
@@ -1682,7 +2208,7 @@ app_ui = ui.page_fluid(
 
                                 ui.input_action_button(
                                     "check_2",
-                                    "Antwort prüfen",
+                                    ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
                                     class_="btn btn-success mt-3",
                                 ),
 
@@ -1702,12 +2228,12 @@ app_ui = ui.page_fluid(
         ui.tags.div(
             ui.input_action_button(
                 "go_back_ex1",
-                "Zurück",
+                ui.tags.span("Zurück", **{"data-i18n-de": "Zurück", "data-i18n-en": "Back"}),
                 class_="btn btn-outline-secondary me-2"
             ),
             ui.input_action_button(
                 "go_to_ex3",
-                "Weiter zu Übung 3",
+                ui.tags.span("Weiter zu Übung 3", **{"data-i18n-de": "Weiter zu Übung 3", "data-i18n-en": "Next to Exercise 3"}),
                 class_="btn btn-primary"
             ),
             class_="mt-4 text-start mb-3"
@@ -1718,19 +2244,21 @@ app_ui = ui.page_fluid(
 ),
 # Neuen Tab für Übung 3 einfügen
 ui.nav_panel(
-    "Übung 3",
+    ui.tags.span("Übung 3", **{"data-i18n-de": "Übung 3", "data-i18n-en": "Exercise 3"}),
     ui.tags.div(
-        ui.h2("Übung 3: Dominante Strategien (schwach oder strikt)", class_="exercise-title"),
+        ui.h2("Übung 3: Dominante Strategien (schwach oder strikt)", class_="exercise-title",
+              **{"data-i18n-de": "Übung 3: Dominante Strategien (schwach oder strikt)",
+                 "data-i18n-en": "Exercise 3: Dominant strategies (weak or strict)"}),
         ui.tags.div(
             # LEFT CARD: Spieltabelle und "Neues Spiel"-Button
             ui.tags.div(
                 ui.tags.div(
                     ui.tags.div(
-                        ui.tags.h5("Spiel"),
+                        ui.tags.h5("Spiel", **{"data-i18n-de": "Spiel", "data-i18n-en": "Game"}),
                         ui.output_ui("game_table_3"),
                         ui.tags.div(
                                     ui.tags.div(
-                                        ui.tags.h6("Notation"),
+                                        ui.tags.h6("Notation", **{"data-i18n-de": "Notation", "data-i18n-en": "Notation"}),
                                         ui.output_ui("notation_3"),
                                         class_="card-body py-2 exercise-notation-body",
                                     ),
@@ -1740,12 +2268,12 @@ ui.nav_panel(
                         ui.tags.div(
                             ui.input_action_button(
                                 "new_game_3",
-                                "Neues Spiel",
+                                ui.tags.span("Neues Spiel", **{"data-i18n-de": "Neues Spiel", "data-i18n-en": "New game"}),
                                 class_="btn btn-outline-primary"
                             ),
                             ui.input_action_button(
                                 "help_3",
-                                "Hilfe",
+                                ui.tags.span("Hilfe", **{"data-i18n-de": "Hilfe", "data-i18n-en": "Help"}),
                                 class_="btn btn-outline-primary"
                             ),
                             class_="d-flex gap-2 mt-3",
@@ -1761,9 +2289,11 @@ ui.nav_panel(
             ui.tags.div(
                 ui.tags.div(
                     ui.tags.div(
-                        ui.tags.h5("Frage"),
+                        ui.tags.h5("Frage", **{"data-i18n-de": "Frage", "data-i18n-en": "Question"}),
                         ui.tags.p(  # Feste Frage für Übung 3
                             "Hat einer der Spieler (oder haben beide) eine (strikt oder schwach) dominante Strategie?",
+                            **{"data-i18n-de": "Hat einer der Spieler (oder haben beide) eine (strikt oder schwach) dominante Strategie?",
+                               "data-i18n-en": "Does either player (or both) have a (strict or weak) dominant strategy?"},
                             class_="mt-2 mb-4"
                         ),
                         ui.tags.div(
@@ -1776,7 +2306,7 @@ ui.nav_panel(
                         ),
                         ui.input_action_button(
                             "check_3",
-                            "Antwort prüfen",
+                            ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
                             class_="btn btn-success mt-3"
                         ),
                         ui.output_ui("feedback_3"),
@@ -1791,12 +2321,12 @@ ui.nav_panel(
         ui.tags.div(
             ui.input_action_button(
                 "go_back_ex2",
-                "Zurück",
+                ui.tags.span("Zurück", **{"data-i18n-de": "Zurück", "data-i18n-en": "Back"}),
                 class_="btn btn-outline-secondary me-2"
             ),
             ui.input_action_button(
                 "go_to_ex4",
-                "Weiter zu Übung 4",
+                ui.tags.span("Weiter zu Übung 4", **{"data-i18n-de": "Weiter zu Übung 4", "data-i18n-en": "Next to Exercise 4"}),
                 class_="btn btn-primary"
             ),
             class_="mt-4 text-start mb-3"
@@ -1807,19 +2337,21 @@ ui.nav_panel(
 ),
 # Neuen Tab für Übung 4 einfügen
 ui.nav_panel(
-    "Übung 4",
+    ui.tags.span("Übung 4", **{"data-i18n-de": "Übung 4", "data-i18n-en": "Exercise 4"}),
     ui.tags.div(
-        ui.h2("Übung 4: Nash-Gleichgewichte in reinen Strategien", class_="exercise-title"),
+        ui.h2("Übung 4: Nash-Gleichgewichte in reinen Strategien", class_="exercise-title",
+              **{"data-i18n-de": "Übung 4: Nash-Gleichgewichte in reinen Strategien",
+                 "data-i18n-en": "Exercise 4: Nash equilibria in pure strategies"}),
         ui.tags.div(
             # LEFT CARD: Spieltabelle + "Neues Spiel"
             ui.tags.div(
                 ui.tags.div(
                     ui.tags.div(
-                        ui.tags.h5("Spiel"),
+                        ui.tags.h5("Spiel", **{"data-i18n-de": "Spiel", "data-i18n-en": "Game"}),
                         ui.output_ui("game_table_4"),
                         ui.tags.div(
                                     ui.tags.div(
-                        ui.tags.h6("Notation"),
+                        ui.tags.h6("Notation", **{"data-i18n-de": "Notation", "data-i18n-en": "Notation"}),
                           ui.output_ui("notation_4"),
                                   class_="card-body py-2 exercise-notation-body",
                                 ),
@@ -1829,12 +2361,12 @@ ui.nav_panel(
                         ui.tags.div(
                             ui.input_action_button(
                                 "new_game_4",
-                                "Neues Spiel",
+                                ui.tags.span("Neues Spiel", **{"data-i18n-de": "Neues Spiel", "data-i18n-en": "New game"}),
                                 class_="btn btn-outline-primary"
                             ),
                             ui.input_action_button(
                                 "help_4",
-                                "Hilfe",
+                                ui.tags.span("Hilfe", **{"data-i18n-de": "Hilfe", "data-i18n-en": "Help"}),
                                 class_="btn btn-outline-primary"
                             ),
                             class_="d-flex gap-2 mt-3",
@@ -1850,9 +2382,11 @@ ui.nav_panel(
             ui.tags.div(
                 ui.tags.div(
                     ui.tags.div(
-                        ui.tags.h5("Frage"),
+                        ui.tags.h5("Frage", **{"data-i18n-de": "Frage", "data-i18n-en": "Question"}),
                         ui.tags.p(
                             "Finden Sie alle Strategiepaare, die ein Nash-Gleichgewicht in reinen Strategien bilden.",
+                            **{"data-i18n-de": "Finden Sie alle Strategiepaare, die ein Nash-Gleichgewicht in reinen Strategien bilden.",
+                               "data-i18n-en": "Find all strategy pairs that form a Nash equilibrium in pure strategies."},
                             class_="mt-2 mb-4"
                         ),
                         ui.tags.div(
@@ -1865,7 +2399,7 @@ ui.nav_panel(
                         ),
                         ui.input_action_button(
                             "check_4",
-                            "Antwort prüfen",
+                            ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
                             class_="btn btn-success mt-3"
                         ),
                         ui.output_ui("feedback_4"),
@@ -1880,12 +2414,12 @@ ui.nav_panel(
         ui.tags.div(
             ui.input_action_button(
                 "go_back_ex3",
-                "Zurück",
+                ui.tags.span("Zurück", **{"data-i18n-de": "Zurück", "data-i18n-en": "Back"}),
                 class_="btn btn-outline-secondary me-2"
             ),
             ui.input_action_button(
                 "go_to_ex5",
-                "Weiter zu Übung 5",
+                ui.tags.span("Weiter zu Übung 5", **{"data-i18n-de": "Weiter zu Übung 5", "data-i18n-en": "Next to Exercise 5"}),
                 class_="btn btn-primary"
             ),
             class_="mt-4 text-start mb-3"
@@ -1899,19 +2433,22 @@ ui.nav_panel(
         # Übung 5
         # =================================================
         ui.nav_panel(
-            "Übung 5",
+            ui.tags.span("Übung 5", **{"data-i18n-de": "Übung 5", "data-i18n-en": "Exercise 5"}),
             ui.tags.div(
-                ui.h2("Übung 5: Nash-Gleichgewichte in reinen Strategien (strikt)", class_="exercise-title"),
+                ui.h2("Übung 5: Nash-Gleichgewichte in reinen Strategien (strikt)", class_="exercise-title",
+                      **{"data-i18n-de": "Übung 5: Nash-Gleichgewichte in reinen Strategien (strikt)",
+                         "data-i18n-en": "Exercise 5: Nash equilibria in pure strategies (strict)"}),
                 ui.tags.div(
                     # LEFT: Game table + Notation + Buttons
                     ui.tags.div(
                         ui.tags.div(
                             ui.tags.div(
-                                ui.tags.h5("Spiel", class_="card-title"),
+                                ui.tags.h5("Spiel", class_="card-title",
+                                           **{"data-i18n-de": "Spiel", "data-i18n-en": "Game"}),
                                 ui.output_ui("game_table_5"),
                                 ui.tags.div(
                                     ui.tags.div(
-                                        ui.tags.h6("Notation"),
+                                        ui.tags.h6("Notation", **{"data-i18n-de": "Notation", "data-i18n-en": "Notation"}),
                                         ui.output_ui("notation_5"),
                                         class_="card-body py-2 exercise-notation-body",
                                     ),
@@ -1919,8 +2456,16 @@ ui.nav_panel(
                                     style="background-color:#f7f7f7;",
                                 ),
                                 ui.tags.div(
-                                    ui.input_action_button("new_game_5", "Neues Spiel", class_="btn btn-outline-primary"),
-                                    ui.input_action_button("help_5", "Hilfe", class_="btn btn-outline-primary"),
+                                    ui.input_action_button(
+                                        "new_game_5",
+                                        ui.tags.span("Neues Spiel", **{"data-i18n-de": "Neues Spiel", "data-i18n-en": "New game"}),
+                                        class_="btn btn-outline-primary"
+                                    ),
+                                    ui.input_action_button(
+                                        "help_5",
+                                        ui.tags.span("Hilfe", **{"data-i18n-de": "Hilfe", "data-i18n-en": "Help"}),
+                                        class_="btn btn-outline-primary"
+                                    ),
                                     class_="d-flex gap-2 mt-3",
                                 ),
                                 ui.output_ui("help_text_5"),
@@ -1934,20 +2479,22 @@ ui.nav_panel(
                     ui.tags.div(
                         ui.tags.div(
                             ui.tags.div(
-                                ui.tags.h5("Frage", class_="card-title"),
+                                ui.tags.h5("Frage", class_="card-title",
+                                           **{"data-i18n-de": "Frage", "data-i18n-en": "Question"}),
                                 ui.tags.p(
-                                    "Finden Sie alle strikten Nash-Gleichgewichte in reinen Strategien.",
+                                    "Für jedes Strategiepaar: Wählen Sie ja, nicht strikt / ja, strikt / nein.",
+                                    **{"data-i18n-de": "Für jedes Strategiepaar: Wählen Sie ja, nicht strikt / ja, strikt / nein.",
+                                       "data-i18n-en": "For each strategy pair: choose yes, not strict / yes, strict / no."},
                                     class_="mt-2 mb-4",
                                 ),
                                 ui.tags.div(
-                                    ui.input_checkbox_group(
-                                        "answer_5",
-                                        None,
-                                        choices=[f"({r},{c})" for r in P1_STRATS_EX2 for c in P2_STRATS_EX2],
-                                    ),
-                                    class_="two-col-radios",
+                                    ui.output_ui("ex5_matrix"),
                                 ),
-                                ui.input_action_button("check_5", "Antwort prüfen", class_="btn btn-success mt-3"),
+                                ui.input_action_button(
+                                    "check_5",
+                                    ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
+                                    class_="btn btn-success mt-3"
+                                ),
                                 ui.output_ui("feedback_5"),
                                 class_="card-body",
                             ),
@@ -1958,8 +2505,16 @@ ui.nav_panel(
                     class_="row row-cols-1 row-cols-lg-2 g-3 mt-2 align-items-stretch exercise-row",
                 ),
                 ui.tags.div(
-                    ui.input_action_button("go_back_ex4", "Zurück", class_="btn btn-outline-secondary me-2"),
-                    ui.input_action_button("go_to_ex6", "Weiter zu Übung 6", class_="btn btn-primary"),
+                    ui.input_action_button(
+                        "go_back_ex4",
+                        ui.tags.span("Zurück", **{"data-i18n-de": "Zurück", "data-i18n-en": "Back"}),
+                        class_="btn btn-outline-secondary me-2"
+                    ),
+                    ui.input_action_button(
+                        "go_to_ex6",
+                        ui.tags.span("Weiter zu Übung 6", **{"data-i18n-de": "Weiter zu Übung 6", "data-i18n-en": "Next to Exercise 6"}),
+                        class_="btn btn-primary"
+                    ),
                     class_="mt-4 text-start mb-3",
                 ),
                 class_="container-fluid px-4",
@@ -1970,19 +2525,22 @@ ui.nav_panel(
         # Übung 6
         # =================================================
         ui.nav_panel(
-            "Übung 6",
+            ui.tags.span("Übung 6", **{"data-i18n-de": "Übung 6", "data-i18n-en": "Exercise 6"}),
             ui.tags.div(
-                ui.h2("Übung 6: Nash-Gleichgewicht in gemischten Strategien", class_="exercise-title"),
+                ui.h2("Übung 6: Nash-Gleichgewicht in gemischten Strategien", class_="exercise-title",
+                      **{"data-i18n-de": "Übung 6: Nash-Gleichgewicht in gemischten Strategien",
+                         "data-i18n-en": "Exercise 6: Nash equilibrium in mixed strategies"}),
                 ui.tags.div(
                     # LEFT: Game table + Notation + Buttons
                     ui.tags.div(
                         ui.tags.div(
                             ui.tags.div(
-                                ui.tags.h5("Spiel", class_="card-title"),
+                                ui.tags.h5("Spiel", class_="card-title",
+                                           **{"data-i18n-de": "Spiel", "data-i18n-en": "Game"}),
                                 ui.output_ui("game_table_6"),
                                 ui.tags.div(
                                     ui.tags.div(
-                                        ui.tags.h6("Notation"),
+                                        ui.tags.h6("Notation", **{"data-i18n-de": "Notation", "data-i18n-en": "Notation"}),
                                         ui.output_ui("notation_6"),
                                         class_="card-body py-2 exercise-notation-body",
                                     ),
@@ -1990,8 +2548,16 @@ ui.nav_panel(
                                     style="background-color:#f7f7f7;",
                                 ),
                                 ui.tags.div(
-                                    ui.input_action_button("new_game_6", "Neues Spiel", class_="btn btn-outline-primary"),
-                                    ui.input_action_button("help_6", "Hilfe", class_="btn btn-outline-primary"),
+                                    ui.input_action_button(
+                                        "new_game_6",
+                                        ui.tags.span("Neues Spiel", **{"data-i18n-de": "Neues Spiel", "data-i18n-en": "New game"}),
+                                        class_="btn btn-outline-primary"
+                                    ),
+                                    ui.input_action_button(
+                                        "help_6",
+                                        ui.tags.span("Hilfe", **{"data-i18n-de": "Hilfe", "data-i18n-en": "Help"}),
+                                        class_="btn btn-outline-primary"
+                                    ),
                                     class_="d-flex gap-2 mt-3",
                                 ),
                                 ui.output_ui("help_text_6"),
@@ -2005,9 +2571,12 @@ ui.nav_panel(
                     ui.tags.div(
                         ui.tags.div(
                             ui.tags.div(
-                                ui.tags.h5("Frage", class_="card-title"),
+                                ui.tags.h5("Frage", class_="card-title",
+                                           **{"data-i18n-de": "Frage", "data-i18n-en": "Question"}),
                                 ui.tags.p(
                                     "Finden Sie ein Nash-Gleichgewicht in gemischten Strategien, in dem Spieler 1 mit Wahrscheinlichkeit p Strategie A wählt. Wie groß ist p?",
+                                    **{"data-i18n-de": "Finden Sie ein Nash-Gleichgewicht in gemischten Strategien, in dem Spieler 1 mit Wahrscheinlichkeit p Strategie A wählt. Wie groß ist p?",
+                                       "data-i18n-en": "Find a Nash equilibrium in mixed strategies where Player 1 plays strategy A with probability p. What is p?"},
                                     class_="mt-2 mb-4",
                                 ),
                                 ui.tags.div(
@@ -2018,7 +2587,11 @@ ui.nav_panel(
                                     ),
                                     class_="three-col-radios",
                                 ),
-                                ui.input_action_button("check_6", "Antwort prüfen", class_="btn btn-success mt-3"),
+                                ui.input_action_button(
+                                    "check_6",
+                                    ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
+                                    class_="btn btn-success mt-3"
+                                ),
                                 ui.output_ui("feedback_6"),
                                 class_="card-body",
                             ),
@@ -2029,9 +2602,17 @@ ui.nav_panel(
                     class_="row row-cols-1 row-cols-lg-2 g-3 mt-2 align-items-stretch exercise-row",
                 ),
                 ui.tags.div(
-                    ui.input_action_button("go_back_ex5", "Zurück", class_="btn btn-outline-secondary"),
-                    ui.input_action_button("go_to_special_games", "Zu besonderen Spielen", class_="btn btn-primary"),
-                    class_="mt-4 text-start mb-3",
+                    ui.input_action_button(
+                        "go_back_ex5",
+                        ui.tags.span("Zurück", **{"data-i18n-de": "Zurück", "data-i18n-en": "Back"}),
+                        class_="btn btn-outline-secondary"
+                    ),
+                    ui.input_action_button(
+                        "go_to_special_games",
+                        ui.tags.span("Zu besonderen Spielen", **{"data-i18n-de": "Zu besonderen Spielen", "data-i18n-en": "Go to special games"}),
+                        class_="btn btn-primary"
+                    ),
+                    class_="mt-4 text-start mb-3 d-flex gap-2",
                 ),
                 class_="container-fluid px-4",
             ),
@@ -2042,12 +2623,16 @@ ui.nav_panel(
         # BESONDERE SPIELE (READ ONLY)
         # =========================
         ui.nav_panel(
-            "Besondere Spiele",
+            ui.tags.span("Besondere Spiele", **{"data-i18n-de": "Besondere Spiele", "data-i18n-en": "Special games"}),
             ui.tags.div(
-                ui.h2("Besondere Spiele der Spieltheorie", class_="exercise-title"),
+                ui.h2("Fünf besondere Spiele der Spieltheorie", class_="exercise-title",
+                      **{"data-i18n-de": "Fünf besondere Spiele der Spieltheorie",
+                         "data-i18n-en": "Five special games in game theory"}),
                 ui.tags.p(
-                    "Links jeweils ein Beispielspiel (Auszahlungen (u₁, u₂)), "
-                    "rechts die zentrale Idee und typische Ergebnisse.",
+                    "Ein Beispielspiel (Auszahlungen (u₁, u₂)), "
+                    "die zentrale Idee und typische Ergebnisse.",
+                    **{"data-i18n-de": "Ein Beispielspiel (Auszahlungen (u₁, u₂)), die zentrale Idee und typische Ergebnisse.",
+                       "data-i18n-en": "An example game (payoffs (u₁, u₂)), the central idea, and typical outcomes."},
                     class_="text-muted mb-4",
                 ),
                 *SPECIAL_GAMES_ROWS,
@@ -2065,6 +2650,9 @@ ui.nav_panel(
 # SERVER
 # =========================================================
 def server(input, output, session):
+    def current_lang():
+        return "en" if input.lang_toggle() else "de"
+
     # -------- Intro and navigation events --------
     @reactive.effect
     @reactive.event(input.start_exercise)
@@ -2154,45 +2742,88 @@ def server(input, output, session):
     @output
     @render.ui
     def game_table_1():
-        return payoff_table(P1_STRATS_EX1, P2_STRATS_EX1, payoff_strings_from_tuple_payoffs(game1.get()))
+        lang = current_lang()
+        return payoff_table(P1_STRATS_EX1, P2_STRATS_EX1, payoff_strings_from_tuple_payoffs(game1.get()), lang=lang)
 
     @output
     @render.ui
     def notation_1():
-        return notation_ul(P1_STRATS_EX1, P2_STRATS_EX1, game1.get())
+        lang = current_lang()
+        return notation_ul(P1_STRATS_EX1, P2_STRATS_EX1, game1.get(), lang=lang)
 
     @output
     @render.ui
     def question_text_1():
+        lang = current_lang()
         q = q1.get()
         responder = q["responder"]
         opp = q["opp"]
 
         if responder == 1:
-            ui.update_radio_buttons("answer_1", choices=all_subset_labels(P1_STRATS_EX1), selected=None)
+            ui.update_radio_buttons("answer_1", choices=all_subset_labels(P1_STRATS_EX1, lang=lang), selected=None)
             return ui.tags.p(
-                ["Wenn Spieler 2 ", ui.tags.strong(opp),
-                 " spielt, welche Strategie(n) ist/sind die beste Antwort(en) für Spieler 1?"],
+                [tr(lang, "Wenn Spieler 2 ", "If Player 2 plays "), ui.tags.strong(opp),
+                 tr(lang, " spielt, welche Strategie(n) ist/sind die beste Antwort(en) für Spieler 1?",
+                    ", which strategy(ies) are the best response(s) for Player 1?")],
                 class_="mt-2 mb-4",
             )
         else:
-            ui.update_radio_buttons("answer_1", choices=all_subset_labels(P2_STRATS_EX1), selected=None)
+            ui.update_radio_buttons("answer_1", choices=all_subset_labels(P2_STRATS_EX1, lang=lang), selected=None)
             return ui.tags.p(
-                ["Wenn Spieler 1 ", ui.tags.strong(opp),
-                 " spielt, welche Strategie(n) ist/sind die beste Antwort(en) für Spieler 2?"],
+                [tr(lang, "Wenn Spieler 1 ", "If Player 1 plays "), ui.tags.strong(opp),
+                 tr(lang, " spielt, welche Strategie(n) ist/sind die beste Antwort(en) für Spieler 2?",
+                    ", which strategy(ies) are the best response(s) for Player 2?")],
                 class_="mt-2 mb-4",
             )
 
     @output
     @render.ui
     def help_text_1():
+        lang = current_lang()
         if not show_help1.get():
             return ui.tags.div()
         return ui.tags.div(
             ui.tags.div(
-                ui.tags.p(
-                    "Beste Antwort: Wähle die Strategie, die dir bei gegebener Gegenspieler-Strategie den höchsten eigenen Nutzen bringt.",
-                    class_="text-muted help-text mt-2 mb-0",
+                ui.tags.div(
+                    ui.tags.p(
+                        ui.tags.strong(tr(lang, "Ziel: ", "Goal: ")),
+                        tr(lang,
+                           "Finde alle besten Antworten für den angegebenen Spieler, gegeben die Strategie des Gegners.",
+                           "Find all best responses for the specified player, given the opponent's strategy."),
+                        class_="text-muted mb-2",
+                    ),
+                    ui.tags.ul(
+                        ui.tags.li(
+                            ui.tags.strong(tr(lang, "Beste Antwort: ", "Best response: ")),
+                            tr(lang,
+                               "Eine Strategie ist eine beste Antwort, wenn sie den höchsten eigenen Nutzen liefert.",
+                               "A strategy is a best response if it yields the highest own payoff.")
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong(tr(lang, "Vorgehen Spieler 1: ", "Player 1 procedure: ")),
+                            tr(lang,
+                               "Fixiere die Spalte (Strategie von Spieler 2) und vergleiche die u₁‑Werte "
+                               "in dieser Spalte. Markiere alle Zeilen mit dem Maximum.",
+                               "Fix the column (Player 2's strategy) and compare the u₁ values in that column. "
+                               "Mark all rows with the maximum.")
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong(tr(lang, "Vorgehen Spieler 2: ", "Player 2 procedure: ")),
+                            tr(lang,
+                               "Fixiere die Zeile (Strategie von Spieler 1) und vergleiche die u₂‑Werte "
+                               "in dieser Zeile. Markiere alle Spalten mit dem Maximum.",
+                               "Fix the row (Player 1's strategy) and compare the u₂ values in that row. "
+                               "Mark all columns with the maximum.")
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong(tr(lang, "Mehrfach möglich: ", "Multiple possible: ")),
+                            tr(lang,
+                               "Falls es mehrere Maximale gibt, sind alle entsprechenden Strategien beste Antworten.",
+                               "If there are multiple maxima, all corresponding strategies are best responses.")
+                        ),
+                        class_="text-muted mb-0",
+                    ),
+                    class_="mt-2",
                 ),
                 class_="card-body py-2 exercise-notation-body",
             ),
@@ -2203,11 +2834,13 @@ def server(input, output, session):
     @output
     @render.ui
     def feedback_1():
+        lang = current_lang()
         if not show_fb1.get():
             return ui.tags.div()
 
-        if input.answer_1() is None or input.answer_1() in ("— bitte warten —", ""):
-            return ui.tags.div("Bitte wähle zuerst eine Antwort aus.", class_="alert alert-warning mt-3")
+        if input.answer_1() is None or input.answer_1() in ("— bitte warten —", "— please wait —", ""):
+            return ui.tags.div(tr(lang, "Bitte wähle zuerst eine Antwort aus.", "Please choose an answer first."),
+                               class_="alert alert-warning mt-3")
 
         payoffs = game1.get()
         q = q1.get()
@@ -2215,12 +2848,20 @@ def server(input, output, session):
         opp = q["opp"]
 
         correct_set = best_response_set(payoffs, responder, opp)
-        correct_label = subset_label(P1_STRATS_EX1 if responder == 1 else P2_STRATS_EX1, correct_set)
+        correct_label = subset_label(P1_STRATS_EX1 if responder == 1 else P2_STRATS_EX1, correct_set, lang=lang)
 
         if input.answer_1() == correct_label:
-            return ui.tags.div(f"✅ Richtig! {correct_label} ist/sind die beste(n) Antwort(en).", class_="alert alert-success mt-3")
+            return ui.tags.div(
+                tr(lang,
+                   f"✅ Richtig! {correct_label} ist/sind die beste(n) Antwort(en).",
+                   f"✅ Correct! {correct_label} is/are the best response(s)."),
+                class_="alert alert-success mt-3"
+            )
         else:
-            return ui.tags.div(f"❌ Falsch. Richtig ist: {correct_label}.", class_="alert alert-danger mt-3")
+            return ui.tags.div(
+                tr(lang, f"❌ Falsch. Richtig ist: {correct_label}.", f"❌ Incorrect. Correct is: {correct_label}."),
+                class_="alert alert-danger mt-3"
+            )
 
     # =======================
     # Exercise 2 state
@@ -2248,48 +2889,61 @@ def server(input, output, session):
     @output
     @render.ui
     def game_table_2():
+        lang = current_lang()
         # Update choices when game is shown/updated
-        ui.update_radio_buttons("answer_2", choices=dominance_choices(P1_STRATS_EX2, P2_STRATS_EX2), selected=None)
-        return payoff_table(P1_STRATS_EX2, P2_STRATS_EX2, payoff_strings_from_tuple_payoffs(game2.get()))
+        ui.update_radio_buttons("answer_2", choices=dominance_choices(P1_STRATS_EX2, P2_STRATS_EX2, lang=lang), selected=None)
+        return payoff_table(P1_STRATS_EX2, P2_STRATS_EX2, payoff_strings_from_tuple_payoffs(game2.get()), lang=lang)
 
     @output
     @render.ui
     def notation_2():
-        return notation_ul(P1_STRATS_EX2, P2_STRATS_EX2, game2.get())
+        lang = current_lang()
+        return notation_ul(P1_STRATS_EX2, P2_STRATS_EX2, game2.get(), lang=lang)
 
     @output
     @render.ui
     def help_text_2():
+        lang = current_lang()
         if not show_help2.get():
             return ui.tags.div()
         return ui.tags.div(
             ui.tags.div(
                 ui.tags.div(
                     ui.tags.p(
-                        ui.tags.strong("Ziel: "),
-                        "Prüfe, ob es eine strikt dominante Strategie für Spieler 1 oder Spieler 2 gibt.",
+                        ui.tags.strong(tr(lang, "Ziel: ", "Goal: ")),
+                        tr(lang,
+                           "Prüfe, ob es eine strikt dominante Strategie für Spieler 1 oder Spieler 2 gibt.",
+                           "Check whether there is a strictly dominant strategy for Player 1 or Player 2."),
                         class_="text-muted mb-2",
                     ),
                     ui.tags.ul(
                         ui.tags.li(
-                            ui.tags.strong("Strikt dominant: "),
-                            "Eine Strategie sᵢ ist strikt dominant, wenn sie gegen jede gegnerische Strategie "
-                            "immer einen strikt höheren Nutzen liefert als jede andere eigene Strategie."
+                            ui.tags.strong(tr(lang, "Strikt dominant: ", "Strictly dominant: ")),
+                            tr(lang,
+                               "Eine Strategie sᵢ ist strikt dominant, wenn sie gegen jede gegnerische Strategie "
+                               "immer einen strikt höheren Nutzen liefert als jede andere eigene Strategie.",
+                               "A strategy sᵢ is strictly dominant if against every opponent strategy it always yields a strictly higher payoff than any other own strategy.")
                         ),
                         ui.tags.li(
-                            ui.tags.strong("Vorgehen Spieler 1: "),
-                            "Vergleiche zeilenweise die u₁-Werte (A/B/C/D) spaltenweise (X/Y/Z). "
-                            "Eine Zeile ist strikt dominant, wenn sie in jeder Spalte strikt höher ist."
+                            ui.tags.strong(tr(lang, "Vorgehen Spieler 1: ", "Player 1 procedure: ")),
+                            tr(lang,
+                               "Vergleiche zeilenweise die u₁-Werte (A/B/C/D) spaltenweise (X/Y/Z). "
+                               "Eine Zeile ist strikt dominant, wenn sie in jeder Spalte strikt höher ist.",
+                               "Compare the u₁ values row-wise across columns (X/Y/Z). A row is strictly dominant if it is strictly higher in every column.")
                         ),
                         ui.tags.li(
-                            ui.tags.strong("Vorgehen Spieler 2: "),
-                            "Vergleiche spaltenweise die u₂-Werte (X/Y/Z) zeilenweise (A/B/C/D). "
-                            "Eine Spalte ist strikt dominant, wenn sie in jeder Zeile strikt höher ist."
+                            ui.tags.strong(tr(lang, "Vorgehen Spieler 2: ", "Player 2 procedure: ")),
+                            tr(lang,
+                               "Vergleiche spaltenweise die u₂-Werte (X/Y/Z) zeilenweise (A/B/C/D). "
+                               "Eine Spalte ist strikt dominant, wenn sie in jeder Zeile strikt höher ist.",
+                               "Compare the u₂ values column-wise across rows (A/B/C/D). A column is strictly dominant if it is strictly higher in every row.")
                         ),
                         ui.tags.li(
-                            ui.tags.strong("Antwortauswahl: "),
-                            "Falls es eine dominante Strategie gibt, wähle die passende Kombination. "
-                            "Gibt es keine, wähle „Nein, keiner“."
+                            ui.tags.strong(tr(lang, "Antwortauswahl: ", "Answer choice: ")),
+                            tr(lang,
+                               "Falls es eine dominante Strategie gibt, wähle die passende Kombination. "
+                               "Gibt es keine, wähle „Nein, keiner“.",
+                               "If there is a dominant strategy, choose the matching combination. If none exists, choose \"No, none\".")
                         ),
                         class_="text-muted mb-0",
                     ),
@@ -2304,25 +2958,27 @@ def server(input, output, session):
     @output
     @render.ui
     def feedback_2():
+        lang = current_lang()
         if not show_fb2.get():
             return ui.tags.div()
 
-        if input.answer_2() is None or input.answer_2() in ("— bitte warten —", ""):
-            return ui.tags.div("Bitte wähle zuerst eine Antwort aus.", class_="alert alert-warning mt-3")
+        if input.answer_2() is None or input.answer_2() in ("— bitte warten —", "— please wait —", ""):
+            return ui.tags.div(tr(lang, "Bitte wähle zuerst eine Antwort aus.", "Please choose an answer first."),
+                               class_="alert alert-warning mt-3")
 
         payoffs = game2.get()
-        correct_label, r_dom, c_dom = correct_dominance_label(payoffs)
-        expl = dominance_explanation(r_dom, c_dom)
+        correct_label, r_dom, c_dom = correct_dominance_label(payoffs, lang=lang)
+        expl = dominance_explanation(r_dom, c_dom, lang=lang)
 
         if input.answer_2() == correct_label:
             return ui.tags.div(
-                ui.tags.div(f"✅ Richtig! {correct_label}.", class_="fw-semibold"),
+                ui.tags.div(tr(lang, f"✅ Richtig! {correct_label}.", f"✅ Correct! {correct_label}."), class_="fw-semibold"),
                 ui.tags.div(expl, class_="mt-2"),
                 class_="alert alert-success mt-3",
             )
         else:
             return ui.tags.div(
-                ui.tags.div(f"❌ Falsch. Richtig ist: {correct_label}.", class_="fw-semibold"),
+                ui.tags.div(tr(lang, f"❌ Falsch. Richtig ist: {correct_label}.", f"❌ Incorrect. Correct is: {correct_label}."), class_="fw-semibold"),
                 ui.tags.div(expl, class_="mt-2"),
                 class_="alert alert-danger mt-3",
             )
@@ -2390,22 +3046,25 @@ def server(input, output, session):
     @output
     @render.ui
     def game_table_3():
+        lang = current_lang()
         # Aktualisiere die Auswahlmöglichkeiten für die Antwort, wenn ein neues Spiel geladen wird
         ui.update_radio_buttons("answer_3",
-            choices=dominance_choices(P1_STRATS_EX2, P2_STRATS_EX2),
+            choices=dominance_choices(P1_STRATS_EX2, P2_STRATS_EX2, lang=lang),
             selected=None
         )
         return payoff_table(P1_STRATS_EX2, P2_STRATS_EX2,
-                             payoff_strings_from_tuple_payoffs(game3.get()))
+                             payoff_strings_from_tuple_payoffs(game3.get()), lang=lang)
 
     @output
     @render.ui
     def notation_3():
-        return notation_ul(P1_STRATS_EX2, P2_STRATS_EX2, game3.get())
+        lang = current_lang()
+        return notation_ul(P1_STRATS_EX2, P2_STRATS_EX2, game3.get(), lang=lang)
 
     @output
     @render.ui
     def help_text_3():
+        lang = current_lang()
         if not show_help3.get():
             return ui.tags.div()
 
@@ -2413,30 +3072,40 @@ def server(input, output, session):
             ui.tags.div(
                 ui.tags.div(
                     ui.tags.p(
-                        ui.tags.strong("Ziel: "),
-                        "Prüfe, ob ein Spieler eine dominante Strategie hat (strikt oder schwach).",
+                        ui.tags.strong(tr(lang, "Ziel: ", "Goal: ")),
+                        tr(lang,
+                           "Prüfe, ob ein Spieler eine dominante Strategie hat (strikt oder schwach).",
+                           "Check whether a player has a dominant strategy (strict or weak)."),
                         class_="text-muted mb-2",
                     ),
                     ui.tags.ul(
                         ui.tags.li(
-                            ui.tags.strong("Strikt dominant: "),
-                            "Eine Strategie sᵢ ist strikt dominant, wenn sie gegen jede gegnerische Strategie "
-                            "immer einen strikt höheren Nutzen liefert als jede andere eigene Strategie."
+                            ui.tags.strong(tr(lang, "Strikt dominant: ", "Strictly dominant: ")),
+                            tr(lang,
+                               "Eine Strategie sᵢ ist strikt dominant, wenn sie gegen jede gegnerische Strategie "
+                               "immer einen strikt höheren Nutzen liefert als jede andere eigene Strategie.",
+                               "A strategy sᵢ is strictly dominant if against every opponent strategy it always yields a strictly higher payoff than any other own strategy.")
                         ),
                         ui.tags.li(
-                            ui.tags.strong("Schwach dominant: "),
-                            "Eine Strategie sᵢ ist schwach dominant, wenn sie gegen jede gegnerische Strategie "
-                            "mindestens so gut ist wie jede andere eigene Strategie, und gegen mindestens eine gegnerische Strategie "
-                            "echt besser als jede Alternative."
+                            ui.tags.strong(tr(lang, "Schwach dominant: ", "Weakly dominant: ")),
+                            tr(lang,
+                               "Eine Strategie sᵢ ist schwach dominant, wenn sie gegen jede gegnerische Strategie "
+                               "mindestens so gut ist wie jede andere eigene Strategie, und gegen mindestens eine gegnerische Strategie "
+                               "echt besser als jede Alternative.",
+                               "A strategy sᵢ is weakly dominant if against every opponent strategy it is at least as good as any other own strategy, and strictly better against at least one opponent strategy.")
                         ),
                         ui.tags.li(
-                            ui.tags.strong("Vorgehen: "),
-                            "Vergleiche für Spieler 1 zeilenweise die u₁-Werte (A/B/C/D) spaltenweise (X/Y/Z). "
-                            "Für Spieler 2 vergleichst du spaltenweise die u₂-Werte zeilenweise."
+                            ui.tags.strong(tr(lang, "Vorgehen: ", "Procedure: ")),
+                            tr(lang,
+                               "Vergleiche für Spieler 1 zeilenweise die u₁-Werte (A/B/C/D) spaltenweise (X/Y/Z). "
+                               "Für Spieler 2 vergleichst du spaltenweise die u₂-Werte zeilenweise.",
+                               "For Player 1, compare u₁ values row-wise across columns (X/Y/Z). For Player 2, compare u₂ values column-wise across rows.")
                         ),
                         ui.tags.li(
-                            ui.tags.strong("Wichtig: "),
-                            "Pro Spieler kann es höchstens eine dominante Strategie geben."
+                            ui.tags.strong(tr(lang, "Wichtig: ", "Important: ")),
+                            tr(lang,
+                               "Pro Spieler kann es höchstens eine dominante Strategie geben.",
+                               "Each player can have at most one dominant strategy.")
                         ),
                         class_="text-muted mb-0",
                     ),
@@ -2451,29 +3120,30 @@ def server(input, output, session):
     @output
     @render.ui
     def feedback_3():
+        lang = current_lang()
         if not show_fb3.get():
             return ui.tags.div()  # noch kein Feedback anzeigen
 
-        if input.answer_3() is None or input.answer_3() in ("— bitte warten —", ""):
+        if input.answer_3() is None or input.answer_3() in ("— bitte warten —", "— please wait —", ""):
             # Keine Antwort ausgewählt
-            return ui.tags.div("Bitte wähle zuerst eine Antwort aus.",
+            return ui.tags.div(tr(lang, "Bitte wähle zuerst eine Antwort aus.", "Please choose an answer first."),
                                class_="alert alert-warning mt-3")
 
         payoffs = game3.get()
-        correct_label, r_dom, r_type, c_dom, c_type = correct_dominance_label_weak(payoffs)
-        explanation = dominance_explanation_weak(r_dom, r_type, c_dom, c_type)
+        correct_label, r_dom, r_type, c_dom, c_type = correct_dominance_label_weak(payoffs, lang=lang)
+        explanation = dominance_explanation_weak(r_dom, r_type, c_dom, c_type, lang=lang)
 
         if input.answer_3() == correct_label:
             # Richtige Antwort gewählt
             return ui.tags.div(
-                ui.tags.div(f"✅ Richtig! {correct_label}.", class_="fw-semibold"),
+                ui.tags.div(tr(lang, f"✅ Richtig! {correct_label}.", f"✅ Correct! {correct_label}."), class_="fw-semibold"),
                 ui.tags.div(explanation, class_="mt-2"),
                 class_="alert alert-success mt-3"
             )
         else:
             # Falsche Antwort -> richtige Lösung und Erklärung anzeigen
             return ui.tags.div(
-                ui.tags.div(f"❌ Falsch. Richtig ist: {correct_label}.", class_="fw-semibold"),
+                ui.tags.div(tr(lang, f"❌ Falsch. Richtig ist: {correct_label}.", f"❌ Incorrect. Correct is: {correct_label}."), class_="fw-semibold"),
                 ui.tags.div(explanation, class_="mt-2"),
                 class_="alert alert-danger mt-3"
             )
@@ -2504,22 +3174,25 @@ def server(input, output, session):
     @output
     @render.ui
     def game_table_4():
+        lang = current_lang()
         # (Optionale Wahl: Auswahl zurücksetzen/aktualisieren - hier statisch, daher nicht zwingend)
         ui.update_checkbox_group("answer_4",
             choices=[f"({r},{c})" for r in P1_STRATS_EX2 for c in P2_STRATS_EX2],
             selected=None
         )
         return payoff_table(P1_STRATS_EX2, P2_STRATS_EX2,
-                             payoff_strings_from_tuple_payoffs(game4.get()))
+                             payoff_strings_from_tuple_payoffs(game4.get()), lang=lang)
 
     @output
     @render.ui
     def notation_4():
-        return notation_ul(P1_STRATS_EX2, P2_STRATS_EX2, game4.get())
+        lang = current_lang()
+        return notation_ul(P1_STRATS_EX2, P2_STRATS_EX2, game4.get(), lang=lang)
 
     @output
     @render.ui
     def help_text_4():
+        lang = current_lang()
         if not show_help4.get():
             return ui.tags.div()
 
@@ -2527,30 +3200,41 @@ def server(input, output, session):
             ui.tags.div(
                 ui.tags.div(
                     ui.tags.p(
-                        ui.tags.strong("Definition: "),
-                        "Ein Strategieprofil (r, c) ist ein Nash-Gleichgewicht in reinen Strategien, "
-                        "wenn keiner der Spieler sich durch einseitiges Abweichen strikt verbessern kann.",
+                        ui.tags.strong(tr(lang, "Definition: ", "Definition: ")),
+                        tr(lang,
+                           "Ein Strategieprofil (r, c) ist ein Nash-Gleichgewicht in reinen Strategien, "
+                           "wenn keiner der Spieler sich durch einseitiges Abweichen strikt verbessern kann.",
+                           "A strategy profile (r, c) is a Nash equilibrium in pure strategies if neither player can strictly improve by unilateral deviation."),
                         class_="text-muted mb-2",
                     ),
                     ui.tags.ul(
                         ui.tags.li(
-                            ui.tags.strong("Beste Antwort Spieler 1: "),
-                            "Für eine feste Spalte c (Strategie von Spieler 2) ist eine Zeile r eine beste Antwort, "
-                            "wenn u₁(r,c) maximal über alle Zeilen ist."
+                            ui.tags.strong(tr(lang, "Beste Antwort Spieler 1: ", "Best response Player 1: ")),
+                            tr(lang,
+                               "Für eine feste Spalte c (Strategie von Spieler 2) ist eine Zeile r eine beste Antwort, "
+                               "wenn u₁(r,c) maximal über alle Zeilen ist.",
+                               "For a fixed column c (Player 2's strategy), a row r is a best response if u₁(r,c) is maximal across all rows.")
                         ),
                         ui.tags.li(
-                            ui.tags.strong("Beste Antwort Spieler 2: "),
-                            "Für eine feste Zeile r (Strategie von Spieler 1) ist eine Spalte c eine beste Antwort, "
-                            "wenn u₂(r,c) maximal über alle Spalten ist."
+                            ui.tags.strong(tr(lang, "Beste Antwort Spieler 2: ", "Best response Player 2: ")),
+                            tr(lang,
+                               "Für eine feste Zeile r (Strategie von Spieler 1) ist eine Spalte c eine beste Antwort, "
+                               "wenn u₂(r,c) maximal über alle Spalten ist.",
+                               "For a fixed row r (Player 1's strategy), a column c is a best response if u₂(r,c) is maximal across all columns.")
                         ),
                         ui.tags.li(
-                            ui.tags.strong("Nash-Kriterium: "),
-                            "(r,c) ist Nash ⇔ r ist beste Antwort auf c UND c ist beste Antwort auf r."
+                            ui.tags.strong(tr(lang, "Nash-Kriterium: ", "Nash criterion: ")),
+                            tr(lang,
+                               "(r,c) ist Nash ⇔ r ist beste Antwort auf c UND c ist beste Antwort auf r.",
+                               "(r,c) is Nash ⇔ r is a best response to c AND c is a best response to r.")
                         ),
                         ui.tags.li(
-                            ui.tags.strong("Praktischer Tipp: "),
-                            "Markiere zuerst alle besten Antworten von Spieler 1 pro Spalte, dann alle besten Antworten von Spieler 2 pro Zeile. "
-                            "Schnittpunkte sind Nash-Gleichgewichte."
+                            ui.tags.strong(tr(lang, "Praktischer Tipp: ", "Practical tip: ")),
+                            tr(lang,
+                               "Markiere zuerst alle besten Antworten von Spieler 1 pro Spalte, dann alle besten Antworten von Spieler 2 pro Zeile. "
+                               "Schnittpunkte sind Nash-Gleichgewichte.",
+                               "First mark all of Player 1's best responses per column, then all of Player 2's best responses per row. "
+                               "Intersections are Nash equilibria.")
                         ),
                         class_="text-muted mb-0",
                     ),
@@ -2565,6 +3249,7 @@ def server(input, output, session):
     @output
     @render.ui
     def feedback_4():
+        lang = current_lang()
         if not show_fb4.get():
             return ui.tags.div()
 
@@ -2576,30 +3261,44 @@ def server(input, output, session):
 
         # Bestimme Text für die korrekte Lösung:
         if len(actual_set) == 0:
-            correct_text = "Es gibt kein Nash-Gleichgewicht in reinen Strategien"
+            correct_text = tr(lang, "Es gibt kein Nash-Gleichgewicht in reinen Strategien",
+                              "There is no Nash equilibrium in pure strategies")
         elif len(actual_set) == 1:
             combo = list(actual_set)[0]
-            correct_text = f"{combo} ist ein Nash-Gleichgewicht in reinen Strategien"
+            correct_text = tr(lang,
+                              f"{combo} ist ein Nash-Gleichgewicht in reinen Strategien",
+                              f"{combo} is a Nash equilibrium in pure strategies")
         else:
             # mehrere Gleichgewichte
             combos = sorted(list(actual_set))
             # Verbinde die Kombinationsliste mit Kommas und "und"
             if len(combos) == 2:
-                correct_text = f"{combos[0]} und {combos[1]} sind Nash-Gleichgewichte in reinen Strategien"
+                correct_text = tr(lang,
+                                  f"{combos[0]} und {combos[1]} sind Nash-Gleichgewichte in reinen Strategien",
+                                  f"{combos[0]} and {combos[1]} are Nash equilibria in pure strategies")
             else:
-                correct_text = (", ".join(combos[:-1]) + " und " + combos[-1] +
-                                " sind Nash-Gleichgewichte in reinen Strategien")
+                correct_text = tr(
+                    lang,
+                    (", ".join(combos[:-1]) + " und " + combos[-1] +
+                     " sind Nash-Gleichgewichte in reinen Strategien"),
+                    (", ".join(combos[:-1]) + " and " + combos[-1] +
+                     " are Nash equilibria in pure strategies")
+                )
 
         # Feedback je nach Richtigkeit der Auswahl:
         if chosen == actual_set:
             # Alle richtigen und keine falschen ausgewählt
             expl = ""
             if len(actual_set) >= 1:
-                expl = "Bei jeder anderen Strategiekombination kann sich mindestens einer der Spieler durch einseitiges Abweichen strikt verbessern."
+                expl = tr(lang,
+                          "Bei jeder anderen Strategiekombination kann sich mindestens einer der Spieler durch einseitiges Abweichen strikt verbessern.",
+                          "For any other strategy combination, at least one player can strictly improve by unilateral deviation.")
             else:
-                expl = "Bei jeder Strategiekombination kann sich mindestens ein Spieler strikt verbessern."
+                expl = tr(lang,
+                          "Bei jeder Strategiekombination kann sich mindestens ein Spieler strikt verbessern.",
+                          "For any strategy combination, at least one player can strictly improve.")
             return ui.tags.div(
-                ui.tags.div(f"✅ Richtig! {correct_text}.", class_="fw-semibold"),
+                ui.tags.div(tr(lang, f"✅ Richtig! {correct_text}.", f"✅ Correct! {correct_text}."), class_="fw-semibold"),
                 ui.tags.div(expl, class_="mt-2"),
                 class_="alert alert-success mt-3"
             )
@@ -2607,13 +3306,19 @@ def server(input, output, session):
             # Falsche oder unvollständige Auswahl
             expl = ""
             if len(actual_set) >= 1:
-                expl = "Bei jeder anderen Strategiekombination kann sich mindestens einer der Spieler durch einseitiges Abweichen strikt verbessern."
+                expl = tr(lang,
+                          "Bei jeder anderen Strategiekombination kann sich mindestens einer der Spieler durch einseitiges Abweichen strikt verbessern.",
+                          "For any other strategy combination, at least one player can strictly improve by unilateral deviation.")
             else:
-                expl = "Bei jeder Strategiekombination kann sich mindestens ein Spieler strikt verbessern."
+                expl = tr(lang,
+                          "Bei jeder Strategiekombination kann sich mindestens ein Spieler strikt verbessern.",
+                          "For any strategy combination, at least one player can strictly improve.")
             # Hinweis: "Richtig ist/sind" je nach Anzahl:
-            richtig_prefix = "Richtig sind: " if len(actual_set) > 1 else "Richtig ist: "
+            richtig_prefix = tr(lang, "Richtig sind: " if len(actual_set) > 1 else "Richtig ist: ",
+                                "Correct are: " if len(actual_set) > 1 else "Correct is: ")
             return ui.tags.div(
-                ui.tags.div(f"❌ Falsch. {richtig_prefix}{correct_text}.", class_="fw-semibold"),
+                ui.tags.div(tr(lang, f"❌ Falsch. {richtig_prefix}{correct_text}.",
+                               f"❌ Incorrect. {richtig_prefix}{correct_text}."), class_="fw-semibold"),
                 ui.tags.div(expl, class_="mt-2"),
                 class_="alert alert-danger mt-3"
             )
@@ -2628,7 +3333,9 @@ def server(input, output, session):
     @reactive.event(input.new_game_5)
     def _new_game_5():
         game5.set(generate_random_game_ex4())
-        ui.update_checkbox_group("answer_5", selected=None)
+        for r in P1_STRATS_EX2:
+            for c in P2_STRATS_EX2:
+                ui.update_radio_buttons(f"ex5_{r}_{c}", selected=None)
         show_fb5.set(False)
 
     @reactive.effect
@@ -2644,16 +3351,19 @@ def server(input, output, session):
     @output
     @render.ui
     def game_table_5():
-        return payoff_table(P1_STRATS_EX2, P2_STRATS_EX2, payoff_strings_from_tuple_payoffs(game5.get()))
+        lang = current_lang()
+        return payoff_table(P1_STRATS_EX2, P2_STRATS_EX2, payoff_strings_from_tuple_payoffs(game5.get()), lang=lang)
 
     @output
     @render.ui
     def notation_5():
-        return notation_ul(P1_STRATS_EX2, P2_STRATS_EX2, game5.get())
+        lang = current_lang()
+        return notation_ul(P1_STRATS_EX2, P2_STRATS_EX2, game5.get(), lang=lang)
 
     @output
     @render.ui
     def help_text_5():
+        lang = current_lang()
         if not show_help5.get():
             return ui.tags.div()
 
@@ -2661,29 +3371,40 @@ def server(input, output, session):
             ui.tags.div(
                 ui.tags.div(
                     ui.tags.p(
-                        ui.tags.strong("Ziel: "),
-                        "Für jedes Profil (r,c) entscheide: kein Nash / Nash aber nicht strikt / strikt Nash.",
+                        ui.tags.strong(tr(lang, "Ziel: ", "Goal: ")),
+                        tr(lang,
+                           "Für jedes Profil (r,c) entscheide: nein / ja, nicht strikt / ja, strikt.",
+                           "For each profile (r,c), decide: no / yes, not strict / yes, strict."),
                         class_="text-muted mb-2",
                     ),
                     ui.tags.ul(
                         ui.tags.li(
-                            ui.tags.strong("Nash (nicht strikt): "),
-                            "(r,c) ist Nash, wenn kein Spieler durch einseitiges Abweichen einen strikt höheren Nutzen bekommt. "
-                            "Es dürfen auch andere Strategien gleich gut sein (Indifferenz)."
+                            ui.tags.strong(tr(lang, "Nash (nicht strikt): ", "Nash (not strict): ")),
+                            tr(lang,
+                               "(r,c) ist Nash, wenn kein Spieler durch einseitiges Abweichen einen strikt höheren Nutzen bekommt. "
+                               "Es dürfen auch andere Strategien gleich gut sein (Indifferenz).",
+                               "(r,c) is Nash if no player can get a strictly higher payoff by unilateral deviation. "
+                               "Other strategies may be equally good (indifference).")
                         ),
                         ui.tags.li(
-                            ui.tags.strong("Strikt Nash: "),
-                            "(r,c) ist strikt Nash, wenn beide Spieler dort eine strikt beste Antwort spielen, also eindeutig (ohne Gleichstand)."
+                            ui.tags.strong(tr(lang, "Strikt Nash: ", "Strict Nash: ")),
+                            tr(lang,
+                               "(r,c) ist strikt Nash, wenn beide Spieler dort eine strikt beste Antwort spielen, also eindeutig (ohne Gleichstand).",
+                               "(r,c) is strict Nash if both players play a strictly best response there, i.e., uniquely (no tie).")
                         ),
                         ui.tags.li(
-                            ui.tags.strong("So prüfst du Spieler 1: "),
-                            "Fixiere c. Vergleiche u₁(·,c). "
-                            "Nash braucht: u₁(r,c) ist maximal. Strikt Nash braucht: u₁(r,c) ist strikt größer als alle anderen."
+                            ui.tags.strong(tr(lang, "So prüfst du Spieler 1: ", "Check Player 1: ")),
+                            tr(lang,
+                               "Fixiere c. Vergleiche u₁(·,c). "
+                               "Nash braucht: u₁(r,c) ist maximal. Strikt Nash braucht: u₁(r,c) ist strikt größer als alle anderen.",
+                               "Fix c. Compare u₁(·,c). Nash requires: u₁(r,c) is maximal. Strict Nash requires: u₁(r,c) is strictly greater than all others.")
                         ),
                         ui.tags.li(
-                            ui.tags.strong("So prüfst du Spieler 2: "),
-                            "Fixiere r. Vergleiche u₂(r,·). "
-                            "Nash braucht: u₂(r,c) ist maximal. Strikt Nash braucht: u₂(r,c) ist strikt größer als alle anderen."
+                            ui.tags.strong(tr(lang, "So prüfst du Spieler 2: ", "Check Player 2: ")),
+                            tr(lang,
+                               "Fixiere r. Vergleiche u₂(r,·). "
+                               "Nash braucht: u₂(r,c) ist maximal. Strikt Nash braucht: u₂(r,c) ist strikt größer als alle anderen.",
+                               "Fix r. Compare u₂(r,·). Nash requires: u₂(r,c) is maximal. Strict Nash requires: u₂(r,c) is strictly greater than all others.")
                         ),
                         class_="text-muted mb-0",
                     ),
@@ -2698,6 +3419,7 @@ def server(input, output, session):
     @output
     @render.ui
     def feedback_5():
+        lang = current_lang()
         if not show_fb5.get():
             return ui.tags.div()
         chosen = set(input.answer_5() or [])
@@ -2713,46 +3435,70 @@ def server(input, output, session):
         if chosen_set == strict_set:
             # Correct selection
             if len(strict_set) == 0:
-                correct_text = "Kein striktes Nash-Gleichgewicht vorhanden"
+                correct_text = tr(lang, "Kein striktes Nash-Gleichgewicht vorhanden", "No strict Nash equilibrium present")
             elif len(strict_set) == 1:
                 combo = list(strict_set)[0]
-                correct_text = f"{combo} ist ein striktes Nash-Gleichgewicht"
+                correct_text = tr(lang, f"{combo} ist ein striktes Nash-Gleichgewicht", f"{combo} is a strict Nash equilibrium")
             else:
                 combos = sorted(strict_set)
                 if len(combos) == 2:
-                    correct_text = f"{combos[0]} und {combos[1]} sind strikte Nash-Gleichgewichte"
+                    correct_text = tr(lang,
+                                      f"{combos[0]} und {combos[1]} sind strikte Nash-Gleichgewichte",
+                                      f"{combos[0]} and {combos[1]} are strict Nash equilibria")
                 else:
-                    correct_text = (", ".join(combos[:-1]) + " und " + combos[-1] + " sind strikte Nash-Gleichgewichte")
+                    correct_text = tr(
+                        lang,
+                        (", ".join(combos[:-1]) + " und " + combos[-1] + " sind strikte Nash-Gleichgewichte"),
+                        (", ".join(combos[:-1]) + " and " + combos[-1] + " are strict Nash equilibria")
+                    )
             expl = ""
             if len(strict_set) == 0:
-                expl = "In jedem Nash-Gleichgewicht dieses Spiels hat mindestens ein Spieler eine alternative Strategie, die ihm die gleiche Auszahlung bietet."
+                expl = tr(
+                    lang,
+                    "In jedem Nash-Gleichgewicht dieses Spiels hat mindestens ein Spieler eine alternative Strategie, die ihm die gleiche Auszahlung bietet.",
+                    "In every Nash equilibrium of this game, at least one player has an alternative strategy that yields the same payoff."
+                )
             else:
-                expl = "Bei allen anderen Strategiekombinationen kann sich mindestens ein Spieler durch einseitiges Abweichen strikt verbessern."
+                expl = tr(
+                    lang,
+                    "Bei allen anderen Strategiekombinationen kann sich mindestens ein Spieler durch einseitiges Abweichen strikt verbessern.",
+                    "For all other strategy combinations, at least one player can strictly improve by unilateral deviation."
+                )
             return ui.tags.div(
-                ui.tags.div(f"✅ Richtig! {correct_text}.", class_="fw-semibold"),
+                ui.tags.div(tr(lang, f"✅ Richtig! {correct_text}.", f"✅ Correct! {correct_text}."), class_="fw-semibold"),
                 ui.tags.div(expl, class_="mt-2"),
                 class_="alert alert-success mt-3",
             )
         else:
             # Incorrect or incomplete selection
             if len(strict_set) == 0:
-                correct_text = "kein striktes Nash-Gleichgewicht vorhanden"
+                correct_text = tr(lang, "kein striktes Nash-Gleichgewicht vorhanden", "no strict Nash equilibrium present")
             elif len(strict_set) == 1:
                 correct_text = list(strict_set)[0]
             else:
                 combos = sorted(strict_set)
                 if len(combos) == 2:
-                    correct_text = f"{combos[0]} und {combos[1]}"
+                    correct_text = tr(lang, f"{combos[0]} und {combos[1]}", f"{combos[0]} and {combos[1]}")
                 else:
-                    correct_text = (", ".join(combos[:-1]) + " und " + combos[-1])
+                    correct_text = tr(lang, (", ".join(combos[:-1]) + " und " + combos[-1]),
+                                      (", ".join(combos[:-1]) + " and " + combos[-1]))
             expl = ""
             if len(strict_set) == 0:
-                expl = "In jedem Nash-Gleichgewicht dieses Spiels hat mindestens ein Spieler eine alternative Strategie, die ihm keine geringere Auszahlung bringt."
+                expl = tr(
+                    lang,
+                    "In jedem Nash-Gleichgewicht dieses Spiels hat mindestens ein Spieler eine alternative Strategie, die ihm keine geringere Auszahlung bringt.",
+                    "In every Nash equilibrium of this game, at least one player has an alternative strategy that gives no lower payoff."
+                )
             else:
-                expl = "Bei allen anderen Strategiekombinationen kann sich mindestens ein Spieler durch einseitiges Abweichen strikt verbessern."
-            prefix = "Richtig ist: " if len(strict_set) <= 1 else "Richtig sind: "
+                expl = tr(
+                    lang,
+                    "Bei allen anderen Strategiekombinationen kann sich mindestens ein Spieler durch einseitiges Abweichen strikt verbessern.",
+                    "For all other strategy combinations, at least one player can strictly improve by unilateral deviation."
+                )
+            prefix = tr(lang, "Richtig ist: " if len(strict_set) <= 1 else "Richtig sind: ",
+                        "Correct is: " if len(strict_set) <= 1 else "Correct are: ")
             return ui.tags.div(
-                ui.tags.div(f"❌ Falsch. {prefix}{correct_text}.", class_="fw-semibold"),
+                ui.tags.div(tr(lang, f"❌ Falsch. {prefix}{correct_text}.", f"❌ Incorrect. {prefix}{correct_text}."), class_="fw-semibold"),
                 ui.tags.div(expl, class_="mt-2"),
                 class_="alert alert-danger mt-3",
             )
@@ -2784,16 +3530,19 @@ def server(input, output, session):
     @output
     @render.ui
     def game_table_6():
-        return payoff_table(P1_STRATS_EX6, P2_STRATS_EX6, payoff_strings_from_tuple_payoffs(game6.get()))
+        lang = current_lang()
+        return payoff_table(P1_STRATS_EX6, P2_STRATS_EX6, payoff_strings_from_tuple_payoffs(game6.get()), lang=lang)
 
     @output
     @render.ui
     def notation_6():
-        return notation_ul(P1_STRATS_EX6, P2_STRATS_EX6, game6.get())
+        lang = current_lang()
+        return notation_ul(P1_STRATS_EX6, P2_STRATS_EX6, game6.get(), lang=lang)
 
     @output
     @render.ui
     def help_text_6():
+        lang = current_lang()
         if not show_help6.get():
             return ui.tags.div()
 
@@ -2801,27 +3550,35 @@ def server(input, output, session):
             ui.tags.div(
                 ui.tags.div(
                     ui.tags.p(
-                        ui.tags.strong("Idee: "),
-                        "In einem gemischten Nash-Gleichgewicht wählt Spieler 1 A mit Wahrscheinlichkeit p, "
-                        "sodass Spieler 2 zwischen X und Y indifferent ist.",
+                        ui.tags.strong(tr(lang, "Idee: ", "Idea: ")),
+                        tr(lang,
+                           "In einem gemischten Nash-Gleichgewicht wählt Spieler 1 A mit Wahrscheinlichkeit p, "
+                           "sodass Spieler 2 zwischen X und Y indifferent ist.",
+                           "In a mixed Nash equilibrium, Player 1 plays A with probability p so that Player 2 is indifferent between X and Y."),
                         class_="text-muted mb-2",
                     ),
                     ui.tags.ul(
                         ui.tags.li(
-                            ui.tags.strong("Indifferenzbedingung (für Spieler 2): "),
-                            "Erwarteter Nutzen aus X = Erwarteter Nutzen aus Y."
+                            ui.tags.strong(tr(lang, "Indifferenzbedingung (für Spieler 2): ", "Indifference condition (for Player 2): ")),
+                            tr(lang,
+                               "Erwarteter Nutzen aus X = Erwarteter Nutzen aus Y.",
+                               "Expected payoff from X = expected payoff from Y.")
                         ),
                         ui.tags.li(
                             ui.tags.code("p·u₂(A,X) + (1−p)·u₂(B,X) = p·u₂(A,Y) + (1−p)·u₂(B,Y)")
                         ),
                         ui.tags.li(
-                            ui.tags.strong("Löse nach p: "),
-                            "Bringe alle p-Terme auf eine Seite und forme zu p = Zähler / Nenner um."
+                            ui.tags.strong(tr(lang, "Löse nach p: ", "Solve for p: ")),
+                            tr(lang,
+                               "Bringe alle p-Terme auf eine Seite und forme zu p = Zähler / Nenner um.",
+                               "Move all p terms to one side and rearrange to p = numerator / denominator.")
                         ),
                         ui.tags.li(
-                            ui.tags.strong("Warum das funktioniert: "),
-                            "Wenn Spieler 2 indifferent ist, ist es für ihn optimal zu mischen, damit kann Spieler 1 p so wählen, "
-                            "dass Spieler 2 keinen Anreiz hat, seine reine Strategie zu ändern."
+                            ui.tags.strong(tr(lang, "Warum das funktioniert: ", "Why this works: ")),
+                            tr(lang,
+                               "Wenn Spieler 2 indifferent ist, ist es für ihn optimal zu mischen, damit kann Spieler 1 p so wählen, "
+                               "dass Spieler 2 keinen Anreiz hat, seine reine Strategie zu ändern.",
+                               "If Player 2 is indifferent, mixing is optimal; then Player 1 can choose p so Player 2 has no incentive to change their pure strategy.")
                         ),
                         class_="text-muted mb-0",
                     ),
@@ -2836,17 +3593,20 @@ def server(input, output, session):
     @output
     @render.ui
     def feedback_6():
+        lang = current_lang()
         if not show_fb6.get():
             return ui.tags.div()
         if input.answer_6() is None or input.answer_6() == "":
             return ui.tags.div(
-                "Bitte wähle zuerst eine Antwort aus.", class_="alert alert-warning mt-3"
+                tr(lang, "Bitte wähle zuerst eine Antwort aus.", "Please choose an answer first."),
+                class_="alert alert-warning mt-3"
             )
         payoffs = game6.get()
         a = payoffs[("A", "X")][1] - payoffs[("A", "Y")][1]
         b = payoffs[("B", "Y")][1] - payoffs[("B", "X")][1]
         if a + b == 0:
-            return ui.tags.div("Keine eindeutige Lösung für p.", class_="alert alert-warning mt-3")
+            return ui.tags.div(tr(lang, "Keine eindeutige Lösung für p.", "No unique solution for p."),
+                               class_="alert alert-warning mt-3")
         
         from math import gcd
         num = b
@@ -2860,15 +3620,18 @@ def server(input, output, session):
             num *= -1
             den *= -1
         correct_frac = f"{num}/{den}"
-        expl = "Damit ist Spieler 2 indifferent zwischen X und Y."
+        expl = tr(lang, "Damit ist Spieler 2 indifferent zwischen X und Y.",
+                  "This makes Player 2 indifferent between X and Y.")
         if input.answer_6() == correct_frac:
             return ui.tags.div(
-                f"✅ Richtig! p = {correct_frac}. Damit ist Spieler 2 indifferent zwischen X und Y.",
+                tr(lang,
+                   f"✅ Richtig! p = {correct_frac}. Damit ist Spieler 2 indifferent zwischen X und Y.",
+                   f"✅ Correct! p = {correct_frac}. This makes Player 2 indifferent between X and Y."),
                 class_="alert alert-success mt-3"
             )
         else:
             return ui.tags.div(
-                f"❌ Falsch. Richtig ist: p = {correct_frac}.",
+                tr(lang, f"❌ Falsch. Richtig ist: p = {correct_frac}.", f"❌ Incorrect. Correct is: p = {correct_frac}."),
                 class_="alert alert-danger mt-3"
             )
 
