@@ -73,8 +73,12 @@ oder
 ```
 
 ### 3. Abhängigkeiten installieren
+
+Alle benötigten Pakete sind in der Datei `requirements.txt` hinterlegt.  
+Installiere sie mit:
+
 ```bash
-pip install shiny
+pip install -r requirements.txt
 ```
 
 ### 4. App im Terminal starten
