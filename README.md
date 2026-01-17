@@ -63,6 +63,8 @@ cd GameTheoryApp
 ### 2. Virtuelle Umgebung erstellen (empfohlen)
 ```bash
 python -m venv .venv
+```
+```bash
 source .venv/bin/activate   # macOS / Linux
 ```
 oder
