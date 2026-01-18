@@ -1,52 +1,52 @@
-# Game Theory Trainer (Normalformspiele)
+# Game Theory Trainer (Normal-Form Games)
 
-Eine interaktive Web-App zum Üben zentraler Konzepte der Spieltheorie  
-(Normalformspiele, beste Antworten, dominante Strategien, Nash-Gleichgewichte – auch gemischt).
+An interactive web app for practicing core concepts of game theory  
+(normal-form games, best responses, dominant strategies, Nash equilibria – including mixed strategies).
 
 https://jakobsar.shinyapps.io/game-theory-trainer/
 
-Die App richtet sich insbesondere an Studierende der Volkswirtschaftslehre, Wirtschaftswissenschaften und verwandter Fächer.
+The app is primarily aimed at students of economics, business administration, and related fields.
 
 ---
 
 ## Features
 
-- **Einführung in Normalformspiele**
-  - Spielermengen
-  - Strategiemengen
-  - Nutzenfunktionen
-  - Darstellung von Auszahlungen
+- **Introduction to normal-form games**
+  - Sets of players
+  - Strategy sets
+  - Utility functions
+  - Representation of payoffs
 
-- **Interaktive Übungen mit Zufallsspielen**
-  - Jede Übung erzeugt **neue Nutzenwerte**
-  - Automatische **Antwortprüfung mit Feedback**
-  - Didaktisch kontrollierte Zufallslogik (keine trivialen oder degenerierten Fälle)
+- **Interactive exercises with random games**
+  - Each exercise generates **new payoff values**
+  - Automatic **answer checking with feedback**
+  - Didactically controlled randomization (no trivial or degenerate cases)
 
-- **Übungstypen**
-  1. **Beste Antworten**
-  2. **Strikt dominante Strategien**
-  3. **Strikt & schwach dominante Strategien**
-  4. **Nash-Gleichgewichte in reinen Strategien**
-  5. **Strikte vs. nicht-strikte Nash-Gleichgewichte**
-  6. **Gemischte Nash-Gleichgewichte (2×2-Spiele)**
-
----
-
-## Inhaltliche Konzepte
-
-Die App deckt u. a. folgende spieltheoretische Konzepte ab:
-
-- Beste Antwort
-- Strikt dominante Strategie
-- Schwach dominante Strategie
-- Nash-Gleichgewicht (rein)
-- Striktes Nash-Gleichgewicht
-- Gemischte Nash-Gleichgewichte
-- Indifferenzbedingungen
+- **Types of exercises**
+  1. **Best responses**
+  2. **Strictly dominant strategies**
+  3. **Strictly & weakly dominant strategies**
+  4. **Nash equilibria in pure strategies**
+  5. **Strict vs. non-strict Nash equilibria**
+  6. **Mixed Nash equilibria (2×2 games)**
 
 ---
 
-## Technologie
+## Conceptual Coverage
+
+The app covers, among others, the following game-theoretic concepts:
+
+- Best response
+- Strictly dominant strategy
+- Weakly dominant strategy
+- Nash equilibrium (pure)
+- Strict Nash equilibrium
+- Mixed Nash equilibria
+- Indifference conditions
+
+---
+
+## Technology
 
 - **Python**
 - **Shiny for Python**
@@ -54,45 +54,41 @@ Die App deckt u. a. folgende spieltheoretische Konzepte ab:
 
 ---
 
-## Installation & Start
+## Installation & Launch
 
-### 1. Repository klonen
+### 1. Clone the repository
 ```bash
 git clone https://github.com/DEIN_USERNAME/GameTheoryApp.git
 cd GameTheoryApp
-```
 
-### 2. Virtuelle Umgebung erstellen (empfohlen)
+
+
+### 2. Create a virtual environment (recommended)
 ```bash
 python -m venv .venv
 ```
 ```bash
 source .venv/bin/activate   # macOS / Linux
 ```
-oder
+or
 ```bash
 .venv\Scripts\activate      # Windows
 ```
 
-### 3. Abhängigkeiten installieren
+### 3. Install dependencies
 
-Alle benötigten Pakete sind in der Datei `requirements.txt` hinterlegt.  
-Installiere sie mit:
+All required packages are listed in the `requirements.txt` file.
+Install them using:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. App im Terminal starten
+### 4. Start the app from the terminal
 ```bash
 shiny run App.py
 ```
-Die App läuft anschließend unter:
+The app will then be available at:
 ```bash
 http://127.0.0.1:8000
 ```
-
-
-
-
-

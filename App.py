@@ -1116,6 +1116,9 @@ SPECIAL_GAMES_ROWS = [
 # UI
 # =========================================================
 app_ui = ui.page_fluid(
+    ui.tags.head(
+        ui.tags.title("Game Theory Trainer"),
+    ),
 
     # ---------- Styles ----------
     ui.tags.style("""
@@ -1143,6 +1146,9 @@ app_ui = ui.page_fluid(
     }
     body {
         padding-top: var(--header-height);
+    }
+    html, body {
+        overflow-x: hidden;
     }
     .nav-tabs {
         display: flex;
@@ -1177,6 +1183,30 @@ app_ui = ui.page_fluid(
         color: #000000;
         background-color: transparent;
         border: none;
+        box-shadow: none;
+    }
+    .btn-success {
+        background-color: rgb(200, 212, 0);
+        border-color: rgb(200, 212, 0);
+        color: rgb(87, 87, 86);
+        font-weight: 600;
+    }
+    .btn-success:hover,
+    .btn-success:focus,
+    .btn-success:focus-visible {
+        background-color: rgb(200, 212, 0);
+        border-color: rgb(200, 212, 0);
+        color: rgb(87, 87, 86);
+        box-shadow: none;
+    }
+    .btn-success:active,
+    .btn-success.active,
+    .btn-check:checked + .btn-success,
+    .btn-check:active + .btn-success,
+    .show > .btn-success.dropdown-toggle {
+        background-color: rgb(200, 212, 0);
+        border-color: rgb(200, 212, 0);
+        color: rgb(87, 87, 86);
         box-shadow: none;
     }
     .lang-switch {
@@ -1307,7 +1337,7 @@ app_ui = ui.page_fluid(
             display: none;
         }
         .lang-switch {
-            left: 0.75rem;
+            left: 1.25rem;
             right: auto;
         }
         .tabs-toggle {
@@ -1319,7 +1349,7 @@ app_ui = ui.page_fluid(
             height: var(--header-height);
             align-items: center;
             justify-content: flex-end;
-            padding-right: 0.75rem;
+            padding-right: 1.25rem;
             z-index: 1001;
             background-color: var(--header-bg) !important;
             border: none;
@@ -1390,7 +1420,7 @@ app_ui = ui.page_fluid(
             display: none;
         }
         .lang-switch {
-            left: 0.75rem;
+            left: 1.25rem;
             right: auto;
         }
         .tabs-toggle {
@@ -1402,7 +1432,7 @@ app_ui = ui.page_fluid(
             height: var(--header-height);
             align-items: center;
             justify-content: flex-end;
-            padding-right: 0.75rem;
+            padding-right: 1.25rem;
             z-index: 1001;
             background-color: var(--header-bg) !important;
             border: none;
@@ -1881,7 +1911,7 @@ app_ui = ui.page_fluid(
         ui.tags.h6("Impressum", class_="mb-2", **{"data-i18n-de": "Impressum", "data-i18n-en": "Imprint"}),
         ui.tags.p(
             ui.tags.span("Verantwortlich: ", **{"data-i18n-de": "Verantwortlich: ", "data-i18n-en": "Responsible: "}),
-            ui.tags.a("Jakob Sarrazin", href="#", onclick="toggleImpressumEmail(event);"),
+            ui.tags.a("Marion Ott, Jakob Sarrazin", href="#", onclick="toggleImpressumEmail(event);"),
             ui.tags.span(
                 ui.tags.br(),
                 ui.tags.a(
@@ -2082,7 +2112,7 @@ app_ui = ui.page_fluid(
                 ui.input_action_button(
                     "start_exercise",
                     ui.tags.span("Zu Übung 1", **{"data-i18n-de": "Zu Übung 1", "data-i18n-en": "Go to Exercise 1"}),
-                    class_="btn btn-primary mt-4",
+                    class_="btn btn-success mt-4",
                 ),
 
                 class_="container-fluid px-4",
@@ -2166,7 +2196,7 @@ app_ui = ui.page_fluid(
                                 ui.input_action_button(
                                     "check_1",
                                     ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
-                                    class_="btn btn-success mt-3",
+                                    class_="btn btn-primary mt-3",
                                 ),
 
                                 ui.output_ui("feedback_1"),
@@ -2190,7 +2220,7 @@ app_ui = ui.page_fluid(
                 ui.input_action_button(
                     "go_to_ex2",
                     ui.tags.span("Weiter zu Übung 2", **{"data-i18n-de": "Weiter zu Übung 2", "data-i18n-en": "Next to Exercise 2"}),
-                    class_="btn btn-primary mt-4",
+                    class_="btn btn-success mt-4",
                 ),
 
                 class_="container-fluid px-4 mt-3",
@@ -2274,7 +2304,7 @@ app_ui = ui.page_fluid(
                                 ui.input_action_button(
                                     "check_2",
                                     ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
-                                    class_="btn btn-success mt-3",
+                                    class_="btn btn-primary mt-3",
                                 ),
 
                                 ui.output_ui("feedback_2"),
@@ -2299,7 +2329,7 @@ app_ui = ui.page_fluid(
             ui.input_action_button(
                 "go_to_ex3",
                 ui.tags.span("Weiter zu Übung 3", **{"data-i18n-de": "Weiter zu Übung 3", "data-i18n-en": "Next to Exercise 3"}),
-                class_="btn btn-primary"
+                class_="btn btn-success"
             ),
             class_="mt-4 text-start mb-3"
         ),
@@ -2372,7 +2402,7 @@ ui.nav_panel(
                         ui.input_action_button(
                             "check_3",
                             ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
-                            class_="btn btn-success mt-3"
+                            class_="btn btn-primary mt-3"
                         ),
                         ui.output_ui("feedback_3"),
                         class_="card-body"
@@ -2392,7 +2422,7 @@ ui.nav_panel(
             ui.input_action_button(
                 "go_to_ex4",
                 ui.tags.span("Weiter zu Übung 4", **{"data-i18n-de": "Weiter zu Übung 4", "data-i18n-en": "Next to Exercise 4"}),
-                class_="btn btn-primary"
+                class_="btn btn-success"
             ),
             class_="mt-4 text-start mb-3"
         ),
@@ -2465,7 +2495,7 @@ ui.nav_panel(
                         ui.input_action_button(
                             "check_4",
                             ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
-                            class_="btn btn-success mt-3"
+                            class_="btn btn-primary mt-3"
                         ),
                         ui.output_ui("feedback_4"),
                         class_="card-body"
@@ -2485,7 +2515,7 @@ ui.nav_panel(
             ui.input_action_button(
                 "go_to_ex5",
                 ui.tags.span("Weiter zu Übung 5", **{"data-i18n-de": "Weiter zu Übung 5", "data-i18n-en": "Next to Exercise 5"}),
-                class_="btn btn-primary"
+                class_="btn btn-success"
             ),
             class_="mt-4 text-start mb-3"
         ),
@@ -2558,7 +2588,7 @@ ui.nav_panel(
                                 ui.input_action_button(
                                     "check_5",
                                     ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
-                                    class_="btn btn-success mt-3"
+                                    class_="btn btn-primary mt-3"
                                 ),
                                 ui.output_ui("feedback_5"),
                                 class_="card-body",
@@ -2578,7 +2608,7 @@ ui.nav_panel(
                     ui.input_action_button(
                         "go_to_ex6",
                         ui.tags.span("Weiter zu Übung 6", **{"data-i18n-de": "Weiter zu Übung 6", "data-i18n-en": "Next to Exercise 6"}),
-                        class_="btn btn-primary"
+                        class_="btn btn-success"
                     ),
                     class_="mt-4 text-start mb-3",
                 ),
@@ -2655,7 +2685,7 @@ ui.nav_panel(
                                 ui.input_action_button(
                                     "check_6",
                                     ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
-                                    class_="btn btn-success mt-3"
+                                    class_="btn btn-primary mt-3"
                                 ),
                                 ui.output_ui("feedback_6"),
                                 class_="card-body",
@@ -2675,7 +2705,7 @@ ui.nav_panel(
                     ui.input_action_button(
                         "go_to_special_games",
                         ui.tags.span("Zu besonderen Spielen", **{"data-i18n-de": "Zu besonderen Spielen", "data-i18n-en": "Go to special games"}),
-                        class_="btn btn-primary"
+                        class_="btn btn-success"
                     ),
                     class_="mt-4 text-start mb-3 d-flex gap-2",
                 ),
@@ -2701,6 +2731,14 @@ ui.nav_panel(
                     class_="text-muted mb-4",
                 ),
                 *SPECIAL_GAMES_ROWS,
+                ui.tags.div(
+                    ui.input_action_button(
+                        "go_back_intro_from_special",
+                        ui.tags.span("Zurück zur Einführung", **{"data-i18n-de": "Zurück zur Einführung", "data-i18n-en": "Back to introduction"}),
+                        class_="btn btn-outline-secondary"
+                    ),
+                    class_="mt-4 text-start mb-3",
+                ),
                 class_="container-fluid px-4",
             ),
             value="special_games",
@@ -2747,6 +2785,10 @@ def server(input, output, session):
     @reactive.event(input.go_to_special_games)
     def _go_to_special_games():
         ui.update_navset("tabs", selected="special_games")
+    @reactive.effect
+    @reactive.event(input.go_back_intro_from_special)
+    def _go_back_intro_from_special():
+        ui.update_navset("tabs", selected="intro")
     @reactive.effect
     @reactive.event(input.go_back_ex1)
     def _go_back_ex1():
