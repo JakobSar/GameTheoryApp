@@ -60,8 +60,7 @@ The app covers, among others, the following game-theoretic concepts:
 ```bash
 git clone https://github.com/DEIN_USERNAME/GameTheoryApp.git
 cd GameTheoryApp
-
-
+```
 
 ### 2. Create a virtual environment (recommended)
 ```bash
