@@ -1143,12 +1143,28 @@ app_ui = ui.page_fluid(
         --header-bg: rgb(213, 236, 240);
         --header-height: 64px;
         --header-hover: #5f5f5f;
+        --bg: #ffffff;
+        --text: #1f1f1f;
+        --card-bg: #ffffff;
+        --muted: #6c757d;
+        --border: #cfcfcf;
     }
     body {
         padding-top: var(--header-height);
+        background-color: var(--bg);
+        color: var(--text);
     }
     html, body {
         overflow-x: hidden;
+    }
+    body.dark-mode {
+        --header-bg: #0b1523;
+        --header-hover: #16243a;
+        --bg: #111b2e;
+        --text: #e8edf5;
+        --card-bg: #17243a;
+        --muted: #b2bdd1;
+        --border: #6a7a96;
     }
     .nav-tabs {
         display: flex;
@@ -1185,6 +1201,13 @@ app_ui = ui.page_fluid(
         border: none;
         box-shadow: none;
     }
+    .dark-mode .nav-tabs .nav-link {
+        color: #e6e6e6;
+    }
+    .dark-mode .nav-tabs .nav-link.active,
+    .dark-mode .nav-tabs .nav-link:focus {
+        color: #ffffff;
+    }
     .btn-success {
         background-color: rgb(200, 212, 0);
         border-color: rgb(200, 212, 0);
@@ -1209,6 +1232,24 @@ app_ui = ui.page_fluid(
         color: rgb(87, 87, 86);
         box-shadow: none;
     }
+    .dark-mode .btn-success {
+        background-color: #d4b24c;
+        border-color: #d4b24c;
+        color: #1a1a1a;
+    }
+    .dark-mode .btn-success:hover,
+    .dark-mode .btn-success:focus,
+    .dark-mode .btn-success:focus-visible,
+    .dark-mode .btn-success:active,
+    .dark-mode .btn-success.active,
+    .dark-mode .btn-check:checked + .btn-success,
+    .dark-mode .btn-check:active + .btn-success,
+    .dark-mode .show > .btn-success.dropdown-toggle {
+        background-color: #c2a040;
+        border-color: #c2a040;
+        color: #1a1a1a;
+        box-shadow: none;
+    }
     .lang-switch {
         position: fixed;
         top: 0;
@@ -1222,6 +1263,9 @@ app_ui = ui.page_fluid(
         font-size: 0.9rem;
         color: rgb(87, 87, 86);
         pointer-events: none;
+    }
+    .dark-mode .lang-switch {
+        color: #e6e6e6;
     }
     .lang-switch * {
         pointer-events: auto;
@@ -1275,6 +1319,36 @@ app_ui = ui.page_fluid(
         padding: 0.35rem 0.6rem;
         font-style: italic;
     }
+    .darkmode-toggle {
+        position: fixed;
+        left: 0.75rem;
+        bottom: 0.75rem;
+        z-index: 1002;
+        width: 2.4rem;
+        height: 2.4rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 0;
+        line-height: 1;
+    }
+    .darkmode-toggle .icon-sun {
+        display: none;
+    }
+    .darkmode-toggle .icon-moon {
+        display: inline;
+    }
+    .dark-mode .darkmode-toggle .icon-sun {
+        display: inline;
+    }
+    .dark-mode .darkmode-toggle .icon-moon {
+        display: none;
+    }
+    .dark-mode .darkmode-toggle {
+        color: #e6e6e6;
+        border-color: var(--border);
+    }
     .impressum-panel {
         position: fixed;
         right: 0.75rem;
@@ -1288,9 +1362,17 @@ app_ui = ui.page_fluid(
         z-index: 1003;
         display: none;
     }
+    .dark-mode .impressum-panel {
+        background: var(--card-bg) !important;
+        border-color: var(--border) !important;
+        color: var(--text);
+    }
     .impressum-panel a {
         color: #000000;
         text-decoration: none;
+    }
+    .dark-mode .impressum-panel a {
+        color: var(--text);
     }
     .impressum-panel a:hover {
         color: #000000;
@@ -1298,7 +1380,8 @@ app_ui = ui.page_fluid(
     .impressum-panel a[href^="http"] {
         word-break: break-all;
     }
-    .nav-tabs .impressum-nav-link {
+    .nav-tabs .impressum-nav-link,
+    .nav-tabs .darkmode-nav-link {
         display: inline-block;
         font-style: italic;
         padding: 0.2rem 0.45rem;
@@ -1306,8 +1389,12 @@ app_ui = ui.page_fluid(
         border: 1px solid #6c757d !important;
         border-radius: 0.375rem;
         background-color: #ffffff !important;
+        color: #000000 !important;
         font-weight: 400;
         margin-right: 0.4rem;
+    }
+    .nav-tabs .darkmode-nav-link {
+        font-style: normal;
     }
     .impressum-panel.open {
         display: block;
@@ -1336,87 +1423,7 @@ app_ui = ui.page_fluid(
         .impressum-btn {
             display: none;
         }
-        .lang-switch {
-            left: 1.25rem;
-            right: auto;
-        }
-        .tabs-toggle {
-            display: inline-flex;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: var(--header-height);
-            align-items: center;
-            justify-content: flex-end;
-            padding-right: 1.25rem;
-            z-index: 1001;
-            background-color: var(--header-bg) !important;
-            border: none;
-            border-radius: 0 !important;
-            color: rgb(87, 87, 86);
-            font-weight: 700;
-            text-align: right;
-            font-size: 1.05rem;
-            line-height: 1;
-        }
-        body.tabs-open .tabs-toggle {
-            color: #ffffff;
-            background-color: var(--header-hover) !important;
-        }
-        .tabs-toggle:hover {
-            color: #ffffff;
-            background-color: var(--header-hover) !important;
-            border-radius: 0 !important;
-        }
-        .tabs-toggle:hover ~ .lang-switch,
-        .tabs-toggle:focus ~ .lang-switch,
-        .tabs-toggle:active ~ .lang-switch {
-            color: #ffffff;
-        }
-        .tabs-toggle:focus,
-        .tabs-toggle:active,
-        body.tabs-open .tabs-toggle:hover,
-        body.tabs-open .tabs-toggle:focus,
-        body.tabs-open .tabs-toggle:active {
-            color: #ffffff;
-            background-color: var(--header-hover) !important;
-            border-radius: 0 !important;
-        }
-        .nav-tabs {
-            display: flex;
-            position: fixed;
-            top: var(--header-height);
-            left: 0;
-            right: 0;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 6px;
-            padding: 0.5rem 0.75rem 0.75rem;
-            background-color: var(--header-bg);
-            z-index: 1000;
-        }
-        body.tabs-open .nav-tabs {
-            display: flex !important;
-            background-color: var(--header-bg) !important;
-        }
-        body.tabs-closed .nav-tabs {
-            display: none !important;
-        }
-        body.tabs-open .nav-tabs .nav-link {
-            text-align: right;
-        }
-        .impressum-panel {
-            top: calc(var(--header-height) + 0.5rem);
-            right: 0.5rem;
-            bottom: auto;
-        }
-        body.tabs-open .lang-switch {
-            color: #ffffff;
-        }
-    }
-    @media (max-aspect-ratio: 1/1) {
-        .impressum-btn {
+        .darkmode-toggle {
             display: none;
         }
         .lang-switch {
@@ -1494,15 +1501,156 @@ app_ui = ui.page_fluid(
             right: 0.5rem;
             bottom: auto;
         }
-        body.tabs-open .lang-switch {
+    body.tabs-open .lang-switch {
+        color: #ffffff;
+    }
+    body.dark-mode.tabs-open .lang-switch {
+        color: #ffffff;
+    }
+    }
+    @media (max-aspect-ratio: 1/1) {
+        .impressum-btn {
+            display: none;
+        }
+        .darkmode-toggle {
+            display: none;
+        }
+        .lang-switch {
+            left: 1.25rem;
+            right: auto;
+        }
+        .tabs-toggle {
+            display: inline-flex;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--header-height);
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 1.25rem;
+            z-index: 1001;
+            background-color: var(--header-bg) !important;
+            border: none;
+            border-radius: 0 !important;
+            color: rgb(87, 87, 86);
+            font-weight: 700;
+            text-align: right;
+            font-size: 1.05rem;
+            line-height: 1;
+        }
+        body.tabs-open .tabs-toggle {
+            color: #ffffff;
+            background-color: var(--header-hover) !important;
+        }
+        .tabs-toggle:hover {
+            color: #ffffff;
+            background-color: var(--header-hover) !important;
+            border-radius: 0 !important;
+        }
+        .tabs-toggle:hover ~ .lang-switch,
+        .tabs-toggle:focus ~ .lang-switch,
+        .tabs-toggle:active ~ .lang-switch {
             color: #ffffff;
         }
+        .tabs-toggle:focus,
+        .tabs-toggle:active,
+        body.tabs-open .tabs-toggle:hover,
+        body.tabs-open .tabs-toggle:focus,
+        body.tabs-open .tabs-toggle:active {
+            color: #ffffff;
+            background-color: var(--header-hover) !important;
+            border-radius: 0 !important;
+        }
+        .nav-tabs {
+            display: flex;
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            right: 0;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+            padding: 0.5rem 0.75rem 0.75rem;
+            background-color: var(--header-bg);
+            z-index: 1000;
+        }
+        body.tabs-open .nav-tabs {
+            display: flex !important;
+            background-color: var(--header-bg) !important;
+        }
+        body.tabs-closed .nav-tabs {
+            display: none !important;
+        }
+        body.tabs-open .nav-tabs .nav-link {
+            text-align: right;
+        }
+        .impressum-panel {
+            top: calc(var(--header-height) + 0.5rem);
+            right: 0.5rem;
+            bottom: auto;
+        }
+    body.tabs-open .lang-switch {
+        color: #ffffff;
+    }
+    body.dark-mode.tabs-open .lang-switch {
+        color: #ffffff;
+    }
     }
     body {
         font-family: "Source Sans Pro", Arial, sans-serif;
         margin: 0;
-        background-color: #ffffff;
+        background-color: var(--bg);
         padding-bottom: 10em;
+    }
+    .dark-mode .card,
+    .dark-mode .card-body,
+    .dark-mode .card-title {
+        background-color: var(--card-bg) !important;
+        color: var(--text) !important;
+    }
+    .dark-mode .text-muted {
+        color: var(--muted) !important;
+    }
+    .dark-mode .table {
+        color: var(--text);
+        background-color: var(--card-bg);
+    }
+    .dark-mode .table-bordered,
+    .dark-mode .table-bordered td,
+    .dark-mode .table-bordered th {
+        border-color: var(--border) !important;
+        border-width: 1.5px !important;
+    }
+    .dark-mode .table thead th,
+    .dark-mode .table tbody th,
+    .dark-mode .table td {
+        background-color: var(--card-bg) !important;
+        color: var(--text) !important;
+        border-top-width: 1.5px !important;
+        border-right-width: 1.5px !important;
+        border-bottom-width: 1.5px !important;
+        border-left-width: 1.5px !important;
+    }
+    .dark-mode .table thead tr:last-child th {
+        border-bottom: 1.5px solid var(--border) !important;
+    }
+    .dark-mode code {
+        color: #e9eef5;
+        background-color: #1b2b43;
+    }
+    .dark-mode .btn-outline-primary,
+    .dark-mode .btn-outline-secondary {
+        color: var(--text);
+        border-color: var(--border);
+    }
+    .dark-mode .btn-outline-primary:hover,
+    .dark-mode .btn-outline-secondary:hover,
+    .dark-mode .btn-outline-primary:focus,
+    .dark-mode .btn-outline-secondary:focus {
+        background-color: #1c2a44;
+        border-color: #1c2a44;
+        color: #ffffff;
     }
 
     /* Radio buttons in two columns */
@@ -1751,10 +1899,55 @@ app_ui = ui.page_fluid(
             document.body.classList.add('tabs-closed');
           }
         }
+        function applyDarkMode(enabled) {
+          document.body.classList.toggle('dark-mode', enabled);
+          updateDarkModeLabel();
+        }
+        function updateDarkModeToggle() {
+          var btn = document.querySelector('.darkmode-toggle');
+          if (!btn) { return; }
+          var isDark = document.body.classList.contains('dark-mode');
+          btn.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+        }
+        function updateDarkModeLabel() {
+          var link = document.querySelector('.darkmode-nav-link');
+          if (!link) { return; }
+          var isDark = document.body.classList.contains('dark-mode');
+          var label = isDark
+            ? ((currentLang === 'en')
+              ? 'Light mode <span aria-hidden="true">☀</span>'
+              : 'Tagmodus <span aria-hidden="true">☀</span>')
+            : ((currentLang === 'en')
+              ? 'Dark mode <span aria-hidden="true">☾</span>'
+              : 'Nachtmodus <span aria-hidden="true">☾</span>');
+          if (link.innerHTML !== label) {
+            link.innerHTML = label;
+          }
+        }
+        function initDarkMode() {
+          var stored = null;
+          try {
+            stored = localStorage.getItem('darkMode');
+          } catch (e) {
+            stored = null;
+          }
+          if (stored === '1') {
+            applyDarkMode(true);
+          }
+          updateDarkModeToggle();
+        }
         window.toggleTabsMenu = function () {
           if (!isMobileMenu()) { return; }
           var isOpen = document.body.classList.contains('tabs-open');
           setTabsOpen(!isOpen);
+        };
+        window.toggleDarkMode = function () {
+          var isDark = document.body.classList.contains('dark-mode');
+          applyDarkMode(!isDark);
+          try {
+            localStorage.setItem('darkMode', (!isDark) ? '1' : '0');
+          } catch (e) {}
+          updateDarkModeToggle();
         };
         function initLanguageToggle() {
           var toggle = document.getElementById('lang_toggle');
@@ -1793,6 +1986,7 @@ app_ui = ui.page_fluid(
           if (!navTabs) { return; }
           var isMobile = isMobileMenu();
           var existing = navTabs.querySelector('.impressum-nav-link');
+          var darkExisting = navTabs.querySelector('.darkmode-nav-link');
           if (isMobile) {
             if (!existing) {
               var item = document.createElement('li');
@@ -1813,12 +2007,30 @@ app_ui = ui.page_fluid(
                 existing.textContent = label;
               }
             }
+            if (!darkExisting) {
+              var darkItem = document.createElement('li');
+              darkItem.className = 'nav-item';
+              var darkLink = document.createElement('a');
+              darkLink.className = 'nav-link impressum-nav-link darkmode-nav-link';
+              darkLink.href = '#';
+              darkLink.addEventListener('click', function (e) {
+                e.preventDefault();
+                toggleDarkMode();
+              });
+              darkItem.appendChild(darkLink);
+              navTabs.appendChild(darkItem);
+            }
+            updateDarkModeLabel();
           } else if (existing) {
             existing.parentElement.remove();
+            if (darkExisting) {
+              darkExisting.parentElement.remove();
+            }
           }
         }
         document.addEventListener('DOMContentLoaded', function () {
           initLanguageToggle();
+          initDarkMode();
           ensureImpressumLink();
           var navTabs = document.querySelector('.nav-tabs');
           if (navTabs) {
@@ -1906,6 +2118,14 @@ app_ui = ui.page_fluid(
         ui.tags.span("Impressum", **{"data-i18n-de": "Impressum", "data-i18n-en": "Imprint"}),
         class_="btn btn-outline-secondary impressum-btn",
         onclick="toggleImpressum();",
+    ),
+    ui.tags.button(
+        ui.tags.span("☀", class_="icon-sun"),
+        ui.tags.span("☾", class_="icon-moon"),
+        class_="btn btn-outline-secondary darkmode-toggle",
+        type="button",
+        onclick="toggleDarkMode();",
+        aria_label="Dark mode",
     ),
     ui.tags.div(
         ui.tags.h6("Impressum", class_="mb-2", **{"data-i18n-de": "Impressum", "data-i18n-en": "Imprint"}),
