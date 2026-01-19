@@ -1609,6 +1609,14 @@ app_ui = ui.page_fluid(
         background-color: var(--card-bg) !important;
         color: var(--text) !important;
     }
+    .dark-mode .notation-card {
+        background-color: #1c2b45 !important;
+        border: 1px solid #2f4463;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 6px 12px rgba(0, 0, 0, 0.2);
+    }
+    .dark-mode .notation-card .card-body {
+        background-color: transparent !important;
+    }
     .dark-mode .text-muted {
         color: var(--muted) !important;
     }
@@ -2316,7 +2324,7 @@ app_ui = ui.page_fluid(
                                         ),
                                         class_="card-body",
                                     ),
-                                    class_="card h-100",
+                                    class_="card h-100 notation-card",
                                     style="background-color:#f7f7f7;",
                                 ),
                                 class_="col-12 col-lg-5",
@@ -2364,7 +2372,7 @@ app_ui = ui.page_fluid(
                                         ui.output_ui("notation_1"),
                                         class_="card-body py-2 exercise-notation-body",
                                     ),
-                                    class_="card mt-3",
+                                    class_="card mt-3 notation-card",
                                     style="background-color:#f7f7f7;",
                                 ),
 
@@ -2411,6 +2419,10 @@ app_ui = ui.page_fluid(
                             ui.tags.p(
                                 "… ist / sind eine beste Antwort.",
                                 class_="mt-2",
+                                **{
+                                    "data-i18n-de": "… ist / sind eine beste Antwort.",
+                                    "data-i18n-en": "… is/are a best response.",
+                                },
                             ),
 
                                 ui.input_action_button(
@@ -2472,7 +2484,7 @@ app_ui = ui.page_fluid(
                                         ui.output_ui("notation_2"),
                                         class_="card-body py-2 exercise-notation-body",
                                     ),
-                                    class_="card mt-3",
+                                    class_="card mt-3 notation-card",
                                     style="background-color:#f7f7f7;",
                                 ),
 
@@ -2577,7 +2589,7 @@ ui.nav_panel(
                                         ui.output_ui("notation_3"),
                                         class_="card-body py-2 exercise-notation-body",
                                     ),
-                                    class_="card mt-3",
+                                    class_="card mt-3 notation-card",
                                     style="background-color:#f7f7f7;",
                                 ),
                         ui.tags.div(
@@ -2670,7 +2682,7 @@ ui.nav_panel(
                           ui.output_ui("notation_4"),
                                   class_="card-body py-2 exercise-notation-body",
                                 ),
-                                class_="card mt-3",
+                                class_="card mt-3 notation-card",
                                 style="background-color:#f7f7f7;",
                                 ),
                         ui.tags.div(
@@ -2767,7 +2779,7 @@ ui.nav_panel(
                                         ui.output_ui("notation_5"),
                                         class_="card-body py-2 exercise-notation-body",
                                     ),
-                                    class_="card mt-3",
+                                    class_="card mt-3 notation-card",
                                     style="background-color:#f7f7f7;",
                                 ),
                                 ui.tags.div(
@@ -2859,7 +2871,7 @@ ui.nav_panel(
                                         ui.output_ui("notation_6"),
                                         class_="card-body py-2 exercise-notation-body",
                                     ),
-                                    class_="card mt-3",
+                                    class_="card mt-3 notation-card",
                                     style="background-color:#f7f7f7;",
                                 ),
                                 ui.tags.div(
@@ -3154,7 +3166,7 @@ def server(input, output, session):
                 ),
                 class_="card-body py-2 exercise-notation-body",
             ),
-            class_="card mt-3",
+            class_="card mt-3 notation-card",
             style="background-color:#f7f7f7;",
         )
 
@@ -3278,7 +3290,7 @@ def server(input, output, session):
                 ),
                 class_="card-body py-2 exercise-notation-body",
             ),
-            class_="card mt-3",
+            class_="card mt-3 notation-card",
             style="background-color:#f7f7f7;",
         )
 
@@ -3440,7 +3452,7 @@ def server(input, output, session):
                 ),
                 class_="card-body py-2 exercise-notation-body",
             ),
-            class_="card mt-3",
+            class_="card mt-3 notation-card",
             style="background-color:#f7f7f7;",
         )
 
@@ -3569,7 +3581,7 @@ def server(input, output, session):
                 ),
                 class_="card-body py-2 exercise-notation-body",
             ),
-            class_="card mt-3",
+            class_="card mt-3 notation-card",
             style="background-color:#f7f7f7;",
         )
 
@@ -3739,7 +3751,7 @@ def server(input, output, session):
                 ),
                 class_="card-body py-2 exercise-notation-body",
             ),
-            class_="card mt-3",
+            class_="card mt-3 notation-card",
             style="background-color:#f7f7f7;",
         )
 
@@ -3994,7 +4006,7 @@ def server(input, output, session):
                 ),
                 class_="card-body py-2 exercise-notation-body",
             ),
-            class_="card mt-3",
+            class_="card mt-3 notation-card",
             style="background-color:#f7f7f7;",
         )
 
