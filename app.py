@@ -831,8 +831,8 @@ SPECIAL_GAMES_ROWS = [
                         ui.tags.li("Einziges Nash-Gleichgewicht: (Defektieren, Defektieren).",
                                    **{"data-i18n-de": "Einziges Nash-Gleichgewicht: (Defektieren, Defektieren).",
                                       "data-i18n-en": "Unique Nash equilibrium: (Defect, Defect)."}),
-                        ui.tags.li("Pareto-ineffizient.",
-                                   **{"data-i18n-de": "Pareto-ineffizient.", "data-i18n-en": "Pareto-inefficient."}),
+                        ui.tags.li("Pareto-ineffiziente Nutzenkombination im Nash-Gleichgewicht: (1, 1) wird von (3, 3) Pareto-dominiert.",
+                                   **{"data-i18n-de": "Pareto-ineffiziente Nutzenkombination im Nash-Gleichgewicht: (1, 1) wird von (3, 3) Pareto-dominiert.", "data-i18n-en": "Pareto-inefficient utility combination in Nash equilibrium: (1, 1) is Pareto-dominated by (3, 3)."}),
                         class_="mb-0",
                     ),
                     class_="card-body",
@@ -891,12 +891,12 @@ SPECIAL_GAMES_ROWS = [
                         ui.tags.li("Zwei Nash-Gleichgewichte: (Geradeaus, Ausweichen) und (Ausweichen, Geradeaus).",
                                    **{"data-i18n-de": "Zwei Nash-Gleichgewichte: (Geradeaus, Ausweichen) und (Ausweichen, Geradeaus).",
                                       "data-i18n-en": "Two Nash equilibria: (Straight, Swerve) and (Swerve, Straight)."}),
-                        ui.tags.li("Kein strikt dominantes Verhalten.",
-                                   **{"data-i18n-de": "Kein strikt dominantes Verhalten.",
-                                      "data-i18n-en": "No strictly dominant behavior."}),
-                        ui.tags.li("Commitment/Drohungen sind oft entscheidend.",
-                                   **{"data-i18n-de": "Commitment/Drohungen sind oft entscheidend.",
-                                      "data-i18n-en": "Commitment/threats are often decisive."}),
+                        ui.tags.li("Kein Spieler hat eine strikt dominante Strategie.",
+                                   **{"data-i18n-de": "Kein Spieler hat eine strikt dominante Strategie.",
+                                      "data-i18n-en": "No player has a strictly dominant strategy."}),
+                        ui.tags.li("Es entsteht ein (Anti-)Koordinationsproblem. (Falls Kommunikation außerhalb des Spiels möglich wäre, können Commitment / glaubwürdige Drohungen relevant sein.)",
+                                   **{"data-i18n-de": "Es entsteht ein (Anti-)Koordinationsproblem. (Falls Kommunikation außerhalb des Spiels möglich wäre, können Commitment / glaubwürdige Drohungen relevant sein.)",
+                                      "data-i18n-en": "This creates an (anti-)coordination problem. (If communication outside the game were possible, commitment/credible threats could be relevant.)"}),
                         class_="mb-0",
                     ),
                     class_="card-body",
@@ -946,94 +946,21 @@ SPECIAL_GAMES_ROWS = [
                     ui.tags.h5("Erklärung", class_="card-title",
                                **{"data-i18n-de": "Erklärung", "data-i18n-en": "Explanation"}),
                     ui.tags.p(
-                        "Koordinationsspiel: Die effiziente Option lohnt sich nur, wenn beide mitmachen.",
-                        **{"data-i18n-de": "Koordinationsspiel: Die effiziente Option lohnt sich nur, wenn beide mitmachen.",
-                           "data-i18n-en": "Coordination game: the efficient option pays off only if both participate."},
+                        "Koordinationsspiel, bei dem die Pareto-effiziente Nutzenkombination nur erreicht wird, wenn beide mitmachen und Fehlkoordination hierauf schmerzlicher ist.",
+                        **{"data-i18n-de": "Koordinationsspiel, bei dem die Pareto-effiziente Nutzenkombination nur erreicht wird, wenn beide mitmachen und Fehlkoordination hierauf schmerzlicher ist.",
+                           "data-i18n-en": "Coordination game in which the Pareto-efficient combination of benefits is only achieved if both parties participate, and miscoordination is more painful in this case."},
                         class_="mb-2",
                     ),
                     ui.tags.ul(
                         ui.tags.li("Zwei Nash-Gleichgewichte: (Hirsch, Hirsch) und (Hase, Hase).",
                                    **{"data-i18n-de": "Zwei Nash-Gleichgewichte: (Hirsch, Hirsch) und (Hase, Hase).",
                                       "data-i18n-en": "Two Nash equilibria: (Stag, Stag) and (Hare, Hare)."}),
-                        ui.tags.li("Effizient aber riskant: (Hirsch, Hirsch).",
-                                   **{"data-i18n-de": "Effizient aber riskant: (Hirsch, Hirsch).",
-                                      "data-i18n-en": "Efficient but risky: (Stag, Stag)."}),
+                        ui.tags.li("Pareto-effizient aber riskant: (Hirsch, Hirsch).",
+                                   **{"data-i18n-de": "Pareto-effizient aber riskant: (Hirsch, Hirsch).",
+                                      "data-i18n-en": "Pareto efficient but risky: (Stag, Stag)."}),
                         ui.tags.li("Typisch: Vertrauen/Koordination als Schlüsselproblem.",
                                    **{"data-i18n-de": "Typisch: Vertrauen/Koordination als Schlüsselproblem.",
                                       "data-i18n-en": "Typical: trust/coordination is the key problem."}),
-                        class_="mb-0",
-                    ),
-                    class_="card-body",
-                ),
-                class_="card shadow-sm h-100",
-                style="background-color:#ffffff;",
-            ),
-            class_="special-col text",
-        ),
-        class_="special-row",
-        ),
-        class_="mb-4",
-    ),
-    ui.tags.div(
-        ui.tags.h4("Ultimatumspiel", class_="mb-4",
-                   **{"data-i18n-de": "Ultimatumspiel", "data-i18n-en": "Ultimatum game"}),
-        ui.tags.div(
-        ui.tags.div(
-            ui.tags.div(
-                ui.tags.div(
-                    ui.tags.h5("Beispielspiel", class_="card-title",
-                               **{"data-i18n-de": "Beispielspiel", "data-i18n-en": "Example game"}),
-                    ui.tags.p(
-                        "Vereinfacht: Spieler 1 bietet fair (50/50) oder unfair (90/10). "
-                        "Spieler 2 kann annehmen oder ablehnen.",
-                        **{"data-i18n-de": "Vereinfacht: Spieler 1 bietet fair (50/50) oder unfair (90/10). Spieler 2 kann annehmen oder ablehnen.",
-                           "data-i18n-en": "Simplified: Player 1 offers fair (50/50) or unfair (90/10). Player 2 can accept or reject."},
-                        class_="text-muted mb-3",
-                    ),
-                    payoff_table(
-                        rows=["Fair", "Unfair"],
-                        cols=["Annehmen", "Ablehnen"],
-                        payoff_strings={
-                            ("Fair", "Annehmen"): "5, 5",
-                            ("Fair", "Ablehnen"): "0, 0",
-                            ("Unfair", "Annehmen"): "9, 1",
-                            ("Unfair", "Ablehnen"): "0, 0",
-                        },
-                        label_i18n={
-                            "Fair": {"de": "Fair", "en": "Fair"},
-                            "Unfair": {"de": "Unfair", "en": "Unfair"},
-                            "Annehmen": {"de": "Annehmen", "en": "Accept"},
-                            "Ablehnen": {"de": "Ablehnen", "en": "Reject"},
-                        },
-                    ),
-                    class_="card-body",
-                ),
-                class_="card shadow-sm h-100",
-                style="background-color:#ffffff;",
-            ),
-            class_="special-col game",
-        ),
-        ui.tags.div(
-            ui.tags.div(
-                ui.tags.div(
-                    ui.tags.h5("Erklärung", class_="card-title",
-                               **{"data-i18n-de": "Erklärung", "data-i18n-en": "Explanation"}),
-                    ui.tags.p(
-                        "In der Standardtheorie nimmt Spieler 2 jedes positive Angebot an (Rückwärtsinduktion).",
-                        **{"data-i18n-de": "In der Standardtheorie nimmt Spieler 2 jedes positive Angebot an (Rückwärtsinduktion).",
-                           "data-i18n-en": "In standard theory, Player 2 accepts any positive offer (backward induction)."},
-                        class_="mb-2",
-                    ),
-                    ui.tags.ul(
-                        ui.tags.li("Theorie: Spieler 1 bietet minimal, Spieler 2 akzeptiert.",
-                                   **{"data-i18n-de": "Theorie: Spieler 1 bietet minimal, Spieler 2 akzeptiert.",
-                                      "data-i18n-en": "Theory: Player 1 offers minimally, Player 2 accepts."}),
-                        ui.tags.li("Empirie: Unfaire Angebote werden oft abgelehnt (Fairness).",
-                                   **{"data-i18n-de": "Empirie: Unfaire Angebote werden oft abgelehnt (Fairness).",
-                                      "data-i18n-en": "Evidence: Unfair offers are often rejected (fairness)."}),
-                        ui.tags.li("Wichtiges Beispiel für Modell vs. Verhalten.",
-                                   **{"data-i18n-de": "Wichtiges Beispiel für Modell vs. Verhalten.",
-                                      "data-i18n-en": "Important example of model vs. behavior."}),
                         class_="mb-0",
                     ),
                     class_="card-body",
@@ -1089,15 +1016,88 @@ SPECIAL_GAMES_ROWS = [
                         class_="mb-2",
                     ),
                     ui.tags.ul(
-                        ui.tags.li("Zwei reine Nash-Gleichgewichte: (Oper, Oper) und (Fußball, Fußball).",
-                                   **{"data-i18n-de": "Zwei reine Nash-Gleichgewichte: (Oper, Oper) und (Fußball, Fußball).",
-                                      "data-i18n-en": "Two pure Nash equilibria: (Opera, Opera) and (Football, Football)."}),
+                        ui.tags.li("Zwei reine Nash-Gleichgewichte in reinen Strategen: (Oper, Oper) und (Fußball, Fußball).",
+                                   **{"data-i18n-de": "Zwei reine Nash-Gleichgewichte in reinen Strategen: (Oper, Oper) und (Fußball, Fußball).",
+                                      "data-i18n-en": "Two pure Nash equilibria in pure strategies: (Opera, Opera) and (Football, Football)."}),
                         ui.tags.li("Verteilungsproblem: Wer bekommt sein Wunsch-Ergebnis?",
-                                   **{"data-i18n-de": "Verteilungsproblem: Wer bekommt sein Wunsch-Ergebnis?",
-                                      "data-i18n-en": "Distribution problem: Who gets their preferred outcome?"}),
+                                   **{"data-i18n-de": "Koordinationsproblem: Wer bekommt sein Wunschergebnis?",
+                                      "data-i18n-en": "Coordination problem: Who gets their preferred outcome?"}),
                         ui.tags.li("Zusätzlich existiert ein gemischtes Nash-Gleichgewicht.",
-                                   **{"data-i18n-de": "Zusätzlich existiert ein gemischtes Nash-Gleichgewicht.",
-                                      "data-i18n-en": "Additionally, there is a mixed Nash equilibrium."}),
+                                   **{"data-i18n-de": "Zusätzlich existiert ein Nash-Gleichgewicht in gemischten Strategien: ((3/5,2/5), (3/5,2/5)).",
+                                      "data-i18n-en": "In addition, there is a Nash equilibrium in mixed strategies: ((3/5,2/5), (3/5,2/5))."}),
+                        class_="mb-0",
+                    ),
+                    class_="card-body",
+                ),
+                class_="card shadow-sm h-100",
+                style="background-color:#ffffff;",
+            ),
+            class_="special-col text",
+        ),
+        class_="special-row",
+        ),
+        class_="mb-4",
+    ),
+    ui.tags.div(
+        ui.tags.h4("Ultimatumspiel (Variante mit simultaner Entscheidung)", class_="mb-4",
+                   **{"data-i18n-de": "Ultimatumspiel (Variante mit simultaner Entscheidung)", "data-i18n-en": "Ultimatum game (Variant with simultaneous decision)"}),
+        ui.tags.div(
+        ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.h5("Beispielspiel", class_="card-title",
+                               **{"data-i18n-de": "Beispielspiel", "data-i18n-en": "Example game"}),
+                    ui.tags.p(
+                        "Vereinfacht: Spieler 1 bietet fair (50/50) oder unfair (90/10). "
+                        "Spieler 2 kann annehmen oder ablehnen.",
+                        **{"data-i18n-de": "Vereinfacht: Spieler 1 bietet fair (50/50) oder unfair (90/10). Spieler 2 kann annehmen oder ablehnen.",
+                           "data-i18n-en": "Simplified: Player 1 offers fair (50/50) or unfair (90/10). Player 2 can accept or reject."},
+                        class_="text-muted mb-3",
+                    ),
+                    payoff_table(
+                        rows=["Fair", "Unfair"],
+                        cols=["Annehmen", "Ablehnen"],
+                        payoff_strings={
+                            ("Fair", "Annehmen"): "5, 5",
+                            ("Fair", "Ablehnen"): "0, 0",
+                            ("Unfair", "Annehmen"): "9, 1",
+                            ("Unfair", "Ablehnen"): "0, 0",
+                        },
+                        label_i18n={
+                            "Fair": {"de": "Fair", "en": "Fair"},
+                            "Unfair": {"de": "Unfair", "en": "Unfair"},
+                            "Annehmen": {"de": "Annehmen", "en": "Accept"},
+                            "Ablehnen": {"de": "Ablehnen", "en": "Reject"},
+                        },
+                    ),
+                    class_="card-body",
+                ),
+                class_="card shadow-sm h-100",
+                style="background-color:#ffffff;",
+            ),
+            class_="special-col game",
+        ),
+        ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.h5("Erklärung", class_="card-title",
+                               **{"data-i18n-de": "Erklärung", "data-i18n-en": "Explanation"}),
+                    ui.tags.p(
+                        "Spieler 2 nimmt jedes positive Angebot an, da Annehmen strikt besser ist als Ablehnen. Spieler 1 antizipiert dies und bietet so wenig wie möglich an.",
+                        **{"data-i18n-de": "Spieler 2 nimmt jedes positive Angebot an, da Annehmen strikt besser ist als Ablehnen. Spieler 1 antizipiert dies und bietet so wenig wie möglich an.",
+                           "data-i18n-en": "Player 2 accepts every positive offer, as accepting is strictly better than rejecting. Player 1 anticipates this and offers as little as possible."},
+                        class_="mb-2",
+                    ),
+                    ui.tags.ul(
+                        ui.tags.li("Nash-Gleichgewicht: (Unfair, Annehmen)",
+                                   **{"data-i18n-de": "Nash-Gleichgewicht: (Unfair, Annehmen)",
+                                      "data-i18n-en": "Nash equilibrium: (Unfair, Accept)"}),
+                        ui.tags.li("Empirie mit monetärer Auszahlung der „Nutzenwerte“ (Achtung: dann evtl. von den Auszahlungen abweichende Bewertung der Strategiekombinationen durch die Spieler): Unfaire Angebote werden oft abgelehnt (Fairness).",
+                                   **{"data-i18n-de": "Empirie mit monetärer Auszahlung der „Nutzenwerte“ (Achtung: dann evtl. von den Auszahlungen abweichende Bewertung der Strategiekombinationen durch die Spieler): Unfaire Angebote werden oft abgelehnt (Fairness).",
+                                      "data-i18n-en": "Empirical evidence with monetary payouts of ‘utility values’ (note: players' assessment of strategy combinations may then differ from the payouts): Unfair offers are often rejected (fairness)."}),
+                        ui.tags.li("Wichtiges Beispiel für Modell vs. Verhalten bzw. für monetäre Auszahlung ungleich Nutzen.",
+                                   **{"data-i18n-de": "Wichtiges Beispiel für Modell vs. Verhalten bzw. für monetäre Auszahlung ungleich Nutzen.",
+                                      "data-i18n-en": "Important example of model vs. behaviour or monetary payout unequal to benefit."}),
                         class_="mb-0",
                     ),
                     class_="card-body",
@@ -1166,7 +1166,8 @@ app_ui = ui.page_fluid(
         --muted: #b2bdd1;
         --border: #6a7a96;
     }
-    .nav-tabs {
+    #main_tabs.nav-tabs,
+    #main_tabs > .nav-tabs {
         display: flex;
         justify-content: center;
         align-items: center;
@@ -1184,29 +1185,49 @@ app_ui = ui.page_fluid(
         right: 0;
         z-index: 1000;
     }
-    .nav-tabs .nav-link {
+    #main_tabs.nav-tabs .nav-link,
+    #main_tabs > .nav-tabs .nav-link {
         color: rgb(87, 87, 86);
         font-weight: 700;
         background-color: transparent;
         border: none;
         font-size: 1.05rem;
     }
-    .nav-tabs .nav-link:hover {
+    #main_tabs.nav-tabs .nav-link:hover,
+    #main_tabs > .nav-tabs .nav-link:hover {
         color: #000000;
     }
-    .nav-tabs .nav-link.active,
-    .nav-tabs .nav-link:focus {
+    #main_tabs.nav-tabs .nav-link.active,
+    #main_tabs > .nav-tabs .nav-link.active,
+    #main_tabs.nav-tabs .nav-link:focus,
+    #main_tabs > .nav-tabs .nav-link:focus {
         color: #000000;
         background-color: transparent;
         border: none;
         box-shadow: none;
     }
-    .dark-mode .nav-tabs .nav-link {
+    .dark-mode #main_tabs.nav-tabs .nav-link,
+    .dark-mode #main_tabs > .nav-tabs .nav-link {
         color: #e6e6e6;
     }
-    .dark-mode .nav-tabs .nav-link.active,
-    .dark-mode .nav-tabs .nav-link:focus {
+    .dark-mode #main_tabs.nav-tabs .nav-link.active,
+    .dark-mode #main_tabs > .nav-tabs .nav-link.active,
+    .dark-mode #main_tabs.nav-tabs .nav-link:focus,
+    .dark-mode #main_tabs > .nav-tabs .nav-link:focus {
         color: #ffffff;
+    }
+    #main_tabs .dropdown-toggle::after {
+        display: none;
+    }
+    #main_tabs .nav-item.dropdown:hover > .dropdown-menu {
+        display: block;
+    }
+    body.nav-hover-disabled #main_tabs .nav-item.dropdown:hover > .dropdown-menu {
+        display: none !important;
+    }
+    /* Disable dropdown menu for Normalformspiele */
+    #main_tabs .nav-item.dropdown > .dropdown-menu {
+        display: none !important;
     }
     .btn-success {
         background-color: rgb(200, 212, 0);
@@ -1374,14 +1395,25 @@ app_ui = ui.page_fluid(
     .dark-mode .impressum-panel a {
         color: var(--text);
     }
-    .impressum-panel a:hover {
+    .impressum-panel a:hover,
+    .impressum-panel a:focus,
+    .impressum-panel a:active,
+    .impressum-panel a:visited {
         color: #000000;
+    }
+    .dark-mode .impressum-panel a:hover,
+    .dark-mode .impressum-panel a:focus,
+    .dark-mode .impressum-panel a:active,
+    .dark-mode .impressum-panel a:visited {
+        color: var(--text);
     }
     .impressum-panel a[href^="http"] {
         word-break: break-all;
     }
-    .nav-tabs .impressum-nav-link,
-    .nav-tabs .darkmode-nav-link {
+    #main_tabs.nav-tabs .impressum-nav-link,
+    #main_tabs > .nav-tabs .impressum-nav-link,
+    #main_tabs.nav-tabs .darkmode-nav-link,
+    #main_tabs > .nav-tabs .darkmode-nav-link {
         display: inline-block;
         font-style: italic;
         padding: 0.2rem 0.45rem;
@@ -1393,7 +1425,8 @@ app_ui = ui.page_fluid(
         font-weight: 400;
         margin-right: 0.4rem;
     }
-    .nav-tabs .darkmode-nav-link {
+    #main_tabs.nav-tabs .darkmode-nav-link,
+    #main_tabs > .nav-tabs .darkmode-nav-link {
         font-style: normal;
     }
     .impressum-panel.open {
@@ -1473,7 +1506,8 @@ app_ui = ui.page_fluid(
             background-color: var(--header-hover) !important;
             border-radius: 0 !important;
         }
-        .nav-tabs {
+        #main_tabs.nav-tabs,
+        #main_tabs > .nav-tabs {
             display: flex;
             position: fixed;
             top: var(--header-height);
@@ -1486,14 +1520,17 @@ app_ui = ui.page_fluid(
             background-color: var(--header-bg);
             z-index: 1000;
         }
-        body.tabs-open .nav-tabs {
+        body.tabs-open #main_tabs.nav-tabs,
+        body.tabs-open #main_tabs > .nav-tabs {
             display: flex !important;
             background-color: var(--header-bg) !important;
         }
-        body.tabs-closed .nav-tabs {
+        body.tabs-closed #main_tabs.nav-tabs,
+        body.tabs-closed #main_tabs > .nav-tabs {
             display: none !important;
         }
-        body.tabs-open .nav-tabs .nav-link {
+        body.tabs-open #main_tabs.nav-tabs .nav-link,
+        body.tabs-open #main_tabs > .nav-tabs .nav-link {
             text-align: right;
         }
         .impressum-panel {
@@ -1562,7 +1599,8 @@ app_ui = ui.page_fluid(
             background-color: var(--header-hover) !important;
             border-radius: 0 !important;
         }
-        .nav-tabs {
+        #main_tabs.nav-tabs,
+        #main_tabs > .nav-tabs {
             display: flex;
             position: fixed;
             top: var(--header-height);
@@ -1575,14 +1613,17 @@ app_ui = ui.page_fluid(
             background-color: var(--header-bg);
             z-index: 1000;
         }
-        body.tabs-open .nav-tabs {
+        body.tabs-open #main_tabs.nav-tabs,
+        body.tabs-open #main_tabs > .nav-tabs {
             display: flex !important;
             background-color: var(--header-bg) !important;
         }
-        body.tabs-closed .nav-tabs {
+        body.tabs-closed #main_tabs.nav-tabs,
+        body.tabs-closed #main_tabs > .nav-tabs {
             display: none !important;
         }
-        body.tabs-open .nav-tabs .nav-link {
+        body.tabs-open #main_tabs.nav-tabs .nav-link,
+        body.tabs-open #main_tabs > .nav-tabs .nav-link {
             text-align: right;
         }
         .impressum-panel {
@@ -1643,9 +1684,30 @@ app_ui = ui.page_fluid(
     .dark-mode .table thead tr:last-child th {
         border-bottom: 1.5px solid var(--border) !important;
     }
+    code {
+        padding: 0.08em 0.32em;
+        border-radius: 4px;
+        background-color: #f1f3f5;
+    }
     .dark-mode code {
         color: #e9eef5;
         background-color: #1b2b43;
+        border: 1px solid #2b3f5c;
+    }
+    .dark-mode #main_tabs .dropdown-menu {
+        background-color: #1c2b45;
+        border-color: #2f4463;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
+    }
+    .dark-mode #main_tabs .dropdown-item {
+        color: var(--text);
+    }
+    .dark-mode #main_tabs .dropdown-item:hover,
+    .dark-mode #main_tabs .dropdown-item:focus,
+    .dark-mode #main_tabs .dropdown-item.active,
+    .dark-mode #main_tabs .dropdown-item:active {
+        background-color: #223654;
+        color: #ffffff;
     }
     .dark-mode .btn-outline-primary,
     .dark-mode .btn-outline-secondary {
@@ -1658,6 +1720,48 @@ app_ui = ui.page_fluid(
     .dark-mode .btn-outline-secondary:focus {
         background-color: #1c2a44;
         border-color: #1c2a44;
+        color: #ffffff;
+    }
+    .toc-list {
+        list-style: none;
+        margin: 0;
+        padding-left: 0.5rem;
+    }
+    .toc-list li {
+        margin: 0.35rem 0;
+    }
+    .toc-link {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-decoration: none;
+        color: #000000;
+        font-weight: 400;
+        border-radius: 6px;
+        padding: 0.25rem 0.4rem;
+        transition: background-color 0.15s ease;
+    }
+    .toc-link::before {
+        content: "•";
+        color: #6c757d;
+        font-size: 1.1rem;
+        line-height: 1;
+    }
+    .toc-link:hover,
+    .toc-link:focus {
+        background-color: #f1f3f5;
+        color: #000000;
+    }
+    .toc-card-body {
+        padding-left: 1.5rem;
+        padding-right: 1rem;
+    }
+    .dark-mode .toc-link {
+        color: var(--text);
+    }
+    .dark-mode .toc-link:hover,
+    .dark-mode .toc-link:focus {
+        background-color: #223654;
         color: #ffffff;
     }
 
@@ -1689,38 +1793,51 @@ app_ui = ui.page_fluid(
     /* Spacing between boxes + equal-height cards */
     .card-row,
     .exercise-row {
-        display: flex;
-        flex-wrap: wrap;
         row-gap: 12px;
         align-items: stretch;
     }
     .card-row {
-        column-gap: 20px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px 20px;
+        width: 100%;
         margin-left: 0;
+        margin-top: 16px;
         margin-right: 0;
         padding-left: 0;
         padding-right: 0;
     }
+    .intro-rule-row {
+        margin-bottom: 40px !important;
+    }
     .exercise-row {
+        display: flex;
+        flex-wrap: wrap;
         column-gap: 8px;
     }
     .card-row > * {
-        flex: 1 1 0;
-        min-width: 280px;
+        min-width: 0;
         display: flex;
         flex-direction: column;
         height: 100%;
         margin-left: 0;
         margin-right: 0;
+        align-items: stretch;
+        width: auto;
+        max-width: none;
+        flex: initial;
     }
     .card-row > * > .card {
+        display: flex;
+        flex-direction: column;
         flex: 1 1 auto;
-        height: 100%;
+        height: auto;
+        align-self: stretch;
     }
     @media (max-width: 1024px) {
         .card-row {
+            grid-template-columns: 1fr;
             row-gap: 8px;
-            --bs-gutter-y: 0.5rem;
         }
     }
     .exercise-row > .exercise-col {
@@ -1742,7 +1859,6 @@ app_ui = ui.page_fluid(
     }
     .exercise-title {
         margin-top: 24px;
-        margin-bottom: 0px;
     }
     .text-muted{
         margin-bottom: -8px;
@@ -1750,6 +1866,10 @@ app_ui = ui.page_fluid(
     .card-body {
         padding-left: 0.5rem;
         padding-right: 0.5rem;
+    }
+    .card-body.toc-card-body {
+        padding-left: 1rem;
+        padding-right: 1rem;
     }
     .exercise-row .card-body {
         padding-left: 1rem;
@@ -1932,6 +2052,10 @@ app_ui = ui.page_fluid(
             link.innerHTML = label;
           }
         }
+        function isNightTime() {
+          var hour = new Date().getHours();
+          return (hour >= 18 || hour < 6);
+        }
         function initDarkMode() {
           var stored = null;
           try {
@@ -1941,6 +2065,10 @@ app_ui = ui.page_fluid(
           }
           if (stored === '1') {
             applyDarkMode(true);
+          } else if (stored === '0') {
+            applyDarkMode(false);
+          } else {
+            applyDarkMode(isNightTime());
           }
           updateDarkModeToggle();
         }
@@ -1974,7 +2102,7 @@ app_ui = ui.page_fluid(
           });
         }
         document.addEventListener('click', function (e) {
-          var navTabs = document.querySelector('.nav-tabs');
+          var navTabs = document.querySelector('#main_tabs > .nav-tabs') || document.querySelector('#main_tabs.nav-tabs');
           var toggleBtn = document.querySelector('.tabs-toggle');
           if (!navTabs) { return; }
           if (!document.body.classList.contains('tabs-open')) { return; }
@@ -1982,6 +2110,34 @@ app_ui = ui.page_fluid(
           if (toggleBtn && toggleBtn.contains(e.target)) { return; }
           setTabsOpen(false);
         });
+        function closeNavDropdowns() {
+          var navTabs = document.querySelector('#main_tabs > .nav-tabs') || document.querySelector('#main_tabs.nav-tabs');
+          if (!navTabs) { return; }
+          navTabs.querySelectorAll('.nav-item.dropdown.show').forEach(function (item) {
+            item.classList.remove('show');
+            var menu = item.querySelector('.dropdown-menu');
+            if (menu) { menu.classList.remove('show'); }
+            var toggle = item.querySelector('.dropdown-toggle');
+            if (toggle) { toggle.setAttribute('aria-expanded', 'false'); }
+          });
+        }
+        window.closeNavDropdowns = closeNavDropdowns;
+        document.addEventListener('click', function (e) {
+          var item = e.target.closest('#main_tabs .dropdown-menu .dropdown-item, #main_tabs .dropdown-menu .nav-link');
+          if (!item) { return; }
+          closeNavDropdowns();
+          document.body.classList.add('nav-hover-disabled');
+        }, true);
+        document.addEventListener('shown.bs.tab', function () {
+          closeNavDropdowns();
+        });
+        document.addEventListener('click', function (e) {
+          var navTabs = document.querySelector('#main_tabs > .nav-tabs') || document.querySelector('#main_tabs.nav-tabs');
+          if (!navTabs) { return; }
+          if (e.target.closest('.dropdown-menu') || e.target.closest('.dropdown-toggle')) { return; }
+          if (e.target.closest('.nav-item.dropdown')) { return; }
+          closeNavDropdowns();
+        }, true);
         document.addEventListener('click', function (e) {
           var panel = document.getElementById('impressum-panel');
           var isToggle = e.target.closest('.impressum-btn, .impressum-nav-link');
@@ -1989,8 +2145,39 @@ app_ui = ui.page_fluid(
             panel.classList.remove('open');
           }
         });
+        function initNormalformMenuClick() {
+          var label = document.querySelector('.normalform-menu-toggle');
+          if (!label) { return; }
+          var toggle = label.closest('.dropdown-toggle');
+          if (!toggle || toggle.dataset.normalformBound === '1') { return; }
+          toggle.dataset.normalformBound = '1';
+          toggle.removeAttribute('data-bs-toggle');
+          toggle.removeAttribute('data-toggle');
+          toggle.addEventListener('click', function (e) {
+            if (window.Shiny && Shiny.setInputValue) {
+              Shiny.setInputValue('nav_normalform', Date.now(), {priority: 'event'});
+            }
+            e.preventDefault();
+            e.stopPropagation();
+          });
+          var menu = toggle.closest('.nav-item.dropdown')?.querySelector('.dropdown-menu');
+          if (menu && menu.dataset.closeBound !== '1') {
+            menu.dataset.closeBound = '1';
+            menu.addEventListener('click', function () {
+              closeNavDropdowns();
+              document.body.classList.add('nav-hover-disabled');
+            });
+          }
+          var navTabs = document.querySelector('#main_tabs > .nav-tabs') || document.querySelector('#main_tabs.nav-tabs');
+          if (navTabs && navTabs.dataset.hoverDisableBound !== '1') {
+            navTabs.dataset.hoverDisableBound = '1';
+            navTabs.addEventListener('pointerleave', function () {
+              document.body.classList.remove('nav-hover-disabled');
+            });
+          }
+        }
         function ensureImpressumLink() {
-          var navTabs = document.querySelector('.nav-tabs');
+          var navTabs = document.querySelector('#main_tabs > .nav-tabs') || document.querySelector('#main_tabs.nav-tabs');
           if (!navTabs) { return; }
           var isMobile = isMobileMenu();
           var existing = navTabs.querySelector('.impressum-nav-link');
@@ -2035,12 +2222,15 @@ app_ui = ui.page_fluid(
               darkExisting.parentElement.remove();
             }
           }
+          initNormalformMenuClick();
+          closeNavDropdowns();
         }
         document.addEventListener('DOMContentLoaded', function () {
           initLanguageToggle();
           initDarkMode();
           ensureImpressumLink();
-          var navTabs = document.querySelector('.nav-tabs');
+          initNormalformMenuClick();
+          var navTabs = document.querySelector('#main_tabs > .nav-tabs') || document.querySelector('#main_tabs.nav-tabs');
           if (navTabs) {
             var observer = new MutationObserver(ensureImpressumLink);
             observer.observe(navTabs, { childList: true });
@@ -2195,6 +2385,12 @@ app_ui = ui.page_fluid(
         class_="impressum-panel",
     ),
     ui.navset_tab(
+        ui.nav_menu(
+            ui.tags.span(
+                "Normalformspiele",
+                class_="normalform-menu-toggle",
+                **{"data-i18n-de": "Normalformspiele", "data-i18n-en": "Normal-form games"},
+            ),
 
         # =================================================
         # Erklärung
@@ -2206,9 +2402,9 @@ app_ui = ui.page_fluid(
                       **{"data-i18n-de": "Einführung: Normalformspiele", "data-i18n-en": "Introduction: Normal-form Games"}),
                 ui.tags.p(
                     "Ein Normalformspiel beschreibt eine Situation, in der alle Spieler gleichzeitig "
-                    "eine Strategie wählen und daraus Auszahlungen entstehen.",
-                    **{"data-i18n-de": "Ein Normalformspiel beschreibt eine Situation, in der alle Spieler gleichzeitig eine Strategie wählen und daraus Auszahlungen entstehen.",
-                       "data-i18n-en": "A normal-form game describes a situation in which all players choose a strategy simultaneously and payoffs result."},
+                    "eine Strategie wählen und daraus für jeden Spieler ein Nutzen  entsteht.",
+                    **{"data-i18n-de": "Ein Normalformspiel beschreibt eine Situation, in der alle Spieler gleichzeitig eine Strategie wählen und daraus für jeden Spieler ein Nutzen  entsteht.",
+                       "data-i18n-en": "A normal form game describes a situation in which all players choose a strategy at the same time and each player derives a benefit from it."},
                     class_="text-muted",
                 ),
 
@@ -2219,10 +2415,10 @@ app_ui = ui.page_fluid(
                             ui.tags.h5("1) Spielermenge", class_="card-title",
                                        **{"data-i18n-de": "1) Spielermenge", "data-i18n-en": "1) Player set"}),
                             ui.tags.p(
-                                "Die Spielermenge ist N = {1, 2}. "
-                                "In allen Beispielen gibt es genau zwei Spieler.",
-                                **{"data-i18n-de": "Die Spielermenge ist N = {1, 2}. In allen Beispielen gibt es genau zwei Spieler.",
-                                   "data-i18n-en": "The player set is N = {1, 2}. In all examples there are exactly two players."},
+                                "Die Spielermenge ist N. "
+                                "In allen Beispielen gibt es genau zwei Spieler N = {1, 2}.",
+                                **{"data-i18n-de": "Die Spielermenge ist N. In allen Beispielen gibt es genau zwei Spieler N = {1, 2}.",
+                                   "data-i18n-en": "The player set is N. In all examples there are exactly two players N = {1, 2}."},
                                 class_="mb-0",
                             ),
                             class_="card-body",
@@ -2235,10 +2431,10 @@ app_ui = ui.page_fluid(
                             ui.tags.h5("2) Strategiemengen", class_="card-title",
                                        **{"data-i18n-de": "2) Strategiemengen", "data-i18n-en": "2) Strategy sets"}),
                             ui.tags.p(
-                                "Jeder Spieler verfügt über eine endliche Menge an Strategien, "
-                                "aus denen er eine auswählt.",
-                                **{"data-i18n-de": "Jeder Spieler verfügt über eine endliche Menge an Strategien, aus denen er eine auswählt.",
-                                   "data-i18n-en": "Each player has a finite set of strategies from which they choose one."},
+                                "Jeder Spieler verfügt über eine endliche Menge an reinen Strategien, "
+                                "aus denen er eine auswählt oder über die er randomisiert (gemischte Strategie).",
+                                **{"data-i18n-de": "Jeder Spieler verfügt über eine endliche Menge an reinen Strategien, aus denen er eine auswählt oder über die er randomisiert (gemischte Strategie).",
+                                   "data-i18n-en": "Each player has a finite set of pure strategies from which they select one or randomise (mixed strategy)."},
                                 class_="mb-0",
                             ),
                             class_="card-body",
@@ -2262,7 +2458,7 @@ app_ui = ui.page_fluid(
                         class_="card shadow-sm h-100",
                         style="background-color:#ffffff;",
                     ),
-                    class_="row row-cols-1 row-cols-lg-3 g-3 mt-2 align-items-stretch card-row mb-4",
+                    class_="row row-cols-1 row-cols-lg-3 g-3 mt-2 align-items-stretch card-row intro-rule-row mb-4",
                 ),
 
                 # ---- Row 2: Example + notation (same card) ----
@@ -2317,8 +2513,8 @@ app_ui = ui.page_fluid(
                                                 ui.tags.span(": z.B. ", **{"data-i18n-de": ": z.B. ", "data-i18n-en": ": e.g. "}),
                                                 ui.tags.code("(2, 8)"),
                                                 ui.tags.span(": Auszahlung (Spieler 1, Spieler 2).",
-                                                             **{"data-i18n-de": ": Auszahlung (Spieler 1, Spieler 2).",
-                                                                "data-i18n-en": ": Payoff (Player 1, Player 2)."}),
+                                                             **{"data-i18n-de": ": Nutzen (Spieler 1, Spieler 2).",
+                                                                "data-i18n-en": ": Utility (Player 1, Player 2)."}),
                                             ),
                                             class_="mb-0",
                                         ),
@@ -2341,6 +2537,106 @@ app_ui = ui.page_fluid(
                     "start_exercise",
                     ui.tags.span("Zu Übung 1", **{"data-i18n-de": "Zu Übung 1", "data-i18n-en": "Go to Exercise 1"}),
                     class_="btn btn-success mt-4",
+                ),
+
+                ui.tags.div(
+                    ui.tags.div(
+                        ui.tags.h5(
+                            "Inhaltsverzeichnis",
+                            class_="card-title",
+                            **{"data-i18n-de": "Inhaltsverzeichnis", "data-i18n-en": "Table of contents"},
+                        ),
+                        ui.tags.ul(
+                            ui.tags.li(
+                                ui.tags.a(
+                                    "Übung 1 – Beste Antworten",
+                                    href="#",
+                                    onclick="if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('start_exercise', Date.now(), {priority: 'event'}); } return false;",
+                                    class_="toc-link",
+                                    **{
+                                        "data-i18n-de": "Übung 1 – Beste Antworten",
+                                        "data-i18n-en": "Exercise 1 – Best responses",
+                                    },
+                                )
+                            ),
+                            ui.tags.li(
+                                ui.tags.a(
+                                    "Übung 2 – Strikt dominante Strategien",
+                                    href="#",
+                                    onclick="if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('go_to_ex2', Date.now(), {priority: 'event'}); } return false;",
+                                    class_="toc-link",
+                                    **{
+                                        "data-i18n-de": "Übung 2 – Strikt dominante Strategien",
+                                        "data-i18n-en": "Exercise 2 – Strictly dominant strategies",
+                                    },
+                                )
+                            ),
+                            ui.tags.li(
+                                ui.tags.a(
+                                    "Übung 3 – Dominante Strategien (schwach oder strikt)",
+                                    href="#",
+                                    onclick="if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('go_to_ex3', Date.now(), {priority: 'event'}); } return false;",
+                                    class_="toc-link",
+                                    **{
+                                        "data-i18n-de": "Übung 3 – Dominante Strategien (schwach oder strikt)",
+                                        "data-i18n-en": "Exercise 3 – Dominant strategies (weak or strict)",
+                                    },
+                                )
+                            ),
+                            ui.tags.li(
+                                ui.tags.a(
+                                    "Übung 4 – Nash-Gleichgewichte in reinen Strategien",
+                                    href="#",
+                                    onclick="if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('go_to_ex4', Date.now(), {priority: 'event'}); } return false;",
+                                    class_="toc-link",
+                                    **{
+                                        "data-i18n-de": "Übung 4 – Nash-Gleichgewichte in reinen Strategien",
+                                        "data-i18n-en": "Exercise 4 – Nash equilibria in pure strategies",
+                                    },
+                                )
+                            ),
+                            ui.tags.li(
+                                ui.tags.a(
+                                    "Übung 5 – Nash-Gleichgewichte in reinen Strategien (strikt)",
+                                    href="#",
+                                    onclick="if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('go_to_ex5', Date.now(), {priority: 'event'}); } return false;",
+                                    class_="toc-link",
+                                    **{
+                                        "data-i18n-de": "Übung 5 – Nash-Gleichgewichte in reinen Strategien (strikt)",
+                                        "data-i18n-en": "Exercise 5 – Nash equilibria in pure strategies (strict)",
+                                    },
+                                )
+                            ),
+                            ui.tags.li(
+                                ui.tags.a(
+                                    "Übung 6 – Nash-Gleichgewicht in gemischten Strategien",
+                                    href="#",
+                                    onclick="if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('go_to_ex6', Date.now(), {priority: 'event'}); } return false;",
+                                    class_="toc-link",
+                                    **{
+                                        "data-i18n-de": "Übung 6 – Nash-Gleichgewicht in gemischten Strategien",
+                                        "data-i18n-en": "Exercise 6 – Nash equilibrium in mixed strategies",
+                                    },
+                                )
+                            ),
+                            ui.tags.li(
+                                ui.tags.a(
+                                    "Besondere Spiele",
+                                    href="#",
+                                    onclick="if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('go_to_special_games', Date.now(), {priority: 'event'}); } return false;",
+                                    class_="toc-link",
+                                    **{
+                                        "data-i18n-de": "Besondere Spiele",
+                                        "data-i18n-en": "Special games",
+                                    },
+                                )
+                            ),
+                            class_="mb-0 toc-list",
+                        ),
+                        class_="card-body toc-card-body",
+                    ),
+                    class_="card shadow-sm h-100 mt-4",
+                    style="background-color:#ffffff;",
                 ),
 
                 class_="container-fluid px-4",
@@ -2711,9 +3007,9 @@ ui.nav_panel(
                     ui.tags.div(
                         ui.tags.h5("Frage", **{"data-i18n-de": "Frage", "data-i18n-en": "Question"}),
                         ui.tags.p(
-                            "Finden Sie alle Strategiepaare, die ein Nash-Gleichgewicht in reinen Strategien bilden.",
-                            **{"data-i18n-de": "Finden Sie alle Strategiepaare, die ein Nash-Gleichgewicht in reinen Strategien bilden.",
-                               "data-i18n-en": "Find all strategy pairs that form a Nash equilibrium in pure strategies."},
+                            "Finden Sie alle Strategiekombinationen, die ein Nash-Gleichgewicht in reinen Strategien bilden.",
+                            **{"data-i18n-de": "Finden Sie alle Strategiekombinationen, die ein Nash-Gleichgewicht in reinen Strategien bilden.",
+                               "data-i18n-en": "Find all strategy combinations that form a Nash equilibrium in pure strategies."},
                             class_="mt-2 mb-4"
                         ),
                         ui.tags.div(
@@ -2809,9 +3105,9 @@ ui.nav_panel(
                                 ui.tags.h5("Frage", class_="card-title",
                                            **{"data-i18n-de": "Frage", "data-i18n-en": "Question"}),
                                 ui.tags.p(
-                                    "Wählen Sie für jedes Strategiepaar, ob es sich dabei um ein striktes oder nicht striktes Nash GG handelt.",
-                                    **{"data-i18n-de": "Wählen Sie für jedes Strategiepaar, ob es sich dabei um ein striktes oder nicht striktes Nash GG handelt.",
-                                       "data-i18n-en": "For each strategy pair, choose whether it is a strict or non-strict Nash GG."},
+                                    "Wählen Sie für jede Strategiekombination, ob es sich dabei um ein striktes oder nicht striktes Nash GG handelt.",
+                                    **{"data-i18n-de": "Wählen Sie für jede Strategiekombination, ob es sich dabei um ein striktes oder nicht striktes Nash GG handelt.",
+                                       "data-i18n-en": "For each strategy combination, choose whether it is a strict or non-strict Nash GG."},
                                     class_="mt-2 mb-4",
                                 ),
                                 ui.tags.div(
@@ -2956,10 +3252,10 @@ ui.nav_panel(
                       **{"data-i18n-de": "Fünf besondere Spiele der Spieltheorie",
                          "data-i18n-en": "Five special games in game theory"}),
                 ui.tags.p(
-                    "Ein Beispielspiel (Auszahlungen (u₁, u₂)), "
+                    "Ein Beispielspiel (Nutzen (u₁, u₂)), "
                     "die zentrale Idee und typische Ergebnisse.",
-                    **{"data-i18n-de": "Ein Beispielspiel (Auszahlungen (u₁, u₂)), die zentrale Idee und typische Ergebnisse.",
-                       "data-i18n-en": "An example game (payoffs (u₁, u₂)), the central idea, and typical outcomes."},
+                    **{"data-i18n-de": "Ein Beispielspiel (Nutzen (u₁, u₂)), die zentrale Idee und typische Ergebnisse.",
+                       "data-i18n-en": "An example game (Utilities (u₁, u₂)), the central idea, and typical outcomes."},
                     class_="text-muted mb-4",
                 ),
                 *SPECIAL_GAMES_ROWS,
@@ -2975,8 +3271,8 @@ ui.nav_panel(
             ),
             value="special_games",
         ),
-
-        id="tabs",
+        ),
+        id="main_tabs",
     ),
 )
 
@@ -2992,55 +3288,59 @@ def server(input, output, session):
     @reactive.effect
     @reactive.event(input.start_exercise)
     def _go_to_exercise():
-        ui.update_navset("tabs", selected="ex1")
+        ui.update_navset("main_tabs", selected="ex1")
     @reactive.effect
     @reactive.event(input.go_to_ex2)
     def _go_to_ex2():
-        ui.update_navset("tabs", selected="ex2")
+        ui.update_navset("main_tabs", selected="ex2")
     @reactive.effect
     @reactive.event(input.go_to_ex3)
     def _go_to_ex3():
-        ui.update_navset("tabs", selected="ex3")
+        ui.update_navset("main_tabs", selected="ex3")
     @reactive.effect
     @reactive.event(input.go_to_ex4)
     def _go_to_ex4():
-        ui.update_navset("tabs", selected="ex4")
+        ui.update_navset("main_tabs", selected="ex4")
     @reactive.effect
     @reactive.event(input.go_to_ex5)
     def _go_to_ex5():
-        ui.update_navset("tabs", selected="ex5")
+        ui.update_navset("main_tabs", selected="ex5")
     @reactive.effect
     @reactive.event(input.go_to_ex6)
     def _go_to_ex6():
-        ui.update_navset("tabs", selected="ex6")
+        ui.update_navset("main_tabs", selected="ex6")
     @reactive.effect
     @reactive.event(input.go_to_special_games)
     def _go_to_special_games():
-        ui.update_navset("tabs", selected="special_games")
+        ui.update_navset("main_tabs", selected="special_games")
     @reactive.effect
     @reactive.event(input.go_back_intro_from_special)
     def _go_back_intro_from_special():
-        ui.update_navset("tabs", selected="intro")
+        ui.update_navset("main_tabs", selected="intro")
     @reactive.effect
     @reactive.event(input.go_back_ex1)
     def _go_back_ex1():
-        ui.update_navset("tabs", selected="ex1")
+        ui.update_navset("main_tabs", selected="ex1")
     @reactive.effect
     @reactive.event(input.go_back_ex2)
     def _go_back_ex2():
-        ui.update_navset("tabs", selected="ex2")
+        ui.update_navset("main_tabs", selected="ex2")
     @reactive.effect
     @reactive.event(input.go_back_ex3)
     def _go_back_ex3():
-        ui.update_navset("tabs", selected="ex3")
+        ui.update_navset("main_tabs", selected="ex3")
     @reactive.effect
     @reactive.event(input.go_back_ex4)
     def _go_back_ex4():
-        ui.update_navset("tabs", selected="ex4")
+        ui.update_navset("main_tabs", selected="ex4")
     @reactive.effect
     @reactive.event(input.go_back_ex5)
     def _go_back_ex5():
-        ui.update_navset("tabs", selected="ex5")
+        ui.update_navset("main_tabs", selected="ex5")
+    @reactive.effect
+    @reactive.event(input.nav_normalform)
+    def _nav_normalform():
+        ui.update_navset("main_tabs", selected="intro")
 
     # =======================
     # Exercise 1 state
@@ -3127,16 +3427,16 @@ def server(input, output, session):
                     ui.tags.p(
                         ui.tags.strong(tr(lang, "Ziel: ", "Goal: ")),
                         tr(lang,
-                           "Finde alle besten Antworten für den angegebenen Spieler, gegeben die Strategie des Gegners.",
-                           "Find all best responses for the specified player, given the opponent's strategy."),
+                           "Finde alle besten Antworten für den angegebenen Spieler, gegeben die Strategie des anderen Spielers. ",
+                           "Find all the best responses for the specified player, given the other player's strategy."),
                         class_="text-muted mb-2",
                     ),
                     ui.tags.ul(
                         ui.tags.li(
                             ui.tags.strong(tr(lang, "Beste Antwort: ", "Best response: ")),
                             tr(lang,
-                               "Eine Strategie ist eine beste Antwort, wenn sie den höchsten eigenen Nutzen liefert.",
-                               "A strategy is a best response if it yields the highest own payoff.")
+                               "Eine Strategie ist eine beste Antwort, wenn sie den höchsten eigenen Nutzen liefert, gegeben die Strategie des anderen Spielers.",
+                               "A strategy is the best response if it delivers the highest benefit for oneself, given the other player's strategy.")
                         ),
                         ui.tags.li(
                             ui.tags.strong(tr(lang, "Vorgehen Spieler 1: ", "Player 1 procedure: ")),
@@ -3157,7 +3457,7 @@ def server(input, output, session):
                         ui.tags.li(
                             ui.tags.strong(tr(lang, "Mehrfach möglich: ", "Multiple possible: ")),
                             tr(lang,
-                               "Falls es mehrere Maximale gibt, sind alle entsprechenden Strategien beste Antworten.",
+                               "Falls es mehrere Maxima gibt, sind alle entsprechenden Strategien beste Antworten.",
                                "If there are multiple maxima, all corresponding strategies are best responses.")
                         ),
                         class_="text-muted mb-0",
@@ -3266,23 +3566,23 @@ def server(input, output, session):
                         ui.tags.li(
                             ui.tags.strong(tr(lang, "Vorgehen Spieler 1: ", "Player 1 procedure: ")),
                             tr(lang,
-                               "Vergleiche zeilenweise die u₁-Werte (A/B/C/D) spaltenweise (X/Y/Z). "
-                               "Eine Zeile ist strikt dominant, wenn sie in jeder Spalte strikt höher ist.",
-                               "Compare the u₁ values row-wise across columns (X/Y/Z). A row is strictly dominant if it is strictly higher in every column.")
+                               "Vergleiche zeilenweise die u₁-Werte (A/B/C/D) für jede Spalte (X/Y/Z). "
+                               "Eine Strategie (Zeile) ist strikt dominant, wenn sie in jeder Spalte strikt am höchsten ist.",
+                               "Compare the u₁ values (A/B/C/D) for each column (X/Y/Z) row by row. A strategy (row) is strictly dominant if it is strictly highest in every column.")
                         ),
                         ui.tags.li(
                             ui.tags.strong(tr(lang, "Vorgehen Spieler 2: ", "Player 2 procedure: ")),
                             tr(lang,
-                               "Vergleiche spaltenweise die u₂-Werte (X/Y/Z) zeilenweise (A/B/C/D). "
-                               "Eine Spalte ist strikt dominant, wenn sie in jeder Zeile strikt höher ist.",
-                               "Compare the u₂ values column-wise across rows (A/B/C/D). A column is strictly dominant if it is strictly higher in every row.")
+                               "Vergleiche spaltenweise die u₂-Werte (X/Y/Z) für jede Zeile (weise (A/B/C/D). "
+                               "Eine Strategie (Spalte) ist strikt dominant, wenn sie in jeder Zeile strikt am höchsten.",
+                               "Compare the u₂ values (X/Y/Z) for each row (A/B/C/D) column by column. A strategy (column) is strictly dominant if it is strictly highest in each row.")
                         ),
                         ui.tags.li(
                             ui.tags.strong(tr(lang, "Antwortauswahl: ", "Answer choice: ")),
                             tr(lang,
-                               "Falls es eine dominante Strategie gibt, wähle die passende Kombination. "
+                               "Falls ein oder beide Spieler eine  dominante Strategie haben, wähle die passende Aussage. "
                                "Gibt es keine, wähle „Nein, keiner“.",
-                               "If there is a dominant strategy, choose the matching combination. If none exists, choose \"No, none\".")
+                               "If one or both players have a dominant strategy, select the appropriate statement. If neither has a dominant strategy, select “No, neither”.")
                         ),
                         class_="text-muted mb-0",
                     ),
@@ -3327,37 +3627,37 @@ def server(input, output, session):
     @reactive.effect
     @reactive.event(input.go_to_ex2)
     def _go_to_ex2():
-        ui.update_navset("tabs", selected="ex2")
+        ui.update_navset("main_tabs", selected="ex2")
 
     @reactive.effect
     @reactive.event(input.go_back_intro)
     def _go_back_intro():
-        ui.update_navset("tabs", selected="intro")
+        ui.update_navset("main_tabs", selected="intro")
 
     @reactive.effect
     @reactive.event(input.go_back_ex1)
     def _go_back_ex1():
-        ui.update_navset("tabs", selected="ex1")
+        ui.update_navset("main_tabs", selected="ex1")
 
     @reactive.effect
     @reactive.event(input.go_back_ex2)
     def _go_back_ex2():
-        ui.update_navset("tabs", selected="ex2")
+        ui.update_navset("main_tabs", selected="ex2")
 
     @reactive.effect
     @reactive.event(input.go_back_ex3)
     def _go_back_ex3():
-        ui.update_navset("tabs", selected="ex3")
+        ui.update_navset("main_tabs", selected="ex3")
 
     @reactive.effect
     @reactive.event(input.go_to_ex3)
     def _go_to_ex3():
-        ui.update_navset("tabs", selected="ex3")
+        ui.update_navset("main_tabs", selected="ex3")
 
     @reactive.effect
     @reactive.event(input.go_to_ex4)
     def _go_to_ex4():
-        ui.update_navset("tabs", selected="ex4")
+        ui.update_navset("main_tabs", selected="ex4")
 
     # =======================
     # Exercise 3 state
@@ -3436,9 +3736,9 @@ def server(input, output, session):
                         ui.tags.li(
                             ui.tags.strong(tr(lang, "Vorgehen: ", "Procedure: ")),
                             tr(lang,
-                               "Vergleiche für Spieler 1 zeilenweise die u₁-Werte (A/B/C/D) spaltenweise (X/Y/Z). "
-                               "Für Spieler 2 vergleichst du spaltenweise die u₂-Werte zeilenweise.",
-                               "For Player 1, compare u₁ values row-wise across columns (X/Y/Z). For Player 2, compare u₂ values column-wise across rows.")
+                               "Vergleiche für Spieler 1 zeilenweise die u₁-Werte (A/B/C/D) für jede Spalte (X/Y/Z). "
+                               "Für Spieler 2 vergleichst du spaltenweise die u₂-Werte für jede Zeile.",
+                               "For player 1, compare the u₁ values (A/B/C/D) for each column (X/Y/Z) row by row. For player 2, compare the u₂ values for each row column by column.")
                         ),
                         ui.tags.li(
                             ui.tags.strong(tr(lang, "Wichtig: ", "Important: ")),
@@ -3541,9 +3841,9 @@ def server(input, output, session):
                     ui.tags.p(
                         ui.tags.strong(tr(lang, "Definition: ", "Definition: ")),
                         tr(lang,
-                           "Ein Strategieprofil (r, c) ist ein Nash-Gleichgewicht in reinen Strategien, "
-                           "wenn keiner der Spieler sich durch einseitiges Abweichen strikt verbessern kann.",
-                           "A strategy profile (r, c) is a Nash equilibrium in pure strategies if neither player can strictly improve by unilateral deviation."),
+                           "Eine Strategiekombination (r, c) ist ein Nash-Gleichgewicht in reinen Strategien, "
+                            "wenn keiner der Spieler sich durch einseitiges Abweichen strikt verbessern kann.",
+                           "A strategy combination (r, c) is a Nash equilibrium in pure strategies if none of the players can strictly improve their position by deviating unilaterally."),
                         class_="text-muted mb-2",
                     ),
                     ui.tags.ul(
@@ -3564,8 +3864,8 @@ def server(input, output, session):
                         ui.tags.li(
                             ui.tags.strong(tr(lang, "Nash-Kriterium: ", "Nash criterion: ")),
                             tr(lang,
-                               "(r,c) ist Nash ⇔ r ist beste Antwort auf c UND c ist beste Antwort auf r.",
-                               "(r,c) is Nash ⇔ r is a best response to c AND c is a best response to r.")
+                               "(r,c) ist Nash-GG ⇔ r ist beste Antwort auf c UND c ist beste Antwort auf r.",
+                               "(r,c) is Nash-EQ ⇔ r is a best response to c AND c is a best response to r.")
                         ),
                         ui.tags.li(
                             ui.tags.strong(tr(lang, "Praktischer Tipp: ", "Practical tip: ")),
@@ -3712,24 +4012,24 @@ def server(input, output, session):
                     ui.tags.p(
                         ui.tags.strong(tr(lang, "Ziel: ", "Goal: ")),
                         tr(lang,
-                           "Für jedes Profil (r,c) entscheide: nein / ja, nicht strikt / ja, strikt.",
-                           "For each profile (r,c), decide: no / yes, not strict / yes, strict."),
+                           "Für jede Strategiekombination (r,c) entscheide: nein / ja, nicht strikt / ja, strikt.",
+                           "For each strategy combination (r,c), decide: no / yes, not strict / yes, strict."),
                         class_="text-muted mb-2",
                     ),
                     ui.tags.ul(
                         ui.tags.li(
-                            ui.tags.strong(tr(lang, "Nash (nicht strikt): ", "Nash (not strict): ")),
+                            ui.tags.strong(tr(lang, "Nash-GG (nicht strikt): ", "Nash-EQ (not strict): ")),
                             tr(lang,
-                               "(r,c) ist Nash, wenn kein Spieler durch einseitiges Abweichen einen strikt höheren Nutzen bekommt. "
+                               "(r,c) ist Nash-GG, wenn kein Spieler durch einseitiges Abweichen einen strikt höheren Nutzen bekommt. "
                                "Es dürfen auch andere Strategien gleich gut sein (Indifferenz).",
-                               "(r,c) is Nash if no player can get a strictly higher payoff by unilateral deviation. "
+                               "(r,c) is Nash-EQ if no player can get a strictly higher payoff by unilateral deviation. "
                                "Other strategies may be equally good (indifference).")
                         ),
                         ui.tags.li(
-                            ui.tags.strong(tr(lang, "Strikt Nash: ", "Strict Nash: ")),
+                            ui.tags.strong(tr(lang, "Striktes Nash-GG: ", "Strict Nash-EQ: ")),
                             tr(lang,
-                               "(r,c) ist strikt Nash, wenn beide Spieler dort eine strikt beste Antwort spielen, also eindeutig (ohne Gleichstand).",
-                               "(r,c) is strict Nash if both players play a strictly best response there, i.e., uniquely (no tie).")
+                               "(r,c) ist striktes Nash-GG, wenn beide Spieler dort eine strikt beste Antwort spielen, die beste Anwort also eindeutig ist (ohne Indifferenz).",
+                               "(r,c) is a strict Nash GG if both players play a strictly best response there, i.e. the best response is unambiguous (without indifference).")
                         ),
                         ui.tags.li(
                             ui.tags.strong(tr(lang, "So prüfst du Spieler 1: ", "Check Player 1: ")),
@@ -3864,7 +4164,7 @@ def server(input, output, session):
                         reasons = [
                             tr(
                                 lang,
-                                f"Beide spielen eine beste Antwort (P1 in Spalte {c}: {fmt_list(br1)}, P2 in Zeile {r}: {fmt_list(br2)}).",
+                                f"Beide spielen eine beste Antwort (S1 in Spalte {c}: {fmt_list(br1)}, S2 in Zeile {r}: {fmt_list(br2)}).",
                                 f"Both play a best response (P1 in column {c}: {fmt_list(br1)}, P2 in row {r}: {fmt_list(br2)}).",
                             )
                         ]
@@ -3874,7 +4174,7 @@ def server(input, output, session):
                             tie_reasons.append(
                                 tr(
                                     lang,
-                                    f"P1 hat Gleichstand in Spalte {c} ({fmt_list(br1)}).",
+                                    f"S1 hat Gleichstand in Spalte {c} ({fmt_list(br1)}).",
                                     f"P1 has a tie in column {c} ({fmt_list(br1)}).",
                                 )
                             )
@@ -3882,7 +4182,7 @@ def server(input, output, session):
                             tie_reasons.append(
                                 tr(
                                     lang,
-                                    f"P2 hat Gleichstand in Zeile {r} ({fmt_list(br2)}).",
+                                    f"S2 hat Gleichstand in Zeile {r} ({fmt_list(br2)}).",
                                     f"P2 has a tie in row {r} ({fmt_list(br2)}).",
                                 )
                             )
@@ -3899,7 +4199,7 @@ def server(input, output, session):
                     reasons = [
                         tr(
                             lang,
-                            f"Strikt: P1 eindeutig beste Antwort in Spalte {c} ({r}), P2 eindeutig beste Antwort in Zeile {r} ({c}).",
+                            f"Strikt: S1 eindeutig beste Antwort in Spalte {c} ({r}), S2 eindeutig beste Antwort in Zeile {r} ({c}).",
                             f"Strict: P1 uniquely best responds in column {c} ({r}), P2 uniquely best responds in row {r} ({c}).",
                         )
                     ]
@@ -3996,9 +4296,8 @@ def server(input, output, session):
                         ui.tags.li(
                             ui.tags.strong(tr(lang, "Warum das funktioniert: ", "Why this works: ")),
                             tr(lang,
-                               "Wenn Spieler 2 indifferent ist, ist es für ihn optimal zu mischen, damit kann Spieler 1 p so wählen, "
-                               "dass Spieler 2 keinen Anreiz hat, seine reine Strategie zu ändern.",
-                               "If Player 2 is indifferent, mixing is optimal; then Player 1 can choose p so Player 2 has no incentive to change their pure strategy.")
+                               "Nur wenn Spieler 2 indifferent ist, ist es für ihn optimal zu mischen. Ob er indifferent ist, hängt von der Mischung von Spieler 1 ab. Wenn Spieler 1 p so wählt,  dass Spieler 2 indifferent ist, hat Spieler 2 keinen (strikten) Anreiz, auf eine reine Strategie zu wechseln.",
+                               "Only if Player 2 is indifferent is it optimal for him to mix. Whether he is indifferent depends on Player 1's mix. If Player 1 chooses p such that Player 2 is indifferent, Player 2 has no (strict) incentive to switch to a pure strategy.")
                         ),
                         class_="text-muted mb-0",
                     ),
