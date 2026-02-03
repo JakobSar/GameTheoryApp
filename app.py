@@ -12,6 +12,10 @@ P2_STRATS_EX2 = ["X", "Y", "Z"]
 
 P1_STRATS_EX6 = ["A", "B"]
 P2_STRATS_EX6 = ["X", "Y"]
+P1_STRATS_T2_EX1 = ["A", "B", "C"]
+P2_STRATS_T2_EX1 = ["X", "Y", "Z"]
+P1_STRATS_T2_EX2 = ["A", "B", "C"]
+P2_STRATS_T2_EX2 = ["A", "B", "C"]
 
 # =========================================================
 # Intro example (static)
@@ -655,6 +659,129 @@ def find_nash_equilibria(payoffs, rows, cols):
                 ne_list.append((r, c))
     return ne_list
 
+def generate_random_game_t2_ex1():
+    """Create a random 3x3 game for trembling-hand perfection (pure strategies)."""
+    return {
+        (r, c): (random.randint(0, 9), random.randint(0, 9))
+        for r in P1_STRATS_T2_EX1
+        for c in P2_STRATS_T2_EX1
+    }
+
+def weakly_dominated_rows(payoffs, rows, cols):
+    """Rows weakly dominated by another pure row strategy for Player 1."""
+    dominated = set()
+    for r in rows:
+        for r2 in rows:
+            if r2 == r:
+                continue
+            ge_all = all(payoffs[(r2, c)][0] >= payoffs[(r, c)][0] for c in cols)
+            gt_any = any(payoffs[(r2, c)][0] > payoffs[(r, c)][0] for c in cols)
+            if ge_all and gt_any:
+                dominated.add(r)
+                break
+    return dominated
+
+def weakly_dominated_cols(payoffs, rows, cols):
+    """Columns weakly dominated by another pure column strategy for Player 2."""
+    dominated = set()
+    for c in cols:
+        for c2 in cols:
+            if c2 == c:
+                continue
+            ge_all = all(payoffs[(r, c2)][1] >= payoffs[(r, c)][1] for r in rows)
+            gt_any = any(payoffs[(r, c2)][1] > payoffs[(r, c)][1] for r in rows)
+            if ge_all and gt_any:
+                dominated.add(c)
+                break
+    return dominated
+
+def trembling_hand_perfect_pure_equilibria(payoffs, rows, cols):
+    """
+    In this exercise setting: THP pure equilibria = pure Nash equilibria
+    where neither played strategy is weakly dominated.
+    """
+    ne = find_nash_equilibria(payoffs, rows, cols)
+    dominated_rows = weakly_dominated_rows(payoffs, rows, cols)
+    dominated_cols = weakly_dominated_cols(payoffs, rows, cols)
+    return [(r, c) for (r, c) in ne if r not in dominated_rows and c not in dominated_cols]
+
+def t2_ex1_choices(lang="de"):
+    combos = [f"({r},{c})" for r in P1_STRATS_T2_EX1 for c in P2_STRATS_T2_EX1]
+    return combos + [tr(lang, "Keines", "None")]
+
+def t2_ex1_correct_choice_set(payoffs, lang="de"):
+    thp = trembling_hand_perfect_pure_equilibria(payoffs, P1_STRATS_T2_EX1, P2_STRATS_T2_EX1)
+    if not thp:
+        return {tr(lang, "Keines", "None")}
+    return {f"({r},{c})" for (r, c) in thp}
+
+def generate_random_game_t2_ex2():
+    """
+    Symmetric 3x3 game:
+    u2(r,c) = u1(c,r). Bias diagonal entries upward to get more symmetric Nash candidates.
+    """
+    rows = P1_STRATS_T2_EX2
+    cols = P2_STRATS_T2_EX2
+    u1 = {(r, c): random.randint(0, 9) for r in rows for c in cols}
+
+    # Encourage symmetric Nash equilibria by often making diagonal entries column maxima.
+    for s in rows:
+        if random.random() < 0.75:
+            col_vals = [u1[(r, s)] for r in rows]
+            target = max(col_vals)
+            if u1[(s, s)] < target:
+                u1[(s, s)] = target
+
+    payoffs = {}
+    for r in rows:
+        for c in cols:
+            payoffs[(r, c)] = (u1[(r, c)], u1[(c, r)])
+    return payoffs
+
+def symmetric_nash_strategies_t2_ex2(payoffs):
+    """Return strategies s such that (s,s) is a Nash equilibrium in the symmetric game."""
+    strats = P1_STRATS_T2_EX2
+    sym_ne = []
+    for s in strats:
+        u_ss = payoffs[(s, s)][0]
+        if all(payoffs[(sp, s)][0] <= u_ss for sp in strats):
+            sym_ne.append(s)
+    return sym_ne
+
+def ess_strategies_t2_ex2(payoffs):
+    """
+    ESS definition for symmetric games (pure strategies):
+    1) s is a best response to itself.
+    2) For any tie best response s' != s against s, require u(s',s') < u(s,s').
+    """
+    strats = P1_STRATS_T2_EX2
+    ess = []
+    for s in strats:
+        u_ss = payoffs[(s, s)][0]
+        br_to_s = [sp for sp in strats if payoffs[(sp, s)][0] == u_ss]
+        if any(payoffs[(sp, s)][0] > u_ss for sp in strats):
+            continue
+        ok2 = True
+        for sp in br_to_s:
+            if sp == s:
+                continue
+            if payoffs[(sp, sp)][0] >= payoffs[(s, sp)][0]:
+                ok2 = False
+                break
+        if ok2:
+            ess.append(s)
+    return ess
+
+def t2_ex2_choices(lang="de"):
+    combos = [f"({r},{c})" for c in P2_STRATS_T2_EX2 for r in P1_STRATS_T2_EX2]
+    return combos + [tr(lang, "Keines", "None")]
+
+def t2_ex2_correct_choice_set(payoffs, lang="de"):
+    ess = ess_strategies_t2_ex2(payoffs)
+    if not ess:
+        return {tr(lang, "Keines", "None")}
+    return {f"({s},{s})" for s in ess}
+
 # Funktion zur Generierung eines 4x3-Spiels für Übung 4 
 # (häufig mit mindestens einem Nash-Gleichgewicht, gelegentlich mit zwei oder keinem)
 def generate_random_game_ex4(force_prob=0.9):
@@ -1225,8 +1352,8 @@ app_ui = ui.page_fluid(
     body.nav-hover-disabled #main_tabs .nav-item.dropdown:hover > .dropdown-menu {
         display: none !important;
     }
-    /* Disable dropdown menu for Normalformspiele */
-    #main_tabs .nav-item.dropdown > .dropdown-menu {
+    /* Disable dropdown menu only for menu labels used as direct navigation */
+    #main_tabs .nav-item.dropdown.normalform-menu-item > .dropdown-menu {
         display: none !important;
     }
     .btn-success {
@@ -2150,6 +2277,8 @@ app_ui = ui.page_fluid(
           if (!label) { return; }
           var toggle = label.closest('.dropdown-toggle');
           if (!toggle || toggle.dataset.normalformBound === '1') { return; }
+          var menuItem = toggle.closest('.nav-item.dropdown');
+          if (menuItem) { menuItem.classList.add('normalform-menu-item'); }
           toggle.dataset.normalformBound = '1';
           toggle.removeAttribute('data-bs-toggle');
           toggle.removeAttribute('data-toggle');
@@ -2385,21 +2514,11 @@ app_ui = ui.page_fluid(
         class_="impressum-panel",
     ),
     ui.navset_tab(
-        ui.nav_menu(
-            ui.tags.span(
-                "Normalformspiele",
-                class_="normalform-menu-toggle",
-                **{"data-i18n-de": "Normalformspiele", "data-i18n-en": "Normal-form games"},
-            ),
-
-        # =================================================
-        # Erklärung
-        # =================================================
         ui.nav_panel(
-            ui.tags.span("Erklärung", **{"data-i18n-de": "Erklärung", "data-i18n-en": "Explanation"}),
+            ui.tags.span("Einführung", **{"data-i18n-de": "Einführung", "data-i18n-en": "Introduction"}),
             ui.tags.div(
-                ui.h2("Einführung: Normalformspiele", class_="intro-title",
-                      **{"data-i18n-de": "Einführung: Normalformspiele", "data-i18n-en": "Introduction: Normal-form Games"}),
+                ui.h2("Einführung Normalformspiele", class_="intro-title",
+                      **{"data-i18n-de": "Einführung Normalformspiele", "data-i18n-en": "Introduction Normal Form Games"}),
                 ui.tags.p(
                     "Ein Normalformspiel beschreibt eine Situation, in der alle Spieler gleichzeitig "
                     "eine Strategie wählen und daraus für jeden Spieler ein Nutzen  entsteht.",
@@ -2407,8 +2526,6 @@ app_ui = ui.page_fluid(
                        "data-i18n-en": "A normal form game describes a situation in which all players choose a strategy at the same time and each player derives a benefit from it."},
                     class_="text-muted",
                 ),
-
-                # ---- Row 1: Three cards ----
                 ui.tags.div(
                     ui.tags.div(
                         ui.tags.div(
@@ -2460,8 +2577,6 @@ app_ui = ui.page_fluid(
                     ),
                     class_="row row-cols-1 row-cols-lg-3 g-3 mt-2 align-items-stretch card-row intro-rule-row mb-4",
                 ),
-
-                # ---- Row 2: Example + notation (same card) ----
                 ui.tags.div(
                     ui.tags.div(
                         ui.tags.div(
@@ -2532,19 +2647,39 @@ app_ui = ui.page_fluid(
                     class_="card shadow-sm h-100",
                     style="background-color:#ffffff;",
                 ),
-
                 ui.input_action_button(
-                    "start_exercise",
-                    ui.tags.span("Zu Übung 1", **{"data-i18n-de": "Zu Übung 1", "data-i18n-en": "Go to Exercise 1"}),
+                    "go_to_overview",
+                    ui.tags.span("Zur Übersichtsseite", **{"data-i18n-de": "Zur Übersichtsseite", "data-i18n-en": "Go to overview page"}),
                     class_="btn btn-success mt-4",
                 ),
+                class_="container-fluid px-4",
+            ),
+            value="normalform_intro",
+        ),
+        ui.nav_menu(
+            ui.tags.span(
+                "Normalformspiele",
+                class_="normalform-menu-toggle",
+                **{"data-i18n-de": "Normalformspiele", "data-i18n-en": "Normal-form games"},
+            ),
 
+        # =================================================
+        # Erklärung
+        # =================================================
+            ui.nav_panel(
+                ui.tags.span("Erklärung", **{"data-i18n-de": "Erklärung", "data-i18n-en": "Explanation"}),
+                ui.tags.div(
+                ui.h2(
+                    "Übersicht Normalformspiele",
+                    class_="exercise-title",
+                    **{"data-i18n-de": "Übersicht Normalformspiele", "data-i18n-en": "Overview Normal-form games"},
+                ),
                 ui.tags.div(
                     ui.tags.div(
                         ui.tags.h5(
-                            "Inhaltsverzeichnis",
+                            "Teil 1:Statische Normalformspiele mit vollständiger Information",
                             class_="card-title",
-                            **{"data-i18n-de": "Inhaltsverzeichnis", "data-i18n-en": "Table of contents"},
+                            **{"data-i18n-de": "Teil 1: Statische Normalformspiele mit vollständiger Information", "data-i18n-en": "Part 1: Static normal form games with complete information"},
                         ),
                         ui.tags.ul(
                             ui.tags.li(
@@ -2619,15 +2754,45 @@ app_ui = ui.page_fluid(
                                     },
                                 )
                             ),
+                            class_="mb-0 toc-list",
+                        ),
+                        class_="card-body toc-card-body",
+                    ),
+                    class_="card shadow-sm h-100 mt-4",
+                    style="background-color:#ffffff;",
+                ),
+                ui.tags.div(
+                    ui.tags.div(
+                        ui.tags.h5(
+                            "Teil 2: Statische Normalformspiele mit vollständiger Information und Gleichgewichtsverfeinerungen",
+                            class_="card-title",
+                            **{
+                                "data-i18n-de": "Teil 2: Statische Normalformspiele mit vollständiger Information und Gleichgewichtsverfeinerungen",
+                                "data-i18n-en": "Part 2: Static normal form games with complete information and equilibrium refinements",
+                            },
+                        ),
+                        ui.tags.ul(
                             ui.tags.li(
                                 ui.tags.a(
-                                    "Besondere Spiele",
+                                    "Übung 1 – Trembling-Hand-Perfektion",
                                     href="#",
-                                    onclick="if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('go_to_special_games', Date.now(), {priority: 'event'}); } return false;",
+                                    onclick="if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('start_teil2_ex1', Date.now(), {priority: 'event'}); } return false;",
                                     class_="toc-link",
                                     **{
-                                        "data-i18n-de": "Besondere Spiele",
-                                        "data-i18n-en": "Special games",
+                                        "data-i18n-de": "Übung 1 – Trembling-Hand-Perfektion",
+                                        "data-i18n-en": "Exercise 1 – Trembling-hand perfection",
+                                    },
+                                )
+                            ),
+                            ui.tags.li(
+                                ui.tags.a(
+                                    "Übung 2 – Evolutionär stabile Strategien",
+                                    href="#",
+                                    onclick="if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('go_to_teil2_ex2', Date.now(), {priority: 'event'}); } return false;",
+                                    class_="toc-link",
+                                    **{
+                                        "data-i18n-de": "Übung 2 – Evolutionär stabile Strategien",
+                                        "data-i18n-en": "Exercise 2 – Evolutionarily stable strategies",
                                     },
                                 )
                             ),
@@ -2637,6 +2802,46 @@ app_ui = ui.page_fluid(
                     ),
                     class_="card shadow-sm h-100 mt-4",
                     style="background-color:#ffffff;",
+                ),
+                ui.tags.div(
+                    ui.tags.div(
+                        ui.tags.h5(
+                            "Besondere Spiele",
+                            class_="card-title",
+                            **{
+                                "data-i18n-de": "Besondere Spiele",
+                                "data-i18n-en": "Special games",
+                            },
+                        ),
+                        ui.tags.ul(
+                            ui.tags.li(
+                                ui.tags.a(
+                                    "Zusatzteil mit 5 klassischen Spielen der Spieltheorie.",
+                                    href="#",
+                                    onclick="if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('go_to_special_games', Date.now(), {priority: 'event'}); } return false;",
+                                    class_="toc-link",
+                                    **{
+                                        "data-i18n-de": "Zusatzteil mit 5 klassischen Spielen der Spieltheorie.",
+                                        "data-i18n-en": "Additional section with 5 classic games of game theory.",
+                                    },
+                                )
+                            ),
+                            class_="mb-0 toc-list",
+                        ),
+                        class_="card-body toc-card-body",
+                    ),
+                    class_="card shadow-sm h-100 mt-4",
+                    style="background-color:#ffffff;",
+                ),
+                ui.input_action_button(
+                    "start_exercise",
+                    ui.tags.span("Zu Teil 1, Übung 1", **{"data-i18n-de": "Zu Teil 1, Übung 1", "data-i18n-en": "Go to Part 1, Exercise 1"}),
+                    class_="btn btn-success mt-4",
+                ),
+                ui.input_action_button(
+                    "go_back_to_intro_page",
+                    ui.tags.span("Zur Einführung", **{"data-i18n-de": "Zur Einführung", "data-i18n-en": "Back to introduction"}),
+                    class_="btn btn-outline-secondary mt-4 ms-2",
                 ),
 
                 class_="container-fluid px-4",
@@ -3018,7 +3223,7 @@ ui.nav_panel(
                                 None,
                                 choices=[f"({r},{c})" for r in P1_STRATS_EX2 for c in P2_STRATS_EX2]
                             ),
-                            class_="two-col-radios"
+                            class_="three-col-radios"
                         ),
                         ui.input_action_button(
                             "check_4",
@@ -3147,8 +3352,8 @@ ui.nav_panel(
         # =================================================
         # Übung 6
         # =================================================
-        ui.nav_panel(
-            ui.tags.span("Übung 6", **{"data-i18n-de": "Übung 6", "data-i18n-en": "Exercise 6"}),
+            ui.nav_panel(
+                ui.tags.span("Übung 6", **{"data-i18n-de": "Übung 6", "data-i18n-en": "Exercise 6"}),
             ui.tags.div(
                 ui.h2("Übung 6: Nash-Gleichgewicht in gemischten Strategien", class_="exercise-title",
                       **{"data-i18n-de": "Übung 6: Nash-Gleichgewicht in gemischten Strategien",
@@ -3231,8 +3436,8 @@ ui.nav_panel(
                         class_="btn btn-outline-secondary"
                     ),
                     ui.input_action_button(
-                        "go_to_special_games",
-                        ui.tags.span("Zu besonderen Spielen", **{"data-i18n-de": "Zu besonderen Spielen", "data-i18n-en": "Go to special games"}),
+                        "go_back_intro_from_ex6",
+                        ui.tags.span("Zurück zur Inhaltsseite", **{"data-i18n-de": "Zurück zur Inhaltsseite", "data-i18n-en": "Back to table of contents"}),
                         class_="btn btn-success"
                     ),
                     class_="mt-4 text-start mb-3 d-flex gap-2",
@@ -3241,36 +3446,275 @@ ui.nav_panel(
             ),
             value="ex6",
         ),
-        
-        # =========================
-        # BESONDERE SPIELE (READ ONLY)
-        # =========================
-        ui.nav_panel(
-            ui.tags.span("Besondere Spiele", **{"data-i18n-de": "Besondere Spiele", "data-i18n-en": "Special games"}),
-            ui.tags.div(
-                ui.h2("Fünf besondere Spiele der Spieltheorie", class_="exercise-title",
-                      **{"data-i18n-de": "Fünf besondere Spiele der Spieltheorie",
-                         "data-i18n-en": "Five special games in game theory"}),
-                ui.tags.p(
-                    "Ein Beispielspiel (Nutzen (u₁, u₂)), "
-                    "die zentrale Idee und typische Ergebnisse.",
-                    **{"data-i18n-de": "Ein Beispielspiel (Nutzen (u₁, u₂)), die zentrale Idee und typische Ergebnisse.",
-                       "data-i18n-en": "An example game (Utilities (u₁, u₂)), the central idea, and typical outcomes."},
-                    class_="text-muted mb-4",
-                ),
-                *SPECIAL_GAMES_ROWS,
+            # =================================================
+            # Teil 2: Übung 1
+            # =================================================
+            ui.nav_panel(
+                ui.tags.span("Übung 1", **{"data-i18n-de": "Übung 1", "data-i18n-en": "Exercise 1"}),
                 ui.tags.div(
-                    ui.input_action_button(
-                        "go_back_intro_from_special",
-                        ui.tags.span("Zurück zur Einführung", **{"data-i18n-de": "Zurück zur Einführung", "data-i18n-en": "Back to introduction"}),
-                        class_="btn btn-outline-secondary"
+                    ui.h2(
+                        "Übung 1: Trembling-Hand-perfekte Gleichgewichte (reine Strategien)",
+                        class_="exercise-title",
+                        **{
+                            "data-i18n-de": "Übung 1: Trembling-Hand-perfekte Gleichgewichte (reine Strategien)",
+                            "data-i18n-en": "Exercise 1: Trembling-hand perfect equilibria (pure strategies)",
+                        },
                     ),
-                    class_="mt-4 text-start mb-3",
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.div(
+                                ui.tags.div(
+                                    ui.tags.h5(
+                                        "Spiel",
+                                        class_="card-title",
+                                        **{"data-i18n-de": "Spiel", "data-i18n-en": "Game"},
+                                    ),
+                                    ui.output_ui("game_table_t2_1"),
+                                    ui.tags.div(
+                                        ui.tags.div(
+                                            ui.tags.h6("Notation", **{"data-i18n-de": "Notation", "data-i18n-en": "Notation"}),
+                                            ui.output_ui("notation_t2_1"),
+                                            class_="card-body py-2 exercise-notation-body",
+                                        ),
+                                        class_="card mt-3 notation-card",
+                                        style="background-color:#f7f7f7;",
+                                    ),
+                                    ui.tags.div(
+                                        ui.input_action_button(
+                                            "new_game_t2_1",
+                                            ui.tags.span("Neues Spiel", **{"data-i18n-de": "Neues Spiel", "data-i18n-en": "New game"}),
+                                            class_="btn btn-outline-primary",
+                                        ),
+                                        ui.input_action_button(
+                                            "help_t2_1",
+                                            ui.tags.span("Hilfe", **{"data-i18n-de": "Hilfe", "data-i18n-en": "Help"}),
+                                            class_="btn btn-outline-primary",
+                                        ),
+                                        class_="d-flex gap-2 mt-3",
+                                    ),
+                                    ui.output_ui("help_text_t2_1"),
+                                    class_="card-body",
+                                ),
+                                class_="card shadow-sm h-100",
+                                style="background-color:#ffffff;",
+                            ),
+                            class_="col exercise-col",
+                        ),
+                        ui.tags.div(
+                            ui.tags.div(
+                                ui.tags.div(
+                                    ui.tags.h5(
+                                        "Frage",
+                                        class_="card-title",
+                                        **{"data-i18n-de": "Frage", "data-i18n-en": "Question"},
+                                    ),
+                                    ui.tags.p(
+                                        "Bestimmen Sie die Trembling-hand-perfekten Gleichgewichte in reinen Strategien.",
+                                        **{
+                                            "data-i18n-de": "Bestimmen Sie die Trembling-hand-perfekten Gleichgewichte in reinen Strategien.",
+                                            "data-i18n-en": "Determine the trembling-hand perfect equilibria in pure strategies.",
+                                        },
+                                        class_="mt-2 mb-4",
+                                    ),
+                                    ui.tags.p(
+                                        "Nicht-exklusive Antworten (mehrere können richtig sein).",
+                                        **{
+                                            "data-i18n-de": "Nicht-exklusive Antworten (mehrere können richtig sein).",
+                                            "data-i18n-en": "Non-exclusive answers (multiple can be correct).",
+                                        },
+                                        class_="text-muted mb-3",
+                                    ),
+                                    ui.tags.div(
+                                        ui.input_checkbox_group(
+                                            "answer_t2_1",
+                                            None,
+                                            choices=["— bitte warten —"],
+                                        ),
+                                        class_="three-col-radios",
+                                    ),
+                                    ui.input_action_button(
+                                        "check_t2_1",
+                                        ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
+                                        class_="btn btn-primary mt-3",
+                                    ),
+                                    ui.output_ui("feedback_t2_1"),
+                                    class_="card-body",
+                                ),
+                                class_="card shadow-sm h-100",
+                                style="background-color:#ffffff;",
+                            ),
+                            class_="col exercise-col",
+                        ),
+                        class_="row row-cols-1 row-cols-lg-2 g-3 mt-2 align-items-stretch exercise-row",
+                    ),
+                    ui.tags.div(
+                        ui.input_action_button(
+                            "go_back_teil2_intro",
+                            ui.tags.span("Zurück", **{"data-i18n-de": "Zurück", "data-i18n-en": "Back"}),
+                            class_="btn btn-outline-secondary me-2",
+                        ),
+                        ui.input_action_button(
+                            "go_to_teil2_ex2_from_ex1",
+                            ui.tags.span("Weiter zu Übung 2", **{"data-i18n-de": "Weiter zu Übung 2", "data-i18n-en": "Next to Exercise 2"}),
+                            class_="btn btn-success",
+                        ),
+                        class_="mt-4 text-start mb-3",
+                    ),
+                    class_="container-fluid px-4",
                 ),
-                class_="container-fluid px-4",
+                value="teil2_ex1",
             ),
-            value="special_games",
-        ),
+
+            # =================================================
+            # Teil 2: Übung 2
+            # =================================================
+            ui.nav_panel(
+                ui.tags.span("Übung 2", **{"data-i18n-de": "Übung 2", "data-i18n-en": "Exercise 2"}),
+                ui.tags.div(
+                    ui.h2(
+                        "Übung 2: Evolutionär stabile Strategien",
+                        class_="exercise-title",
+                        **{
+                            "data-i18n-de": "Übung 2: Evolutionär stabile Strategien",
+                            "data-i18n-en": "Exercise 2: Evolutionarily stable strategies",
+                        },
+                    ),
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.div(
+                                ui.tags.div(
+                                    ui.tags.h5(
+                                        "Spiel",
+                                        class_="card-title",
+                                        **{"data-i18n-de": "Spiel", "data-i18n-en": "Game"},
+                                    ),
+                                    ui.output_ui("game_table_t2_2"),
+                                    ui.tags.div(
+                                        ui.tags.div(
+                                            ui.tags.h6("Notation", **{"data-i18n-de": "Notation", "data-i18n-en": "Notation"}),
+                                            ui.output_ui("notation_t2_2"),
+                                            class_="card-body py-2 exercise-notation-body",
+                                        ),
+                                        class_="card mt-3 notation-card",
+                                        style="background-color:#f7f7f7;",
+                                    ),
+                                    ui.tags.div(
+                                        ui.input_action_button(
+                                            "new_game_t2_2",
+                                            ui.tags.span("Neues Spiel", **{"data-i18n-de": "Neues Spiel", "data-i18n-en": "New game"}),
+                                            class_="btn btn-outline-primary",
+                                        ),
+                                        ui.input_action_button(
+                                            "help_t2_2",
+                                            ui.tags.span("Hilfe", **{"data-i18n-de": "Hilfe", "data-i18n-en": "Help"}),
+                                            class_="btn btn-outline-primary",
+                                        ),
+                                        class_="d-flex gap-2 mt-3",
+                                    ),
+                                    ui.output_ui("help_text_t2_2"),
+                                    class_="card-body",
+                                ),
+                                class_="card shadow-sm h-100",
+                                style="background-color:#ffffff;",
+                            ),
+                            class_="col exercise-col",
+                        ),
+                        ui.tags.div(
+                            ui.tags.div(
+                                ui.tags.div(
+                                    ui.tags.h5(
+                                        "Frage",
+                                        class_="card-title",
+                                        **{"data-i18n-de": "Frage", "data-i18n-en": "Question"},
+                                    ),
+                                    ui.tags.p(
+                                        "Bestimmen Sie die Gleichgewichte in evolutionär stabilen Strategien (ESS), in reinen Strategien.",
+                                        **{
+                                            "data-i18n-de": "Bestimmen Sie die Gleichgewichte in evolutionär stabilen Strategien (ESS), in reinen Strategien.",
+                                            "data-i18n-en": "Determine the equilibria in evolutionarily stable strategies (ESS), in pure strategies.",
+                                        },
+                                        class_="mt-2 mb-4",
+                                    ),
+                                    ui.tags.p(
+                                        "Nicht-exklusive Antworten (mehrere können richtig sein).",
+                                        **{
+                                            "data-i18n-de": "Nicht-exklusive Antworten (mehrere können richtig sein).",
+                                            "data-i18n-en": "Non-exclusive answers (multiple can be correct).",
+                                        },
+                                        class_="text-muted mb-3",
+                                    ),
+                                    ui.tags.div(
+                                        ui.input_checkbox_group(
+                                            "answer_t2_2",
+                                            None,
+                                            choices=["— bitte warten —"],
+                                        ),
+                                        class_="three-col-radios",
+                                    ),
+                                    ui.input_action_button(
+                                        "check_t2_2",
+                                        ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
+                                        class_="btn btn-primary mt-3",
+                                    ),
+                                    ui.output_ui("feedback_t2_2"),
+                                    class_="card-body",
+                                ),
+                                class_="card shadow-sm h-100",
+                                style="background-color:#ffffff;",
+                            ),
+                            class_="col exercise-col",
+                        ),
+                        class_="row row-cols-1 row-cols-lg-2 g-3 mt-2 align-items-stretch exercise-row",
+                    ),
+                    ui.tags.div(
+                        ui.input_action_button(
+                            "go_back_teil2_ex1_from_ex2",
+                            ui.tags.span("Zurück", **{"data-i18n-de": "Zurück", "data-i18n-en": "Back"}),
+                            class_="btn btn-outline-secondary me-2",
+                        ),
+                        ui.input_action_button(
+                            "go_back_intro_from_t2_ex2",
+                            ui.tags.span("Zurück zur Inhaltsseite", **{"data-i18n-de": "Zurück zur Inhaltsseite", "data-i18n-en": "Back to table of contents"}),
+                            class_="btn btn-success",
+                        ),
+                        class_="mt-4 text-start mb-3",
+                    ),
+                    class_="container-fluid px-4",
+                ),
+                value="teil2_ex2",
+            ),
+            ui.nav_panel(
+                ui.tags.span("Besondere Spiele", **{"data-i18n-de": "Besondere Spiele", "data-i18n-en": "Special games"}),
+                ui.tags.div(
+                    ui.h2(
+                        "Fuenf besondere Spiele der Spieltheorie",
+                        class_="exercise-title",
+                        **{
+                            "data-i18n-de": "Fuenf besondere Spiele der Spieltheorie",
+                            "data-i18n-en": "Five special games in game theory",
+                        },
+                    ),
+                    ui.tags.p(
+                        "Ein Beispielspiel (Nutzen (u1, u2)), die zentrale Idee und typische Ergebnisse.",
+                        **{
+                            "data-i18n-de": "Ein Beispielspiel (Nutzen (u1, u2)), die zentrale Idee und typische Ergebnisse.",
+                            "data-i18n-en": "An example game (Utilities (u1, u2)), the central idea, and typical outcomes.",
+                        },
+                        class_="text-muted mb-4",
+                    ),
+                    *SPECIAL_GAMES_ROWS,
+                    ui.tags.div(
+                        ui.input_action_button(
+                            "go_back_intro_from_special",
+                            ui.tags.span("Zurück zur Inhaltsseite", **{"data-i18n-de": "Zurück zur Inhaltsseite", "data-i18n-en": "Back to table of contents"}),
+                            class_="btn btn-outline-secondary",
+                        ),
+                        class_="mt-4 text-start mb-3",
+                    ),
+                    class_="container-fluid px-4",
+                ),
+                value="special_games",
+            ),
         ),
         id="main_tabs",
     ),
@@ -3289,6 +3733,14 @@ def server(input, output, session):
     @reactive.event(input.start_exercise)
     def _go_to_exercise():
         ui.update_navset("main_tabs", selected="ex1")
+    @reactive.effect
+    @reactive.event(input.go_to_overview)
+    def _go_to_overview():
+        ui.update_navset("main_tabs", selected="intro")
+    @reactive.effect
+    @reactive.event(input.go_back_to_intro_page)
+    def _go_back_to_intro_page():
+        ui.update_navset("main_tabs", selected="normalform_intro")
     @reactive.effect
     @reactive.event(input.go_to_ex2)
     def _go_to_ex2():
@@ -3310,9 +3762,37 @@ def server(input, output, session):
     def _go_to_ex6():
         ui.update_navset("main_tabs", selected="ex6")
     @reactive.effect
+    @reactive.event(input.go_back_intro_from_ex6)
+    def _go_back_intro_from_ex6():
+        ui.update_navset("main_tabs", selected="intro")
+    @reactive.effect
     @reactive.event(input.go_to_special_games)
     def _go_to_special_games():
         ui.update_navset("main_tabs", selected="special_games")
+    @reactive.effect
+    @reactive.event(input.start_teil2_ex1)
+    def _go_to_teil2_ex1():
+        ui.update_navset("main_tabs", selected="teil2_ex1")
+    @reactive.effect
+    @reactive.event(input.go_to_teil2_ex2)
+    def _go_to_teil2_ex2():
+        ui.update_navset("main_tabs", selected="teil2_ex2")
+    @reactive.effect
+    @reactive.event(input.go_back_teil2_intro)
+    def _go_back_teil2_intro():
+        ui.update_navset("main_tabs", selected="intro")
+    @reactive.effect
+    @reactive.event(input.go_to_teil2_ex2_from_ex1)
+    def _go_to_teil2_ex2_from_ex1():
+        ui.update_navset("main_tabs", selected="teil2_ex2")
+    @reactive.effect
+    @reactive.event(input.go_back_teil2_ex1_from_ex2)
+    def _go_back_teil2_ex1_from_ex2():
+        ui.update_navset("main_tabs", selected="teil2_ex1")
+    @reactive.effect
+    @reactive.event(input.go_back_intro_from_t2_ex2)
+    def _go_back_intro_from_t2_ex2():
+        ui.update_navset("main_tabs", selected="intro")
     @reactive.effect
     @reactive.event(input.go_back_intro_from_special)
     def _go_back_intro_from_special():
@@ -4353,5 +4833,328 @@ def server(input, output, session):
                 tr(lang, f"❌ Falsch. Richtig ist: p = {correct_frac}.", f"❌ Incorrect. Correct is: p = {correct_frac}."),
                 class_="alert alert-danger mt-3"
             )
+
+    # =======================
+    # Part 2 Exercise 1 state
+    # =======================
+    game_t2_1 = reactive.value(generate_random_game_t2_ex1())
+    show_fb_t2_1 = reactive.value(False)
+    show_help_t2_1 = reactive.value(False)
+
+    @reactive.effect
+    @reactive.event(input.new_game_t2_1)
+    def _new_game_t2_1():
+        game_t2_1.set(generate_random_game_t2_ex1())
+        ui.update_checkbox_group("answer_t2_1", selected=[])
+        show_fb_t2_1.set(False)
+
+    @reactive.effect
+    @reactive.event(input.check_t2_1)
+    def _check_t2_1():
+        show_fb_t2_1.set(True)
+
+    @reactive.effect
+    @reactive.event(input.help_t2_1)
+    def _help_t2_1():
+        show_help_t2_1.set(not show_help_t2_1.get())
+
+    @output
+    @render.ui
+    def game_table_t2_1():
+        lang = current_lang()
+        ui.update_checkbox_group(
+            "answer_t2_1",
+            choices=t2_ex1_choices(lang=lang),
+            selected=[],
+        )
+        return payoff_table(
+            P1_STRATS_T2_EX1,
+            P2_STRATS_T2_EX1,
+            payoff_strings_from_tuple_payoffs(game_t2_1.get()),
+            lang=lang,
+        )
+
+    @output
+    @render.ui
+    def notation_t2_1():
+        lang = current_lang()
+        return notation_ul(P1_STRATS_T2_EX1, P2_STRATS_T2_EX1, game_t2_1.get(), lang=lang)
+
+    @output
+    @render.ui
+    def help_text_t2_1():
+        lang = current_lang()
+        if not show_help_t2_1.get():
+            return ui.tags.div()
+        return ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.p(
+                        ui.tags.strong(tr(lang, "Ziel: ", "Goal: ")),
+                        tr(
+                            lang,
+                            "Finde alle reinen Nash-Gleichgewichte, in denen beide gewählten Strategien nicht schwach dominiert sind.",
+                            "Find all pure Nash equilibria where both played strategies are not weakly dominated.",
+                        ),
+                        class_="text-muted mb-2",
+                    ),
+                    ui.tags.ul(
+                        ui.tags.li(
+                            ui.tags.strong(tr(lang, "Schritt 1 (Nash): ", "Step 1 (Nash): ")),
+                            tr(
+                                lang,
+                                "Bestimme alle reinen Nash-Gleichgewichte als wechselseitige beste Antworten.",
+                                "Find all pure Nash equilibria as mutual best responses.",
+                            ),
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong(tr(lang, "Schritt 2 (Dominanz): ", "Step 2 (Dominance): ")),
+                            tr(
+                                lang,
+                                "Markiere schwach dominierte Strategien (strikte Dominanz ist darin enthalten).",
+                                "Mark weakly dominated strategies (strict dominance is included).",
+                            ),
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong(tr(lang, "Schritt 3 (THP): ", "Step 3 (THP): ")),
+                            tr(
+                                lang,
+                                "Behalte nur Nash-Gleichgewichte, bei denen weder die Zeile noch die Spalte schwach dominiert ist.",
+                                "Keep only Nash equilibria where neither the row nor the column is weakly dominated.",
+                            ),
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong(tr(lang, "Hinweis: ", "Hint: ")),
+                            tr(
+                                lang,
+                                "Mehrere Antworten können korrekt sein; falls keine übrig bleibt, wähle „Keines“.",
+                                "Multiple answers can be correct; if none remain, choose “None”.",
+                            ),
+                        ),
+                        class_="text-muted mb-0",
+                    ),
+                    class_="mt-2",
+                ),
+                class_="card-body py-2 exercise-notation-body",
+            ),
+            class_="card mt-3 notation-card",
+            style="background-color:#f7f7f7;",
+        )
+
+    @output
+    @render.ui
+    def feedback_t2_1():
+        lang = current_lang()
+        if not show_fb_t2_1.get():
+            return ui.tags.div()
+
+        chosen = set(input.answer_t2_1() or [])
+        if not chosen:
+            return ui.tags.div(
+                tr(lang, "Bitte wähle mindestens eine Antwort aus.", "Please choose at least one answer."),
+                class_="alert alert-warning mt-3",
+            )
+
+        payoffs = game_t2_1.get()
+        correct_set = t2_ex1_correct_choice_set(payoffs, lang=lang)
+        none_label = tr(lang, "Keines", "None")
+
+        ne = find_nash_equilibria(payoffs, P1_STRATS_T2_EX1, P2_STRATS_T2_EX1)
+        thp = trembling_hand_perfect_pure_equilibria(payoffs, P1_STRATS_T2_EX1, P2_STRATS_T2_EX1)
+        dom_rows = sorted(weakly_dominated_rows(payoffs, P1_STRATS_T2_EX1, P2_STRATS_T2_EX1))
+        dom_cols = sorted(weakly_dominated_cols(payoffs, P1_STRATS_T2_EX1, P2_STRATS_T2_EX1))
+
+        def fmt_combos(combo_list):
+            labels = [f"({r},{c})" for (r, c) in combo_list]
+            if not labels:
+                return none_label
+            return ", ".join(labels)
+
+        correct_text = none_label if correct_set == {none_label} else ", ".join(sorted(correct_set))
+        details = tr(
+            lang,
+            f"Nash-GG: {fmt_combos(ne)}. Schwach dominierte Zeilen: {', '.join(dom_rows) if dom_rows else 'keine'}. "
+            f"Schwach dominierte Spalten: {', '.join(dom_cols) if dom_cols else 'keine'}. "
+            f"THP (rein): {fmt_combos(thp)}.",
+            f"Nash equilibria: {fmt_combos(ne)}. Weakly dominated rows: {', '.join(dom_rows) if dom_rows else 'none'}. "
+            f"Weakly dominated columns: {', '.join(dom_cols) if dom_cols else 'none'}. "
+            f"THP (pure): {fmt_combos(thp)}.",
+        )
+
+        if chosen == correct_set:
+            return ui.tags.div(
+                ui.tags.div(tr(lang, "✅ Richtig!", "✅ Correct!"), class_="fw-semibold"),
+                ui.tags.div(details, class_="mt-2"),
+                class_="alert alert-success mt-3",
+            )
+        return ui.tags.div(
+            ui.tags.div(
+                tr(
+                    lang,
+                    f"❌ Falsch. Richtig ist: {correct_text}.",
+                    f"❌ Incorrect. Correct is: {correct_text}.",
+                ),
+                class_="fw-semibold",
+            ),
+            ui.tags.div(details, class_="mt-2"),
+            class_="alert alert-danger mt-3",
+        )
+
+    # =======================
+    # Part 2 Exercise 2 state
+    # =======================
+    game_t2_2 = reactive.value(generate_random_game_t2_ex2())
+    show_fb_t2_2 = reactive.value(False)
+    show_help_t2_2 = reactive.value(False)
+
+    @reactive.effect
+    @reactive.event(input.new_game_t2_2)
+    def _new_game_t2_2():
+        game_t2_2.set(generate_random_game_t2_ex2())
+        ui.update_checkbox_group("answer_t2_2", selected=[])
+        show_fb_t2_2.set(False)
+
+    @reactive.effect
+    @reactive.event(input.check_t2_2)
+    def _check_t2_2():
+        show_fb_t2_2.set(True)
+
+    @reactive.effect
+    @reactive.event(input.help_t2_2)
+    def _help_t2_2():
+        show_help_t2_2.set(not show_help_t2_2.get())
+
+    @output
+    @render.ui
+    def game_table_t2_2():
+        lang = current_lang()
+        ui.update_checkbox_group(
+            "answer_t2_2",
+            choices=t2_ex2_choices(lang=lang),
+            selected=[],
+        )
+        return payoff_table(
+            P1_STRATS_T2_EX2,
+            P2_STRATS_T2_EX2,
+            payoff_strings_from_tuple_payoffs(game_t2_2.get()),
+            lang=lang,
+        )
+
+    @output
+    @render.ui
+    def notation_t2_2():
+        lang = current_lang()
+        return notation_ul(P1_STRATS_T2_EX2, P2_STRATS_T2_EX2, game_t2_2.get(), lang=lang)
+
+    @output
+    @render.ui
+    def help_text_t2_2():
+        lang = current_lang()
+        if not show_help_t2_2.get():
+            return ui.tags.div()
+        return ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.p(
+                        ui.tags.strong(tr(lang, "Symmetrie: ", "Symmetry: ")),
+                        tr(
+                            lang,
+                            "Das Spiel ist symmetrisch: u₂(r,c) = u₁(c,r).",
+                            "The game is symmetric: u₂(r,c) = u₁(c,r).",
+                        ),
+                        class_="text-muted mb-2",
+                    ),
+                    ui.tags.ul(
+                        ui.tags.li(
+                            ui.tags.strong(tr(lang, "Kandidaten: ", "Candidates: ")),
+                            tr(
+                                lang,
+                                "Als ESS kommen nur symmetrische Profile (s,s) in Frage.",
+                                "Only symmetric profiles (s,s) can be ESS candidates.",
+                            ),
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong(tr(lang, "Bedingung (1): ", "Condition (1): ")),
+                            tr(
+                                lang,
+                                "u(s,s) ≥ u(s',s) für alle s' ≠ s (s ist beste Antwort auf sich selbst).",
+                                "u(s,s) ≥ u(s',s) for all s' ≠ s (s is a best response to itself).",
+                            ),
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong(tr(lang, "Bedingung (2): ", "Condition (2): ")),
+                            tr(
+                                lang,
+                                "Für alle s' mit u(s,s)=u(s',s) gilt: u(s',s') < u(s,s').",
+                                "For all s' with u(s,s)=u(s',s): u(s',s') < u(s,s').",
+                            ),
+                        ),
+                        ui.tags.li(
+                            ui.tags.strong(tr(lang, "Praktisch: ", "Practical: ")),
+                            tr(
+                                lang,
+                                "Bestimme zuerst die symmetrischen Nash-GG (s,s), prüfe dann (1) und ggf. (2).",
+                                "First find symmetric Nash equilibria (s,s), then check (1) and, if needed, (2).",
+                            ),
+                        ),
+                        class_="text-muted mb-0",
+                    ),
+                    class_="mt-2",
+                ),
+                class_="card-body py-2 exercise-notation-body",
+            ),
+            class_="card mt-3 notation-card",
+            style="background-color:#f7f7f7;",
+        )
+
+    @output
+    @render.ui
+    def feedback_t2_2():
+        lang = current_lang()
+        if not show_fb_t2_2.get():
+            return ui.tags.div()
+
+        chosen = set(input.answer_t2_2() or [])
+        if not chosen:
+            return ui.tags.div(
+                tr(lang, "Bitte wähle mindestens eine Antwort aus.", "Please choose at least one answer."),
+                class_="alert alert-warning mt-3",
+            )
+
+        payoffs = game_t2_2.get()
+        correct_set = t2_ex2_correct_choice_set(payoffs, lang=lang)
+        none_label = tr(lang, "Keines", "None")
+
+        sym_ne = symmetric_nash_strategies_t2_ex2(payoffs)
+        ess = ess_strategies_t2_ex2(payoffs)
+
+        sym_ne_text = ", ".join([f"({s},{s})" for s in sym_ne]) if sym_ne else none_label
+        ess_text = ", ".join([f"({s},{s})" for s in ess]) if ess else none_label
+        correct_text = none_label if correct_set == {none_label} else ", ".join(sorted(correct_set))
+
+        details = tr(
+            lang,
+            f"Symmetrische Nash-GG: {sym_ne_text}. ESS: {ess_text}.",
+            f"Symmetric Nash equilibria: {sym_ne_text}. ESS: {ess_text}.",
+        )
+
+        if chosen == correct_set:
+            return ui.tags.div(
+                ui.tags.div(tr(lang, "✅ Richtig!", "✅ Correct!"), class_="fw-semibold"),
+                ui.tags.div(details, class_="mt-2"),
+                class_="alert alert-success mt-3",
+            )
+        return ui.tags.div(
+            ui.tags.div(
+                tr(
+                    lang,
+                    f"❌ Falsch. Richtig ist: {correct_text}.",
+                    f"❌ Incorrect. Correct is: {correct_text}.",
+                ),
+                class_="fw-semibold",
+            ),
+            ui.tags.div(details, class_="mt-2"),
+            class_="alert alert-danger mt-3",
+        )
 
 app = App(app_ui, server)
