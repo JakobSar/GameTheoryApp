@@ -16,6 +16,27 @@ P1_STRATS_T2_EX1 = ["A", "B", "C"]
 P2_STRATS_T2_EX1 = ["X", "Y", "Z"]
 P1_STRATS_T2_EX2 = ["A", "B", "C"]
 P2_STRATS_T2_EX2 = ["A", "B", "C"]
+P1_STRATS_T3_EX1 = ["XY", "XZ", "YZ"]
+P2_STRATS_T3_EX1 = ["X", "Y", "Z"]
+
+T3_EX1_OPTION_TEXT = {
+    "opt1": "A) Firma 1: (1/3, 1/3, 1/3) | Firma 2: (3/11, 4/11, 4/11)",
+    "opt2": "B) Firma 1: (3/11, 4/11, 4/11) | Firma 2: (1/3, 1/3, 1/3)",
+    "opt3": "C) Firma 1: (1/3, 1/3, 1/3) | Firma 2: (1/3, 1/3, 1/3)",
+    "opt4": "D) Firma 1: (1/3, 1/3, 1/3) | Firma 2: (3/7, 2/7, 2/7)",
+    "opt5": "E) Firma 1: (3/7, 2/7, 2/7) | Firma 2: (1/3, 1/3, 1/3)",
+    "opt6": "F) Firma 1: (1/3, 1/3, 1/3) | Firma 2: (3/5, 1/5, 1/5)",
+    "opt7": "G) Firma 1: (3/5, 1/5, 1/5) | Firma 2: (1/3, 1/3, 1/3)",
+}
+T3_EX1_OPTION_CHOICES = {
+    "opt1": ui.HTML("A)<br>Firma 1: (1/3, 1/3, 1/3)<br>Firma 2: (3/11, 4/11, 4/11)"),
+    "opt2": ui.HTML("B)<br>Firma 1: (3/11, 4/11, 4/11)<br>Firma 2: (1/3, 1/3, 1/3)"),
+    "opt3": ui.HTML("C)<br>Firma 1: (1/3, 1/3, 1/3)<br>Firma 2: (1/3, 1/3, 1/3)"),
+    "opt4": ui.HTML("D)<br>Firma 1: (1/3, 1/3, 1/3)<br>Firma 2: (3/7, 2/7, 2/7)"),
+    "opt5": ui.HTML("E)<br>Firma 1: (3/7, 2/7, 2/7)<br>Firma 2: (1/3, 1/3, 1/3)"),
+    "opt6": ui.HTML("F)<br>Firma 1: (1/3, 1/3, 1/3)<br>Firma 2: (3/5, 1/5, 1/5)"),
+    "opt7": ui.HTML("G)<br>Firma 1: (3/5, 1/5, 1/5)<br>Firma 2: (1/3, 1/3, 1/3)"),
+}
 
 # =========================================================
 # Intro example (static)
@@ -41,7 +62,7 @@ def payoff_strings_from_tuple_payoffs(payoffs):
     """(row,col)->(u1,u2)  => (row,col)-> 'u1, u2' """
     return {(r, c): f"{payoffs[(r, c)][0]}, {payoffs[(r, c)][1]}" for (r, c) in payoffs}
 
-def payoff_table(rows, cols, payoff_strings, lang="de", label_i18n=None):
+def payoff_table(rows, cols, payoff_strings, lang="de", label_i18n=None, row_player_label=None, col_player_label=None):
     """
     payoff_strings: dict[(row,col)] -> "u1, u2"  (with or without parentheses)
     """
@@ -59,15 +80,17 @@ def payoff_table(rows, cols, payoff_strings, lang="de", label_i18n=None):
             }
         return {}
 
+    p1_label = row_player_label or tr(lang, "Spieler 1", "Player 1")
+    p2_label = col_player_label or tr(lang, "Spieler 2", "Player 2")
+
     return ui.tags.table(
         ui.tags.thead(
             ui.tags.tr(
                 ui.tags.th("", colspan=2),
                 ui.tags.th(
-                    tr(lang, "Spieler 2", "Player 2"),
+                    p2_label,
                     colspan=n_cols,
                     style="font-weight:600;",
-                    **{"data-i18n-de": "Spieler 2", "data-i18n-en": "Player 2"},
                 ),
             ),
             ui.tags.tr(
@@ -79,10 +102,9 @@ def payoff_table(rows, cols, payoff_strings, lang="de", label_i18n=None):
         ui.tags.tbody(
             ui.tags.tr(
                 ui.tags.th(
-                    tr(lang, "Spieler 1", "Player 1"),
+                    p1_label,
                     rowspan=n_rows,
                     style="font-weight:600; vertical-align:middle;",
-                    **{"data-i18n-de": "Spieler 1", "data-i18n-en": "Player 1"},
                 ),
                 ui.tags.th(
                     rows[0],
@@ -891,6 +913,20 @@ def generate_random_game_ex6():
         payoffs[(r, c)] = (u1[(r, c)], u2[(r, c)])
     return payoffs
 
+def generate_random_game_t3_ex1():
+    a = random.choice([1, 3, 4])
+    payoffs = {}
+    for r in P1_STRATS_T3_EX1:
+        covered_markets = set(r)
+        for c in P2_STRATS_T3_EX1:
+            u1 = 6 if c in covered_markets else 9
+            if c in covered_markets:
+                u2 = 5
+            else:
+                u2 = a if c == "Z" else 2
+            payoffs[(r, c)] = (u1, u2)
+    return {"a": a, "payoffs": payoffs}
+
 from fractions import Fraction
 
 def format_p_fraction(p, allowed):
@@ -959,7 +995,7 @@ SPECIAL_GAMES_ROWS = [
                                    **{"data-i18n-de": "Einziges Nash-Gleichgewicht: (Defektieren, Defektieren).",
                                       "data-i18n-en": "Unique Nash equilibrium: (Defect, Defect)."}),
                         ui.tags.li("Pareto-ineffiziente Nutzenkombination im Nash-Gleichgewicht: (1, 1) wird von (3, 3) Pareto-dominiert.",
-                                   **{"data-i18n-de": "Pareto-ineffiziente Nutzenkombination im Nash-Gleichgewicht: (1, 1) wird von (3, 3) Pareto-dominiert.", "data-i18n-en": "Pareto-inefficient utility combination in Nash equilibrium: (1, 1) is Pareto-dominated by (3, 3)."}),
+                                   **{"data-i18n-de": "Pareto-ineffiziente Nutzenkombination im Nash-Gleichgewicht: (1, 1) wird von (3, 3) Pareto-dominiert.", "data-i18n-en": "Pareto-inefficient payoff combination in Nash equilibrium: (1, 1) is Pareto-dominated by (3, 3)."}),
                         class_="mb-0",
                     ),
                     class_="card-body",
@@ -1023,7 +1059,7 @@ SPECIAL_GAMES_ROWS = [
                                       "data-i18n-en": "No player has a strictly dominant strategy."}),
                         ui.tags.li("Es entsteht ein (Anti-)Koordinationsproblem. (Falls Kommunikation außerhalb des Spiels möglich wäre, können Commitment / glaubwürdige Drohungen relevant sein.)",
                                    **{"data-i18n-de": "Es entsteht ein (Anti-)Koordinationsproblem. (Falls Kommunikation außerhalb des Spiels möglich wäre, können Commitment / glaubwürdige Drohungen relevant sein.)",
-                                      "data-i18n-en": "This creates an (anti-)coordination problem. (If communication outside the game were possible, commitment/credible threats could be relevant.)"}),
+                                      "data-i18n-en": "This game creates an (anti-)coordination problem. (If communication outside the game were possible, commitment/credible threats could be relevant.)"}),
                         class_="mb-0",
                     ),
                     class_="card-body",
@@ -1075,7 +1111,7 @@ SPECIAL_GAMES_ROWS = [
                     ui.tags.p(
                         "Koordinationsspiel, bei dem die Pareto-effiziente Nutzenkombination nur erreicht wird, wenn beide mitmachen und Fehlkoordination hierauf schmerzlicher ist.",
                         **{"data-i18n-de": "Koordinationsspiel, bei dem die Pareto-effiziente Nutzenkombination nur erreicht wird, wenn beide mitmachen und Fehlkoordination hierauf schmerzlicher ist.",
-                           "data-i18n-en": "Coordination game in which the Pareto-efficient combination of benefits is only achieved if both parties participate, and miscoordination is more painful in this case."},
+                           "data-i18n-en": "Coordination game in which the Pareto-efficient payoff combination is only achieved if both parties participate, and miscoordination is more painful in this case."},
                         class_="mb-2",
                     ),
                     ui.tags.ul(
@@ -1084,7 +1120,7 @@ SPECIAL_GAMES_ROWS = [
                                       "data-i18n-en": "Two Nash equilibria: (Stag, Stag) and (Hare, Hare)."}),
                         ui.tags.li("Pareto-effizient aber riskant: (Hirsch, Hirsch).",
                                    **{"data-i18n-de": "Pareto-effizient aber riskant: (Hirsch, Hirsch).",
-                                      "data-i18n-en": "Pareto efficient but risky: (Stag, Stag)."}),
+                                      "data-i18n-en": "Pareto-efficient but risky: (Stag, Stag)."}),
                         ui.tags.li("Typisch: Vertrauen/Koordination als Schlüsselproblem.",
                                    **{"data-i18n-de": "Typisch: Vertrauen/Koordination als Schlüsselproblem.",
                                       "data-i18n-en": "Typical: trust/coordination is the key problem."}),
@@ -1221,10 +1257,10 @@ SPECIAL_GAMES_ROWS = [
                                       "data-i18n-en": "Nash equilibrium: (Unfair, Accept)"}),
                         ui.tags.li("Empirie mit monetärer Auszahlung der „Nutzenwerte“ (Achtung: dann evtl. von den Auszahlungen abweichende Bewertung der Strategiekombinationen durch die Spieler): Unfaire Angebote werden oft abgelehnt (Fairness).",
                                    **{"data-i18n-de": "Empirie mit monetärer Auszahlung der „Nutzenwerte“ (Achtung: dann evtl. von den Auszahlungen abweichende Bewertung der Strategiekombinationen durch die Spieler): Unfaire Angebote werden oft abgelehnt (Fairness).",
-                                      "data-i18n-en": "Empirical evidence with monetary payouts of ‘utility values’ (note: players' assessment of strategy combinations may then differ from the payouts): Unfair offers are often rejected (fairness)."}),
+                                      "data-i18n-en": "Empirical evidence with monetary payouts of ‘payoff values’ (note: players' assessment of strategy combinations may then differ from the payouts): Unfair offers are often rejected (fairness)."}),
                         ui.tags.li("Wichtiges Beispiel für Modell vs. Verhalten bzw. für monetäre Auszahlung ungleich Nutzen.",
-                                   **{"data-i18n-de": "Wichtiges Beispiel für Modell vs. Verhalten bzw. für monetäre Auszahlung ungleich Nutzen.",
-                                      "data-i18n-en": "Important example of model vs. behaviour or monetary payout unequal to benefit."}),
+                                   **{"data-i18n-de": "Wichtiges Beispiel für Modell vs. Verhalten bzw. für Nutzen ungleich monetäre Auszahlung.",
+                                      "data-i18n-en": "Important example of model vs. behavior or payoff different from monetary payout."}),
                         class_="mb-0",
                     ),
                     class_="card-body",
@@ -1902,6 +1938,13 @@ app_ui = ui.page_fluid(
     .two-col-radios .form-check {
         margin: 0;
     }
+    .t3-ex1-options .shiny-options-group {
+        grid-template-columns: repeat(2, minmax(220px, 1fr));
+        column-gap: 16px;
+    }
+    .t3-ex1-options .form-check-label {
+        line-height: 1.35;
+    }
     .three-col-radios .shiny-options-group {
         display: grid;
         grid-template-columns: repeat(3, minmax(140px, 1fr));
@@ -1914,6 +1957,9 @@ app_ui = ui.page_fluid(
     @media (max-width: 1024px) {
         .three-col-radios .shiny-options-group {
             grid-template-columns: 1fr 1fr;
+        }
+        .t3-ex1-options .shiny-options-group {
+            grid-template-columns: 1fr;
         }
     }
 
@@ -1936,6 +1982,9 @@ app_ui = ui.page_fluid(
     }
     .intro-rule-row {
         margin-bottom: 40px !important;
+    }
+    .bayes-intro-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
     .exercise-row {
         display: flex;
@@ -1965,6 +2014,9 @@ app_ui = ui.page_fluid(
         .card-row {
             grid-template-columns: 1fr;
             row-gap: 8px;
+        }
+        .bayes-intro-grid {
+            grid-template-columns: 1fr;
         }
     }
     .exercise-row > .exercise-col {
@@ -2514,16 +2566,26 @@ app_ui = ui.page_fluid(
         class_="impressum-panel",
     ),
     ui.navset_tab(
-        ui.nav_panel(
-            ui.tags.span("Einführung", **{"data-i18n-de": "Einführung", "data-i18n-en": "Introduction"}),
-            ui.tags.div(
-                ui.h2("Einführung Normalformspiele", class_="intro-title",
-                      **{"data-i18n-de": "Einführung Normalformspiele", "data-i18n-en": "Introduction Normal Form Games"}),
+        ui.nav_menu(
+            ui.tags.span(
+                "Simultanspiele",
+                class_="normalform-menu-toggle",
+                **{"data-i18n-de": "Simultanspiele", "data-i18n-en": "Simultaneous games"},
+            ),
+
+        # =================================================
+        # Erklärung
+        # =================================================
+            ui.nav_panel(
+                ui.tags.span("Erklärung", **{"data-i18n-de": "Erklärung", "data-i18n-en": "Explanation"}),
+                ui.tags.div(
+                ui.h2("Einführung Simultanspiele", class_="intro-title",
+                      **{"data-i18n-de": "Einführung Simultanspiele", "data-i18n-en": "Introduction Simultaneous games"}),
                 ui.tags.p(
-                    "Ein Normalformspiel beschreibt eine Situation, in der alle Spieler gleichzeitig "
+                    "Ein Simultanspiel beschreibt eine Situation, in der alle Spieler gleichzeitig "
                     "eine Strategie wählen und daraus für jeden Spieler ein Nutzen  entsteht.",
-                    **{"data-i18n-de": "Ein Normalformspiel beschreibt eine Situation, in der alle Spieler gleichzeitig eine Strategie wählen und daraus für jeden Spieler ein Nutzen  entsteht.",
-                       "data-i18n-en": "A normal form game describes a situation in which all players choose a strategy at the same time and each player derives a benefit from it."},
+                    **{"data-i18n-de": "Ein Simultanspiel beschreibt eine Situation, in der alle Spieler gleichzeitig eine Strategie wählen und daraus für jeden Spieler ein Nutzen  entsteht.",
+                       "data-i18n-en": "A simultaneous game describes a situation in which all players choose a strategy at the same time and each player has a payoff from the outcome of the game."},
                     class_="text-muted",
                 ),
                 ui.tags.div(
@@ -2551,7 +2613,7 @@ app_ui = ui.page_fluid(
                                 "Jeder Spieler verfügt über eine endliche Menge an reinen Strategien, "
                                 "aus denen er eine auswählt oder über die er randomisiert (gemischte Strategie).",
                                 **{"data-i18n-de": "Jeder Spieler verfügt über eine endliche Menge an reinen Strategien, aus denen er eine auswählt oder über die er randomisiert (gemischte Strategie).",
-                                   "data-i18n-en": "Each player has a finite set of pure strategies from which they select one or randomise (mixed strategy)."},
+                                   "data-i18n-en": "Each player has a finite set of pure strategies from which they select one or over which they randomize (mixed strategy)."},
                                 class_="mb-0",
                             ),
                             class_="card-body",
@@ -2566,8 +2628,8 @@ app_ui = ui.page_fluid(
                             ui.tags.p(
                                 "Jeder Strategiekombination wird ein Nutzen zugeordnet. "
                                 "Bei zwei Spielern schreibt man (u₁, u₂).",
-                                **{"data-i18n-de": "Jeder Strategiekombination wird ein Nutzen zugeordnet. Bei zwei Spielern schreibt man (u₁, u₂).",
-                                   "data-i18n-en": "Each strategy profile is assigned a payoff. With two players we write (u₁, u₂)."},
+                                **{"data-i18n-de": "Jeder Strategiekombination wird für jeden Spieler ein Nutzen zugeordnet. Bei zwei Spielern schreibt man (u₁, u₂).",
+                                   "data-i18n-en": "Each strategy combination is assigned a payoff for each player. With two players we write (u₁, u₂)."},
                                 class_="mb-0",
                             ),
                             class_="card-body",
@@ -2581,8 +2643,8 @@ app_ui = ui.page_fluid(
                     ui.tags.div(
                         ui.tags.div(
                             ui.tags.div(
-                                ui.tags.h5("Beispiel-Spiel", class_="card-title",
-                                           **{"data-i18n-de": "Beispiel-Spiel", "data-i18n-en": "Example game"}),
+                                ui.tags.h5("Beispiel-Spiel in Normalform", class_="card-title",
+                                           **{"data-i18n-de": "Beispiel-Spiel in Normalform", "data-i18n-en": "Example game in Normal-form"}),
                                 ui.tags.p(
                                     "Spieler 1 wählt A oder B, Spieler 2 wählt X, Y oder Z. "
                                     "In jeder Zelle steht (u₁, u₂).",
@@ -2596,8 +2658,8 @@ app_ui = ui.page_fluid(
                             ui.tags.div(
                                 ui.tags.div(
                                     ui.tags.div(
-                                        ui.tags.h5("Notation", class_="mb-2",
-                                                   **{"data-i18n-de": "Notation", "data-i18n-en": "Notation"}),
+                                        ui.tags.h5("Notation von Normalformspielen", class_="mb-2",
+                                                   **{"data-i18n-de": "Notation von Normalformspielen", "data-i18n-en": "Notation of Normal-form games"}),
                                         ui.tags.ul(
                                             ui.tags.li(
                                                 ui.tags.code("N = {1, 2}"),
@@ -2619,7 +2681,7 @@ app_ui = ui.page_fluid(
                                             ),
                                             ui.tags.li(
                                                 ui.tags.code("s = (s₁, s₂)"),
-                                                ui.tags.span(": z.B. ", **{"data-i18n-de": ": z.B. ", "data-i18n-en": ": e.g. "}),
+                                                ui.tags.span(": z.B. ", **{"data-i18n-de": ": Strategiekombination z.B. ", "data-i18n-en": ": Strategy combination e.g. "}),
                                                 ui.tags.code("(A, Y)"),
                                                 ui.tags.span(".", **{"data-i18n-de": ".", "data-i18n-en": "."}),
                                             ),
@@ -2629,7 +2691,7 @@ app_ui = ui.page_fluid(
                                                 ui.tags.code("(2, 8)"),
                                                 ui.tags.span(": Auszahlung (Spieler 1, Spieler 2).",
                                                              **{"data-i18n-de": ": Nutzen (Spieler 1, Spieler 2).",
-                                                                "data-i18n-en": ": Utility (Player 1, Player 2)."}),
+                                                                "data-i18n-en": ": Payoff (Player 1, Player 2)."}),
                                             ),
                                             class_="mb-0",
                                         ),
@@ -2647,39 +2709,17 @@ app_ui = ui.page_fluid(
                     class_="card shadow-sm h-100",
                     style="background-color:#ffffff;",
                 ),
-                ui.input_action_button(
-                    "go_to_overview",
-                    ui.tags.span("Zur Übersichtsseite", **{"data-i18n-de": "Zur Übersichtsseite", "data-i18n-en": "Go to overview page"}),
-                    class_="btn btn-success mt-4",
-                ),
-                class_="container-fluid px-4",
-            ),
-            value="normalform_intro",
-        ),
-        ui.nav_menu(
-            ui.tags.span(
-                "Normalformspiele",
-                class_="normalform-menu-toggle",
-                **{"data-i18n-de": "Normalformspiele", "data-i18n-en": "Normal-form games"},
-            ),
-
-        # =================================================
-        # Erklärung
-        # =================================================
-            ui.nav_panel(
-                ui.tags.span("Erklärung", **{"data-i18n-de": "Erklärung", "data-i18n-en": "Explanation"}),
-                ui.tags.div(
                 ui.h2(
-                    "Übersicht Normalformspiele",
+                    "Übersicht Simultanspiele",
                     class_="exercise-title",
-                    **{"data-i18n-de": "Übersicht Normalformspiele", "data-i18n-en": "Overview Normal-form games"},
+                    **{"data-i18n-de": "Übersicht Simultanspiele", "data-i18n-en": "Overview of simultaneous games"},
                 ),
                 ui.tags.div(
                     ui.tags.div(
                         ui.tags.h5(
-                            "Teil 1:Statische Normalformspiele mit vollständiger Information",
+                            "Teil 1: Grundlagen statischer Simultanspiele",
                             class_="card-title",
-                            **{"data-i18n-de": "Teil 1: Statische Normalformspiele mit vollständiger Information", "data-i18n-en": "Part 1: Static normal form games with complete information"},
+                            **{"data-i18n-de": "Teil 1: Grundlagen statischer Simultanspiele", "data-i18n-en": "Part 1: Foundations of static simultaneous games"},
                         ),
                         ui.tags.ul(
                             ui.tags.li(
@@ -2764,11 +2804,11 @@ app_ui = ui.page_fluid(
                 ui.tags.div(
                     ui.tags.div(
                         ui.tags.h5(
-                            "Teil 2: Statische Normalformspiele mit vollständiger Information und Gleichgewichtsverfeinerungen",
+                            "Teil 2: Gleichgewichte und Gleichgewichtsverfeinerungen in statischen Simultanspielen",
                             class_="card-title",
                             **{
-                                "data-i18n-de": "Teil 2: Statische Normalformspiele mit vollständiger Information und Gleichgewichtsverfeinerungen",
-                                "data-i18n-en": "Part 2: Static normal form games with complete information and equilibrium refinements",
+                                "data-i18n-de": "Teil 2: Gleichgewichte und Gleichgewichtsverfeinerungen in statischen Simultanspielen",
+                                "data-i18n-en": "Part 2: Equilibria and equilibrium refinements in static simultaneous games",
                             },
                         ),
                         ui.tags.ul(
@@ -2806,6 +2846,36 @@ app_ui = ui.page_fluid(
                 ui.tags.div(
                     ui.tags.div(
                         ui.tags.h5(
+                            "Teil 3: Simultanes Marktauswahlspiel",
+                            class_="card-title",
+                            **{
+                                "data-i18n-de": "Teil 3: Simultanes Marktauswahlspiel",
+                                "data-i18n-en": "Part 3: Simultaneous market selection game",
+                            },
+                        ),
+                        ui.tags.ul(
+                            ui.tags.li(
+                                ui.tags.a(
+                                    "Übung 1 – Gemischtes Nash-Gleichgewicht im Marktauswahlspiel",
+                                    href="#",
+                                    onclick="if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('go_to_teil3_ex1', Date.now(), {priority: 'event'}); } return false;",
+                                    class_="toc-link",
+                                    **{
+                                        "data-i18n-de": "Übung 1 – Gemischtes Nash-Gleichgewicht im Marktauswahlspiel",
+                                        "data-i18n-en": "Exercise 1 – Mixed Nash equilibrium in the market selection game",
+                                    },
+                                )
+                            ),
+                            class_="mb-0 toc-list",
+                        ),
+                        class_="card-body toc-card-body",
+                    ),
+                    class_="card shadow-sm h-100 mt-4",
+                    style="background-color:#ffffff;",
+                ),
+                ui.tags.div(
+                    ui.tags.div(
+                        ui.tags.h5(
                             "Besondere Spiele",
                             class_="card-title",
                             **{
@@ -2816,13 +2886,13 @@ app_ui = ui.page_fluid(
                         ui.tags.ul(
                             ui.tags.li(
                                 ui.tags.a(
-                                    "Zusatzteil mit 5 klassischen Spielen der Spieltheorie.",
+                                    "Zusatzteil mit 5 klassischen Spielen der Spieltheorie",
                                     href="#",
                                     onclick="if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('go_to_special_games', Date.now(), {priority: 'event'}); } return false;",
                                     class_="toc-link",
                                     **{
-                                        "data-i18n-de": "Zusatzteil mit 5 klassischen Spielen der Spieltheorie.",
-                                        "data-i18n-en": "Additional section with 5 classic games of game theory.",
+                                        "data-i18n-de": "Zusatzteil mit 5 klassischen Spielen der Spieltheorie",
+                                        "data-i18n-en": "Additional section with 5 classic games of game theory",
                                     },
                                 )
                             ),
@@ -2838,12 +2908,6 @@ app_ui = ui.page_fluid(
                     ui.tags.span("Zu Teil 1, Übung 1", **{"data-i18n-de": "Zu Teil 1, Übung 1", "data-i18n-en": "Go to Part 1, Exercise 1"}),
                     class_="btn btn-success mt-4",
                 ),
-                ui.input_action_button(
-                    "go_back_to_intro_page",
-                    ui.tags.span("Zur Einführung", **{"data-i18n-de": "Zur Einführung", "data-i18n-en": "Back to introduction"}),
-                    class_="btn btn-outline-secondary mt-4 ms-2",
-                ),
-
                 class_="container-fluid px-4",
             ),
             value="intro",
@@ -3312,7 +3376,7 @@ ui.nav_panel(
                                 ui.tags.p(
                                     "Wählen Sie für jede Strategiekombination, ob es sich dabei um ein striktes oder nicht striktes Nash GG handelt.",
                                     **{"data-i18n-de": "Wählen Sie für jede Strategiekombination, ob es sich dabei um ein striktes oder nicht striktes Nash GG handelt.",
-                                       "data-i18n-en": "For each strategy combination, choose whether it is a strict or non-strict Nash GG."},
+                                       "data-i18n-en": "For each strategy combination, choose whether it is a strict or non-strict Nash equilibrium."},
                                     class_="mt-2 mb-4",
                                 ),
                                 ui.tags.div(
@@ -3684,6 +3748,142 @@ ui.nav_panel(
                 value="teil2_ex2",
             ),
             ui.nav_panel(
+                ui.tags.span("Übung 1", **{"data-i18n-de": "Übung 1", "data-i18n-en": "Exercise 1"}),
+                ui.tags.div(
+                    ui.h2(
+                        "Übung 1 – Gemischtes Nash-Gleichgewicht im Marktauswahlspiel",
+                        class_="exercise-title",
+                        **{
+                            "data-i18n-de": "Übung 1 – Gemischtes Nash-Gleichgewicht im Marktauswahlspiel",
+                            "data-i18n-en": "Exercise 1 – Mixed Nash equilibrium in the market selection game",
+                        },
+                    ),
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.div(
+                                ui.tags.div(
+                                    ui.tags.h5("Spiel", class_="card-title",
+                                               **{"data-i18n-de": "Spiel", "data-i18n-en": "Game"}),
+                                    ui.tags.p(
+                                        "Zwei Firmen entscheiden gleichzeitig, auf welchen lokal getrennten Märkten sie ihre Waren anbieten.",
+                                        class_="text-muted mb-2",
+                                        **{
+                                            "data-i18n-de": "Zwei Firmen entscheiden gleichzeitig, auf welchen lokal getrennten Märkten sie ihre Waren anbieten.",
+                                            "data-i18n-en": "Two firms decide simultaneously on which locally separated markets they offer their products.",
+                                        },
+                                    ),
+                                    ui.tags.p(
+                                        "Es gibt drei Märkte: X, Y und Z. "
+                                        "Firma 1 bietet Tablets und Tablet-Hüllen an, Firma 2 bietet Tablet-Hüllen und Smartphone-Hüllen.",
+                                        class_="text-muted mb-2",
+                                        **{
+                                            "data-i18n-de": "Es gibt drei Märkte: X, Y und Z. Firma 1 bietet Tablets und Tablet-Hüllen an, Firma 2 bietet Tablet-Hüllen und Smartphone-Hüllen.",
+                                            "data-i18n-en": "There are three markets: X, Y, and Z. Firm 1 offers tablets and tablet cases, while Firm 2 offers tablet cases and smartphone cases.",
+                                        },
+                                    ),
+                                    ui.tags.p(
+                                        "Strategien: Firma 1 wählt zwei Märkte (XY, XZ, YZ), Firma 2 wählt einen Markt (X, Y, Z). "
+                                        "Firma 1 bevorzugt keine Überschneidung, Firma 2 bevorzugt Überschneidung um auch Tablet-Hüllen zu verkaufen.",
+                                        class_="text-muted mb-2",
+                                        **{
+                                            "data-i18n-de": "Strategien: Firma 1 wählt zwei Märkte (XY, XZ, YZ), Firma 2 wählt einen Markt (X, Y, Z). Firma 1 bevorzugt keine Überschneidung, Firma 2 bevorzugt Überschneidung um auch Tablet-Hüllen zu verkaufen.",
+                                            "data-i18n-en": "Strategies: Firm 1 chooses two markets (XY, XZ, YZ), Firm 2 chooses one market (X, Y, Z). Firm 1 prefers no overlap, while Firm 2 prefers overlap to also sell tablet cases.",
+                                        },
+                                    ),
+                                    ui.tags.ul(
+                                        ui.tags.li(
+                                            "Firma 1: allein auf ihren zwei Märkten → 9; mit Überschneidung → 6.",
+                                            **{
+                                                "data-i18n-de": "Firma 1: allein auf ihren zwei Märkten → 9; mit Überschneidung → 6.",
+                                                "data-i18n-en": "Firm 1: alone on its two markets → 9; with overlap → 6.",
+                                            },
+                                        ),
+                                        ui.tags.li(
+                                            "Firma 2: allein auf X oder Y → 2; allein auf Z → a mit a ∈ {1,3,4}.",
+                                            **{
+                                                "data-i18n-de": "Firma 2: allein auf X oder Y → 2; allein auf Z → a mit a ∈ {1,3,4}.",
+                                                "data-i18n-en": "Firm 2: alone on X or Y → 2; alone on Z → a with a in {1,3,4}.",
+                                            },
+                                        ),
+                                        ui.tags.li(
+                                            "Firma 2 bei Überschneidung mit Firma 1 → 5.",
+                                            **{
+                                                "data-i18n-de": "Firma 2 bei Überschneidung mit Firma 1 → 5.",
+                                                "data-i18n-en": "Firm 2 with overlap with Firm 1 → 5.",
+                                            },
+                                        ),
+                                        class_="text-muted mb-3",
+                                    ),
+                                    ui.output_ui("game_table_t3_ex1"),
+                                    ui.tags.div(
+                                        ui.tags.div(
+                                            ui.tags.h6("Notation", **{"data-i18n-de": "Notation", "data-i18n-en": "Notation"}),
+                                            ui.output_ui("notation_t3_ex1"),
+                                            class_="card-body py-2 exercise-notation-body",
+                                        ),
+                                        class_="card mt-3 notation-card",
+                                        style="background-color:#f7f7f7;",
+                                    ),
+                                    ui.tags.div(
+                                        ui.input_action_button(
+                                            "new_game_t3_ex1",
+                                            ui.tags.span("Neues Spiel", **{"data-i18n-de": "Neues Spiel", "data-i18n-en": "New game"}),
+                                            class_="btn btn-outline-primary",
+                                        ),
+                                        ui.input_action_button(
+                                            "help_t3_ex1",
+                                            ui.tags.span("Hilfe", **{"data-i18n-de": "Hilfe", "data-i18n-en": "Help"}),
+                                            class_="btn btn-outline-primary",
+                                        ),
+                                        class_="d-flex gap-2 mt-3",
+                                    ),
+                                    ui.output_ui("help_text_t3_ex1"),
+                                    class_="card-body",
+                                ),
+                                class_="card shadow-sm h-100",
+                                style="background-color:#ffffff;",
+                            ),
+                            class_="col exercise-col",
+                        ),
+                        ui.tags.div(
+                            ui.tags.div(
+                                ui.tags.div(
+                                    ui.tags.h5("Frage", class_="card-title",
+                                               **{"data-i18n-de": "Frage", "data-i18n-en": "Question"}),
+                                    ui.output_ui("question_t3_ex1"),
+                                    ui.tags.div(
+                                        ui.input_radio_buttons(
+                                            "answer_t3_ex1",
+                                            None,
+                                            choices=T3_EX1_OPTION_CHOICES,
+                                        ),
+                                        class_="two-col-radios t3-ex1-options",
+                                    ),
+                                    ui.input_action_button(
+                                        "check_t3_ex1",
+                                        ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
+                                        class_="btn btn-primary mt-3",
+                                    ),
+                                    ui.output_ui("feedback_t3_ex1"),
+                                    class_="card-body",
+                                ),
+                                class_="card shadow-sm h-100",
+                                style="background-color:#ffffff;",
+                            ),
+                            class_="col exercise-col",
+                        ),
+                        class_="row row-cols-1 row-cols-lg-2 g-3 mt-2 align-items-stretch exercise-row",
+                    ),
+                    ui.input_action_button(
+                        "go_back_intro_from_t3_ex1",
+                        ui.tags.span("Zurück zur Inhaltsseite", **{"data-i18n-de": "Zurück zur Inhaltsseite", "data-i18n-en": "Back to table of contents"}),
+                        class_="btn btn-outline-secondary mt-4 mb-3",
+                    ),
+                    class_="container-fluid px-4",
+                ),
+                value="teil3_ex1",
+            ),
+            ui.nav_panel(
                 ui.tags.span("Besondere Spiele", **{"data-i18n-de": "Besondere Spiele", "data-i18n-en": "Special games"}),
                 ui.tags.div(
                     ui.h2(
@@ -3697,8 +3897,8 @@ ui.nav_panel(
                     ui.tags.p(
                         "Ein Beispielspiel (Nutzen (u1, u2)), die zentrale Idee und typische Ergebnisse.",
                         **{
-                            "data-i18n-de": "Ein Beispielspiel (Nutzen (u1, u2)), die zentrale Idee und typische Ergebnisse.",
-                            "data-i18n-en": "An example game (Utilities (u1, u2)), the central idea, and typical outcomes.",
+                            "data-i18n-de": "Ein Beispielspiel (Strategien, Nutzen (u₁, u₂)), die zentrale Idee und typische Ergebnisse.",
+                            "data-i18n-en": "An example game (strategies, payoffs (u₁, u₂)), the central idea, and typical outcomes.",
                         },
                         class_="text-muted mb-4",
                     ),
@@ -3715,6 +3915,241 @@ ui.nav_panel(
                 ),
                 value="special_games",
             ),
+        ),
+        ui.nav_panel(
+            ui.tags.span("Baysian Spiele", **{"data-i18n-de": "Baysian Spiele", "data-i18n-en": "Bayesian games"}),
+            ui.tags.div(
+                ui.h2(
+                    "Einführung in Bayes-Spiele",
+                    class_="intro-title",
+                    **{"data-i18n-de": "Einführung in Bayes-Spiele", "data-i18n-en": "Introduction to Bayesian games"},
+                ),
+                ui.tags.p(
+                    "Ein Bayes-Spiel beschreibt eine strategische Situation, in der Spieler gleichzeitig entscheiden, "
+                    "aber nicht vollständig über die Eigenschaften der anderen Spieler informiert sind. Jeder Spieler kennt "
+                    "vor seiner Entscheidung seinen eigenen Typ, während die Typen der anderen Spieler nur über eine "
+                    "gemeinsame Wahrscheinlichkeitsverteilung (common prior) beschrieben sind.",
+                    **{
+                        "data-i18n-de": "Ein Bayes-Spiel beschreibt eine strategische Situation, in der Spieler gleichzeitig entscheiden, "
+                        "aber nicht vollständig über die Eigenschaften der anderen Spieler informiert sind. Jeder Spieler kennt "
+                        "vor seiner Entscheidung seinen eigenen Typ, während die Typen der anderen Spieler nur über eine "
+                        "gemeinsame Wahrscheinlichkeitsverteilung (common prior) beschrieben sind.",
+                        "data-i18n-en": "A Bayesian game describes a strategic situation in which players decide simultaneously but are not fully "
+                        "informed about the characteristics of other players. Each player knows their own type before choosing, "
+                        "while other players' types are described by a common probability distribution (common prior).",
+                    },
+                    class_="text-muted",
+                ),
+                ui.tags.div(
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.h5(
+                                "1) Spielermenge",
+                                class_="card-title",
+                                **{"data-i18n-de": "1) Spielermenge", "data-i18n-en": "1) Player set"},
+                            ),
+                            ui.tags.p(
+                                "Die Spielermenge ist N. In allen Beispielen gibt es genau zwei Spieler: N = {1, 2}.",
+                                **{
+                                    "data-i18n-de": "Die Spielermenge ist N. In allen Beispielen gibt es genau zwei Spieler: N = {1, 2}.",
+                                    "data-i18n-en": "The player set is N. In all examples there are exactly two players: N = {1, 2}.",
+                                },
+                                class_="mb-0",
+                            ),
+                            class_="card-body",
+                        ),
+                        class_="card shadow-sm h-100",
+                        style="background-color:#ffffff;",
+                    ),
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.h5(
+                                "2) Typenmengen & Prior",
+                                class_="card-title",
+                                **{
+                                    "data-i18n-de": "2) Typenmengen & Prior",
+                                    "data-i18n-en": "2) Type sets & prior",
+                                },
+                            ),
+                            ui.tags.p(
+                                "Jeder Spieler i hat eine endliche Typenmenge Tᵢ. Der eigene Typ ist bekannt, die Typen der anderen "
+                                "nur probabilistisch. Eine gemeinsame a-priori Verteilung (common prior) beschreibt, wie wahrscheinlich "
+                                "jede Typkombination ist.",
+                                **{
+                                    "data-i18n-de": "Jeder Spieler i hat eine endliche Typenmenge Tᵢ. Der eigene Typ ist bekannt, die Typen der anderen "
+                                    "nur probabilistisch. Eine gemeinsame a-priori Verteilung (common prior) beschreibt, wie wahrscheinlich "
+                                    "jede Typkombination ist.",
+                                    "data-i18n-en": "Each player i has a finite type set Tᵢ. One’s own type is known, others’ types are only probabilistic. "
+                                    "A common prior distribution specifies how likely each type profile is.",
+                                },
+                                class_="mb-0",
+                            ),
+                            class_="card-body",
+                        ),
+                        class_="card shadow-sm h-100",
+                        style="background-color:#ffffff;",
+                    ),
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.h5(
+                                "3) Strategiemengen",
+                                class_="card-title",
+                                **{"data-i18n-de": "3) Strategiemengen", "data-i18n-en": "3) Strategy sets"},
+                            ),
+                            ui.tags.p(
+                                "Eine Strategie ist ein vollständiger Handlungsplan: Für jeden möglichen eigenen Typ legt sie fest, "
+                                "welche Aktion gewählt wird. Formal ist eine reine Strategie eine Abbildung sᵢ: Tᵢ → Aᵢ. "
+                                "Spieler können auch typ-abhängig randomisieren (gemischte Strategie).",
+                                **{
+                                    "data-i18n-de": "Eine Strategie ist ein vollständiger Handlungsplan: Für jeden möglichen eigenen Typ legt sie fest, "
+                                    "welche Aktion gewählt wird. Formal ist eine reine Strategie eine Abbildung sᵢ: Tᵢ → Aᵢ. "
+                                    "Spieler können auch typ-abhängig randomisieren (gemischte Strategie).",
+                                    "data-i18n-en": "A strategy is a complete contingency plan: for each possible own type it specifies which action to take. "
+                                    "Formally, a pure strategy is a mapping sᵢ: Tᵢ → Aᵢ. Players may also randomise conditional on their type (mixed strategy).",
+                                },
+                                class_="mb-0",
+                            ),
+                            class_="card-body",
+                        ),
+                        class_="card shadow-sm h-100",
+                        style="background-color:#ffffff;",
+                    ),
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.h5(
+                                "4) Nutzenfunktionen",
+                                class_="card-title",
+                                **{"data-i18n-de": "4) Nutzenfunktionen", "data-i18n-en": "4) Payoff functions"},
+                            ),
+                            ui.tags.p(
+                                "Der Nutzen hängt von Aktionen und Typen ab: uᵢ(a₁, a₂, t₁, t₂). Da Typen unsicher sind, bewerten Spieler "
+                                "Strategien über den erwarteten Nutzen, berechnet mit dem common prior.",
+                                **{
+                                    "data-i18n-de": "Der Nutzen hängt von Aktionen und Typen ab: uᵢ(a₁, a₂, t₁, t₂). Da Typen unsicher sind, bewerten Spieler "
+                                    "Strategien über den erwarteten Nutzen, berechnet mit dem common prior.",
+                                    "data-i18n-en": "Payoffs depend on actions and types: uᵢ(a₁, a₂, t₁, t₂). Because types are uncertain, players evaluate "
+                                    "strategies using expected utility computed under the common prior.",
+                                },
+                                class_="mb-0",
+                            ),
+                            class_="card-body",
+                        ),
+                        class_="card shadow-sm h-100",
+                        style="background-color:#ffffff;",
+                    ),
+                    class_="row row-cols-1 row-cols-md-2 g-3 mt-2 align-items-stretch card-row intro-rule-row bayes-intro-grid mb-4",
+                ),
+                ui.tags.div(
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.div(
+                                ui.tags.h5(
+                                    "Beispiel (Skizze)",
+                                    class_="card-title",
+                                    **{"data-i18n-de": "Beispiel (Skizze)", "data-i18n-en": "Example (sketch)"},
+                                ),
+                                ui.tags.p(
+                                    "Spieler 1 hat die Typen t₁ ∈ {1, 2} und Spieler 2 kennt nur Prob(t₁=1)=1/4, Prob(t₁=2)=3/4. "
+                                    "Für jeden Typ gibt es eine eigene Auszahlungsmatrix. Eine Strategie von Spieler 1 legt daher fest, "
+                                    "was er als Typ 1 und was er als Typ 2 spielt (z.B. s₁=(A,B)).",
+                                    **{
+                                        "data-i18n-de": "Spieler 1 hat die Typen t₁ ∈ {1, 2} und Spieler 2 kennt nur Prob(t₁=1)=1/4, Prob(t₁=2)=3/4. "
+                                        "Für jeden Typ gibt es eine eigene Auszahlungsmatrix. Eine Strategie von Spieler 1 legt daher fest, "
+                                        "was er als Typ 1 und was er als Typ 2 spielt (z.B. s₁=(A,B)).",
+                                        "data-i18n-en": "Player 1 has types t₁ ∈ {1, 2} and Player 2 only knows Prob(t₁=1)=1/4, Prob(t₁=2)=3/4. "
+                                        "There is a separate payoff matrix for each type. Therefore, a strategy of Player 1 specifies "
+                                        "what to play as type 1 and as type 2 (e.g. s₁=(A,B)).",
+                                    },
+                                    class_="text-muted mb-3",
+                                ),
+                                class_="col-12 col-lg-7",
+                            ),
+                            ui.tags.div(
+                                ui.tags.div(
+                                    ui.tags.div(
+                                        ui.tags.h5(
+                                            "Notation",
+                                            class_="mb-2",
+                                            **{"data-i18n-de": "Notation", "data-i18n-en": "Notation"},
+                                        ),
+                                        ui.tags.ul(
+                                            ui.tags.li(
+                                                ui.tags.code("N = {1, 2}"),
+                                                ui.tags.span(
+                                                    ": Zwei Spieler.",
+                                                    **{"data-i18n-de": ": Zwei Spieler.", "data-i18n-en": ": Two players."},
+                                                ),
+                                            ),
+                                            ui.tags.li(
+                                                ui.tags.code("Tᵢ"),
+                                                ui.tags.span(
+                                                    ": Typenmenge von Spieler i.",
+                                                    **{"data-i18n-de": ": Typenmenge von Spieler i.", "data-i18n-en": ": Type set of player i."},
+                                                ),
+                                            ),
+                                            ui.tags.li(
+                                                ui.tags.code("p(t₁, t₂)"),
+                                                ui.tags.span(
+                                                    ": common prior über Typkombinationen.",
+                                                    **{
+                                                        "data-i18n-de": ": common prior über Typkombinationen.",
+                                                        "data-i18n-en": ": common prior over type profiles.",
+                                                    },
+                                                ),
+                                            ),
+                                            ui.tags.li(
+                                                ui.tags.code("sᵢ : Tᵢ → Aᵢ"),
+                                                ui.tags.span(
+                                                    ": reine Strategie (Typ ↦ Aktion).",
+                                                    **{
+                                                        "data-i18n-de": ": reine Strategie (Typ ↦ Aktion).",
+                                                        "data-i18n-en": ": pure strategy (type ↦ action).",
+                                                    },
+                                                ),
+                                            ),
+                                            ui.tags.li(
+                                                ui.tags.code("s = (s₁, s₂)"),
+                                                ui.tags.span(
+                                                    ": Strategieprofil.",
+                                                    **{"data-i18n-de": ": Strategieprofil.", "data-i18n-en": ": strategy profile."},
+                                                ),
+                                            ),
+                                            ui.tags.li(
+                                                ui.tags.code("uᵢ(a₁, a₂, t₁, t₂)"),
+                                                ui.tags.span(
+                                                    ": Nutzen von Spieler i.",
+                                                    **{"data-i18n-de": ": Nutzen von Spieler i.", "data-i18n-en": ": payoff of player i."},
+                                                ),
+                                            ),
+                                            ui.tags.li(
+                                                ui.tags.code("EUᵢ(s)"),
+                                                ui.tags.span(
+                                                    ": erwarteter Nutzen unter dem common prior.",
+                                                    **{
+                                                        "data-i18n-de": ": erwarteter Nutzen unter dem common prior.",
+                                                        "data-i18n-en": ": expected utility under the common prior.",
+                                                    },
+                                                ),
+                                            ),
+                                            class_="mb-0",
+                                        ),
+                                        class_="card-body",
+                                    ),
+                                    class_="card h-100 notation-card",
+                                    style="background-color:#f7f7f7;",
+                                ),
+                                class_="col-12 col-lg-5",
+                            ),
+                            class_="row g-3 align-items-stretch",
+                        ),
+                        class_="card-body intro-example-body",
+                    ),
+                    class_="card shadow-sm h-100",
+                    style="background-color:#ffffff;",
+                ),
+                class_="container-fluid px-4",
+            ),
+            value="bayes_intro",
         ),
         id="main_tabs",
     ),
@@ -3733,14 +4168,6 @@ def server(input, output, session):
     @reactive.event(input.start_exercise)
     def _go_to_exercise():
         ui.update_navset("main_tabs", selected="ex1")
-    @reactive.effect
-    @reactive.event(input.go_to_overview)
-    def _go_to_overview():
-        ui.update_navset("main_tabs", selected="intro")
-    @reactive.effect
-    @reactive.event(input.go_back_to_intro_page)
-    def _go_back_to_intro_page():
-        ui.update_navset("main_tabs", selected="normalform_intro")
     @reactive.effect
     @reactive.event(input.go_to_ex2)
     def _go_to_ex2():
@@ -3770,6 +4197,10 @@ def server(input, output, session):
     def _go_to_special_games():
         ui.update_navset("main_tabs", selected="special_games")
     @reactive.effect
+    @reactive.event(input.go_to_teil3_ex1)
+    def _go_to_teil3_ex1():
+        ui.update_navset("main_tabs", selected="teil3_ex1")
+    @reactive.effect
     @reactive.event(input.start_teil2_ex1)
     def _go_to_teil2_ex1():
         ui.update_navset("main_tabs", selected="teil2_ex1")
@@ -3796,6 +4227,10 @@ def server(input, output, session):
     @reactive.effect
     @reactive.event(input.go_back_intro_from_special)
     def _go_back_intro_from_special():
+        ui.update_navset("main_tabs", selected="intro")
+    @reactive.effect
+    @reactive.event(input.go_back_intro_from_t3_ex1)
+    def _go_back_intro_from_t3_ex1():
         ui.update_navset("main_tabs", selected="intro")
     @reactive.effect
     @reactive.event(input.go_back_ex1)
@@ -3916,7 +4351,7 @@ def server(input, output, session):
                             ui.tags.strong(tr(lang, "Beste Antwort: ", "Best response: ")),
                             tr(lang,
                                "Eine Strategie ist eine beste Antwort, wenn sie den höchsten eigenen Nutzen liefert, gegeben die Strategie des anderen Spielers.",
-                               "A strategy is the best response if it delivers the highest benefit for oneself, given the other player's strategy.")
+                               "A strategy is a best response if it delivers the highest payoff for oneself, given the other player's strategy.")
                         ),
                         ui.tags.li(
                             ui.tags.strong(tr(lang, "Vorgehen Spieler 1: ", "Player 1 procedure: ")),
@@ -4060,9 +4495,8 @@ def server(input, output, session):
                         ui.tags.li(
                             ui.tags.strong(tr(lang, "Antwortauswahl: ", "Answer choice: ")),
                             tr(lang,
-                               "Falls ein oder beide Spieler eine  dominante Strategie haben, wähle die passende Aussage. "
-                               "Gibt es keine, wähle „Nein, keiner“.",
-                               "If one or both players have a dominant strategy, select the appropriate statement. If neither has a dominant strategy, select “No, neither”.")
+                               "Falls ein oder beide Spieler eine strikt dominante Strategie haben, wähle die passende Aussage. Gibt es keine, wähle „Nein, keiner“.",
+                               "If one or both players have a strictly dominant strategy, select the appropriate statement. If neither has a strictly dominant strategy, select “No, neither”.")
                         ),
                         class_="text-muted mb-0",
                     ),
@@ -4323,7 +4757,7 @@ def server(input, output, session):
                         tr(lang,
                            "Eine Strategiekombination (r, c) ist ein Nash-Gleichgewicht in reinen Strategien, "
                             "wenn keiner der Spieler sich durch einseitiges Abweichen strikt verbessern kann.",
-                           "A strategy combination (r, c) is a Nash equilibrium in pure strategies if none of the players can strictly improve their position by deviating unilaterally."),
+                           "A strategy combination (r, c) is a Nash equilibrium in pure strategies if none of the players can strictly improve their payoff by deviating unilaterally."),
                         class_="text-muted mb-2",
                     ),
                     ui.tags.ul(
@@ -4509,7 +4943,7 @@ def server(input, output, session):
                             ui.tags.strong(tr(lang, "Striktes Nash-GG: ", "Strict Nash-EQ: ")),
                             tr(lang,
                                "(r,c) ist striktes Nash-GG, wenn beide Spieler dort eine strikt beste Antwort spielen, die beste Anwort also eindeutig ist (ohne Indifferenz).",
-                               "(r,c) is a strict Nash GG if both players play a strictly best response there, i.e. the best response is unambiguous (without indifference).")
+                               "(r,c) is a strict Nash-EQ if both players play a strictly best response there, i.e. the best response is unambiguous (without indifference).")
                         ),
                         ui.tags.li(
                             ui.tags.strong(tr(lang, "So prüfst du Spieler 1: ", "Check Player 1: ")),
@@ -4833,6 +5267,177 @@ def server(input, output, session):
                 tr(lang, f"❌ Falsch. Richtig ist: p = {correct_frac}.", f"❌ Incorrect. Correct is: p = {correct_frac}."),
                 class_="alert alert-danger mt-3"
             )
+
+    # =======================
+    # Part 3 Exercise 1 state
+    # =======================
+    game_t3_ex1 = reactive.value(generate_random_game_t3_ex1())
+    show_fb_t3_ex1 = reactive.value(False)
+    show_help_t3_ex1 = reactive.value(False)
+
+    @reactive.effect
+    @reactive.event(input.new_game_t3_ex1)
+    def _new_game_t3_ex1():
+        game_t3_ex1.set(generate_random_game_t3_ex1())
+        ui.update_radio_buttons("answer_t3_ex1", selected=None)
+        show_fb_t3_ex1.set(False)
+        show_help_t3_ex1.set(False)
+
+    @reactive.effect
+    @reactive.event(input.check_t3_ex1)
+    def _check_t3_ex1():
+        show_fb_t3_ex1.set(True)
+
+    @reactive.effect
+    @reactive.event(input.help_t3_ex1)
+    def _help_t3_ex1():
+        show_help_t3_ex1.set(not show_help_t3_ex1.get())
+
+    @output
+    @render.ui
+    def game_table_t3_ex1():
+        lang = current_lang()
+        state = game_t3_ex1.get()
+        return payoff_table(
+            P1_STRATS_T3_EX1,
+            P2_STRATS_T3_EX1,
+            payoff_strings_from_tuple_payoffs(state["payoffs"]),
+            lang=lang,
+            row_player_label=tr(lang, "Firma 1", "Firm 1"),
+            col_player_label=tr(lang, "Firma 2", "Firm 2"),
+        )
+
+    @output
+    @render.ui
+    def notation_t3_ex1():
+        lang = current_lang()
+        state = game_t3_ex1.get()
+        a = state["a"]
+        return ui.tags.ul(
+            ui.tags.li(ui.tags.code("S₁ = {XY, XZ, YZ}")),
+            ui.tags.li(ui.tags.code("S₂ = {X, Y, Z}")),
+            ui.tags.li(ui.tags.code(f"a = {a}")),
+            ui.tags.li(
+                ui.tags.div(
+                    tr(lang, "Vollständig gemischtes GG gesucht:", "Target fully mixed equilibrium:"),
+                    class_="fw-semibold",
+                ),
+                ui.tags.code("((pXY, pXZ, pYZ), (qX, qY, qZ))"),
+                ),
+            class_="mb-0",
+        )
+
+    @output
+    @render.ui
+    def question_t3_ex1():
+        lang = current_lang()
+        a = game_t3_ex1.get()["a"]
+        return ui.tags.p(
+            tr(
+                lang,
+                f"Parameterwert: a = {a}. Welche der folgenden Strategiekombinationen ist das vollständig gemischte Nash-Gleichgewicht?",
+                f"Parameter value: a = {a}. Which of the following strategy profiles is the fully mixed Nash equilibrium?",
+            ),
+            class_="mt-2 mb-4",
+        )
+
+    @output
+    @render.ui
+    def help_text_t3_ex1():
+        lang = current_lang()
+        if not show_help_t3_ex1.get():
+            return ui.tags.div()
+
+        return ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.p(
+                        ui.tags.strong(tr(lang, "Hinweis: ", "Hint: ")),
+                        tr(
+                            lang,
+                            "Das vollständig gemischte Gleichgewicht hängt nur vom Parameter a ab.",
+                            "The fully mixed equilibrium depends only on the parameter a.",
+                        ),
+                        class_="text-muted mb-2",
+                    ),
+                    ui.tags.ul(
+                        ui.tags.li(
+                            tr(
+                                lang,
+                                "Bestimme zuerst a aus der Aufgabe bzw. der Tabelle.",
+                                "First identify a from the task text or payoff table.",
+                            )
+                        ),
+                        ui.tags.li(
+                            tr(
+                                lang,
+                                "Für ein vollständig gemischtes Gleichgewicht muss Firma 1 zwischen XY, XZ und YZ indifferent sein. "
+                                "Mit den gegebenen Payoffs (9 ohne Überschneidung, 6 mit Überschneidung) gilt das nur, wenn Firma 2 "
+                                "alle drei Märkte gleich wahrscheinlich wählt.",
+                                "In a fully mixed equilibrium, Firm 1 must be indifferent between XY, XZ, and YZ. "
+                                "With the given payoffs (9 without overlap, 6 with overlap), this is only possible if Firm 2 "
+                                "chooses all three markets with equal probability.",
+                            )
+                        ),
+                        ui.tags.li(
+                            tr(
+                                lang,
+                                "Daher musst du nur die Antwortoptionen prüfen, in denen Firma 2 mit (1/3, 1/3, 1/3) mischt.",
+                                "Therefore, you only need to check options where Firm 2 mixes with (1/3, 1/3, 1/3).",
+                            )
+                        ),
+                        ui.tags.li(
+                            tr(
+                                lang,
+                                "Für a = 1, 3 oder 4 ergibt sich jeweils genau eine passende Mischung von Firma 1.",
+                                "For a = 1, 3, or 4, there is exactly one matching mix for Firm 1.",
+                            )
+                        ),
+                        class_="text-muted mb-0",
+                    ),
+                    class_="mt-2",
+                ),
+                class_="card-body py-2 exercise-notation-body",
+            ),
+            class_="card mt-3 notation-card",
+            style="background-color:#f7f7f7;",
+        )
+
+    @output
+    @render.ui
+    def feedback_t3_ex1():
+        lang = current_lang()
+        if not show_fb_t3_ex1.get():
+            return ui.tags.div()
+        if input.answer_t3_ex1() is None or input.answer_t3_ex1() == "":
+            return ui.tags.div(
+                tr(lang, "Bitte wähle zuerst eine Antwort aus.", "Please choose an answer first."),
+                class_="alert alert-warning mt-3",
+            )
+
+        a = game_t3_ex1.get()["a"]
+        correct_by_a = {1: "opt2", 3: "opt5", 4: "opt7"}
+        correct_key = correct_by_a[a]
+        correct_text = T3_EX1_OPTION_TEXT[correct_key]
+
+        if input.answer_t3_ex1() == correct_key:
+            return ui.tags.div(
+                tr(
+                    lang,
+                    f"✅ Richtig! Für a = {a} gilt als vollständig gemischtes Nash-Gleichgewicht: {correct_text}.",
+                    f"✅ Correct! For a = {a}, the fully mixed Nash equilibrium is: {correct_text}.",
+                ),
+                class_="alert alert-success mt-3",
+            )
+
+        return ui.tags.div(
+            tr(
+                lang,
+                f"❌ Falsch. Für a = {a} ist korrekt: {correct_text}.",
+                f"❌ Incorrect. For a = {a}, the correct answer is: {correct_text}.",
+            ),
+            class_="alert alert-danger mt-3",
+        )
 
     # =======================
     # Part 2 Exercise 1 state
