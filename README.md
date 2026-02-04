@@ -1,7 +1,7 @@
-# Game Theory Trainer (Normal-Form Games)
+# Game Theory Trainer
 
-An interactive web app for practicing core concepts of game theory  
-(normal-form games, best responses, dominant strategies, Nash equilibria – including mixed strategies).
+An interactive web app for practicing core concepts of game theory
+(Simultaneous and Bayesian games: best responses, dominant strategies, Nash equilibria – including mixed strategies).
 
 https://jakobsar.shinyapps.io/game-theory-trainer/
 
@@ -36,6 +36,7 @@ The app is primarily aimed at students of economics, business administration, an
 
 The app covers, among others, the following game-theoretic concepts:
 
+Simultaneous games 
 - Best response
 - Strictly dominant strategy
 - Weakly dominant strategy
@@ -43,6 +44,12 @@ The app covers, among others, the following game-theoretic concepts:
 - Strict Nash equilibrium
 - Mixed Nash equilibria
 - Indifference conditions
+
+Bayesian games (incomplete information)
+- Types and common priors
+- Type-dependent payoff matrices
+- Expected payoffs under beliefs
+- Bayesian Nash equilibrium (introductory level)
 
 ---
 
