@@ -1,4 +1,5 @@
 import random
+from fractions import Fraction
 from shiny import App, ui, reactive, render
 
 # =========================================================
@@ -18,6 +19,10 @@ P1_STRATS_T2_EX2 = ["A", "B", "C"]
 P2_STRATS_T2_EX2 = ["A", "B", "C"]
 P1_STRATS_T3_EX1 = ["XY", "XZ", "YZ"]
 P2_STRATS_T3_EX1 = ["X", "Y", "Z"]
+P1_STRATS_BAYES_EX1 = ["A", "B"]
+P2_STRATS_BAYES_EX1 = ["X", "Y"]
+P1_STRATS_BAYES_EX2A = ["A", "B"]
+P2_STRATS_BAYES_EX2A = ["X", "Y"]
 
 T3_EX1_OPTION_TEXT = {
     "opt1": "A) Firma 1: (1/3, 1/3, 1/3) | Firma 2: (3/11, 4/11, 4/11)",
@@ -50,6 +55,45 @@ INTRO_PAYOFFS = {
     ("B", "X"): "5, 4",
     ("B", "Y"): "5, 9",
     ("B", "Z"): "1, 3",
+}
+BAYES_INTRO_ROWS = ["A", "B"]
+BAYES_INTRO_COLS = ["X", "Y"]
+BAYES_INTRO_PAYOFFS_T1 = {
+    ("A", "X"): "4, 3",
+    ("A", "Y"): "2, 5",
+    ("B", "X"): "5, 2",
+    ("B", "Y"): "1, 4",
+}
+BAYES_INTRO_PAYOFFS_T2 = {
+    ("A", "X"): "6, 2",
+    ("A", "Y"): "1, 3",
+    ("B", "X"): "3, 4",
+    ("B", "Y"): "2, 1",
+}
+
+BAYES_EX2A_PAYOFFS_A_C = {
+    ("A", "X"): (5, 3),
+    ("A", "Y"): (4, 7),
+    ("B", "X"): (6, 4),
+    ("B", "Y"): (2, 3),
+}
+BAYES_EX2A_PAYOFFS_A_D = {
+    ("A", "X"): (5, 7),
+    ("A", "Y"): (2, 3),
+    ("B", "X"): (8, 5),
+    ("B", "Y"): (2, 2),
+}
+BAYES_EX2A_PAYOFFS_B_C = {
+    ("A", "X"): (5, 7),
+    ("A", "Y"): (4, 6),
+    ("B", "X"): (5, 3),
+    ("B", "Y"): (8, 5),
+}
+BAYES_EX2A_PAYOFFS_B_D = {
+    ("A", "X"): (7, 2),
+    ("A", "Y"): (8, 1),
+    ("B", "X"): (6, 3),
+    ("B", "Y"): (2, 8),
 }
 
 # =========================================================
@@ -804,6 +848,124 @@ def t2_ex2_correct_choice_set(payoffs, lang="de"):
         return {tr(lang, "Keines", "None")}
     return {f"({s},{s})" for s in ess}
 
+def generate_random_game_bayes_ex1():
+    """Create random parameters a..p (0..9) for Bayes exercise 1."""
+    keys = list("abcdefghijklmnop")
+    return {k: random.randint(0, 9) for k in keys}
+
+def bayes_ex1_payoffs_by_type(params):
+    """Return two 2x2 payoff dictionaries (type 1 and type 2 for player 1)."""
+    payoffs_t1 = {
+        ("A", "X"): (params["a"], params["b"]),
+        ("A", "Y"): (params["c"], params["d"]),
+        ("B", "X"): (params["e"], params["f"]),
+        ("B", "Y"): (params["g"], params["h"]),
+    }
+    payoffs_t2 = {
+        ("A", "X"): (params["i"], params["j"]),
+        ("A", "Y"): (params["k"], params["l"]),
+        ("B", "X"): (params["m"], params["n"]),
+        ("B", "Y"): (params["o"], params["p"]),
+    }
+    return payoffs_t1, payoffs_t2
+
+def bayes_ex1_profiles():
+    p1_profiles = [("A", "A"), ("A", "B"), ("B", "A"), ("B", "B")]
+    p2_actions = ["X", "Y"]
+    return [f"(({t1},{t2}),{a2})" for a2 in p2_actions for (t1, t2) in p1_profiles]
+
+def bayes_ex1_is_equilibrium(params, a_t1, a_t2, a2):
+    """Check if ((a_t1, a_t2), a2) is a pure Bayes-Nash equilibrium."""
+    if a2 == "X":
+        p1_t1_ok = (params["a"] >= params["e"]) if a_t1 == "A" else (params["e"] >= params["a"])
+        p1_t2_ok = (params["i"] >= params["m"]) if a_t2 == "A" else (params["m"] >= params["i"])
+    else:
+        p1_t1_ok = (params["c"] >= params["g"]) if a_t1 == "A" else (params["g"] >= params["c"])
+        p1_t2_ok = (params["k"] >= params["o"]) if a_t2 == "A" else (params["o"] >= params["k"])
+
+    x_t1 = params["b"] if a_t1 == "A" else params["f"]
+    x_t2 = params["j"] if a_t2 == "A" else params["n"]
+    y_t1 = params["d"] if a_t1 == "A" else params["h"]
+    y_t2 = params["l"] if a_t2 == "A" else params["p"]
+    eu_x = 0.25 * x_t1 + 0.75 * x_t2
+    eu_y = 0.25 * y_t1 + 0.75 * y_t2
+    p2_ok = eu_x >= eu_y if a2 == "X" else eu_y >= eu_x
+    return p1_t1_ok and p1_t2_ok and p2_ok
+
+def bayes_ex1_correct_choice_set(params):
+    correct = set()
+    for a_t1, a_t2 in [("A", "A"), ("A", "B"), ("B", "A"), ("B", "B")]:
+        for a2 in ["X", "Y"]:
+            if bayes_ex1_is_equilibrium(params, a_t1, a_t2, a2):
+                correct.add(f"(({a_t1},{a_t2}),{a2})")
+    return correct
+
+def frac_str(v: Fraction):
+    return f"{v.numerator}/{v.denominator}" if v.denominator != 1 else f"{v.numerator}"
+
+def generate_bayes_ex2_params():
+    den = random.randint(8, 16)
+    cuts = sorted(random.sample(range(1, den), 3))
+    nums = [cuts[0], cuts[1] - cuts[0], cuts[2] - cuts[1], den - cuts[2]]
+    random.shuffle(nums)
+    return {"den": den, "w": nums[0], "x": nums[1], "y": nums[2], "z": nums[3]}
+
+def bayes_ex2_probs(params):
+    w = Fraction(params["w"], params["den"])
+    x = Fraction(params["x"], params["den"])
+    y = Fraction(params["y"], params["den"])
+    z = Fraction(params["z"], params["den"])
+    return w, x, y, z
+
+def bayes_ex2a_values(params):
+    w, x, y, z = bayes_ex2_probs(params)
+    return {
+        "c_a": w / (w + x),
+        "d_a": x / (w + x),
+        "c_b": y / (y + z),
+        "d_b": z / (y + z),
+        "a_c": w / (w + y),
+        "b_c": y / (w + y),
+        "a_d": x / (x + z),
+        "b_d": z / (x + z),
+    }
+
+def bayes_ex2a_options(params, lang="de"):
+    v = bayes_ex2a_values(params)
+    return {
+        "correct": (
+            f"Prob(c|a)={frac_str(v['c_a'])}<br>Prob(d|a)={frac_str(v['d_a'])}<br>"
+            f"Prob(c|b)={frac_str(v['c_b'])}<br>Prob(d|b)={frac_str(v['d_b'])}"
+        ),
+        "swap_a": (
+            f"Prob(c|a)={frac_str(v['d_a'])}<br>Prob(d|a)={frac_str(v['c_a'])}<br>"
+            f"Prob(c|b)={frac_str(v['c_b'])}<br>Prob(d|b)={frac_str(v['d_b'])}"
+        ),
+        "swap_b": (
+            f"Prob(c|a)={frac_str(v['c_a'])}<br>Prob(d|a)={frac_str(v['d_a'])}<br>"
+            f"Prob(c|b)={frac_str(v['d_b'])}<br>Prob(d|b)={frac_str(v['c_b'])}"
+        ),
+        "bayes_rev": (
+            f"Prob(c|a)={frac_str(v['a_c'])}<br>Prob(d|a)={frac_str(v['b_c'])}<br>"
+            f"Prob(c|b)={frac_str(v['a_d'])}<br>Prob(d|b)={frac_str(v['b_d'])}"
+        ),
+    }
+
+def generate_bayes_ex2a_option_order():
+    return random.sample(["correct", "swap_a", "swap_b", "bayes_rev"], 4)
+
+def bayes_ex2a_choices_and_correct(params, option_order):
+    formulas = bayes_ex2a_options(params)
+    letters = ["A", "B", "C", "D"]
+    choices = {}
+    correct_key = None
+    for idx, tag in enumerate(option_order):
+        key = f"opt{idx+1}"
+        choices[key] = ui.HTML(f"{letters[idx]})<br>{formulas[tag]}")
+        if tag == "correct":
+            correct_key = key
+    return choices, correct_key
+
 # Funktion zur Generierung eines 4x3-Spiels für Übung 4 
 # (häufig mit mindestens einem Nash-Gleichgewicht, gelegentlich mit zwei oder keinem)
 def generate_random_game_ex4(force_prob=0.9):
@@ -1356,6 +1518,14 @@ app_ui = ui.page_fluid(
         border: none;
         font-size: 1.05rem;
     }
+    #main_tabs.nav-tabs .nav-link[data-value="bayes_ex1"],
+    #main_tabs > .nav-tabs .nav-link[data-value="bayes_ex1"],
+    #main_tabs.nav-tabs .nav-link[data-value="bayes_ex2a"],
+    #main_tabs > .nav-tabs .nav-link[data-value="bayes_ex2a"],
+    #main_tabs.nav-tabs .nav-link[data-value="bayes_ex2b"],
+    #main_tabs > .nav-tabs .nav-link[data-value="bayes_ex2b"] {
+        display: none !important;
+    }
     #main_tabs.nav-tabs .nav-link:hover,
     #main_tabs > .nav-tabs .nav-link:hover {
         color: #000000;
@@ -1822,7 +1992,7 @@ app_ui = ui.page_fluid(
         background-color: transparent !important;
     }
     .dark-mode .text-muted {
-        color: var(--muted) !important;
+        color: var(--text) !important;
     }
     .dark-mode .table {
         color: var(--text);
@@ -1954,6 +2124,28 @@ app_ui = ui.page_fluid(
     .three-col-radios .form-check {
         margin: 0;
     }
+    .bayes-ex2a-options .shiny-options-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        row-gap: 10px;
+        column-gap: 10px;
+    }
+    .bayes-ex2a-options .form-check {
+        margin: 0;
+        border: 1px solid #d0d7de;
+        border-radius: 8px;
+        padding: 0.6rem 0.75rem;
+        background-color: #f8f9fa;
+    }
+    .dark-mode .bayes-ex2a-options .form-check {
+        background-color: #1c2b45;
+        border-color: #2f4463;
+    }
+    @media (max-width: 900px) {
+        .bayes-ex2a-options .shiny-options-group {
+            grid-template-columns: 1fr;
+        }
+    }
     @media (max-width: 1024px) {
         .three-col-radios .shiny-options-group {
             grid-template-columns: 1fr 1fr;
@@ -2040,6 +2232,7 @@ app_ui = ui.page_fluid(
         margin-top: 24px;
     }
     .text-muted{
+        color: #000000 !important;
         margin-bottom: -8px;
     }            
     .card-body {
@@ -3790,26 +3983,52 @@ ui.nav_panel(
                                             "data-i18n-en": "Strategies: Firm 1 chooses two markets (XY, XZ, YZ), Firm 2 chooses one market (X, Y, Z). Firm 1 prefers no overlap, while Firm 2 prefers overlap to also sell tablet cases.",
                                         },
                                     ),
+                                    ui.tags.p(
+                                        "Nutzen bei Überschneidungen der Märkte",
+                                        class_="text-muted mb-1",
+                                        **{
+                                            "data-i18n-de": "Nutzen bei Überschneidungen der Märkte",
+                                            "data-i18n-en": "Payoffs when markets overlap",
+                                        },
+                                    ),
                                     ui.tags.ul(
                                         ui.tags.li(
-                                            "Firma 1: allein auf ihren zwei Märkten → 9; mit Überschneidung → 6.",
+                                            "Firma 1 hat einen Nutzen von 6",
                                             **{
-                                                "data-i18n-de": "Firma 1: allein auf ihren zwei Märkten → 9; mit Überschneidung → 6.",
-                                                "data-i18n-en": "Firm 1: alone on its two markets → 9; with overlap → 6.",
+                                                "data-i18n-de": "Firma 1 hat einen Nutzen von 6",
+                                                "data-i18n-en": "Firm 1 gets a payoff of 6",
                                             },
                                         ),
                                         ui.tags.li(
-                                            "Firma 2: allein auf X oder Y → 2; allein auf Z → a mit a ∈ {1,3,4}.",
+                                            "Firma 2 hat einen Nutzen von 5",
                                             **{
-                                                "data-i18n-de": "Firma 2: allein auf X oder Y → 2; allein auf Z → a mit a ∈ {1,3,4}.",
-                                                "data-i18n-en": "Firm 2: alone on X or Y → 2; alone on Z → a with a in {1,3,4}.",
+                                                "data-i18n-de": "Firma 2 hat einen Nutzen von 5",
+                                                "data-i18n-en": "Firm 2 gets a payoff of 5",
+                                            },
+                                        ),
+                                        class_="text-muted mb-3",
+                                    ),
+                                    ui.tags.p(
+                                        "Nutzen bei getrennten Märkten",
+                                        class_="text-muted mb-1",
+                                        **{
+                                            "data-i18n-de": "Nutzen bei getrennten Märkten",
+                                            "data-i18n-en": "Payoffs on separate markets",
+                                        },
+                                    ),
+                                    ui.tags.ul(
+                                        ui.tags.li(
+                                            "Firma 1 hat einen Nutzen von 9",
+                                            **{
+                                                "data-i18n-de": "Firma 1 hat einen Nutzen von 9",
+                                                "data-i18n-en": "Firm 1 gets a payoff of 9",
                                             },
                                         ),
                                         ui.tags.li(
-                                            "Firma 2 bei Überschneidung mit Firma 1 → 5.",
+                                            "Der Nutzen von Firma 2 hängt davon ab, in welchem Markt Firma 2 alleine aktiv ist. Ist Firma 2 alleine in Markt X oder Y, hat sie einen Nutzen von 2, ist Firma 2 alleine in Markt Z hat sie Nutzen a mit a ∈ {1,3,4}",
                                             **{
-                                                "data-i18n-de": "Firma 2 bei Überschneidung mit Firma 1 → 5.",
-                                                "data-i18n-en": "Firm 2 with overlap with Firm 1 → 5.",
+                                                "data-i18n-de": "Der Nutzen von Firma 2 hängt davon ab, in welchem Markt Firma 2 alleine aktiv ist. Ist Firma 2 alleine in Markt X oder Y, hat sie einen Nutzen von 2, ist Firma 2 alleine in Markt Z hat sie Nutzen a mit a ∈ {1,3,4}",
+                                                "data-i18n-en": "The payoff of Firm 2 depends on which market it is alone in. If Firm 2 is alone on market X or Y, it gets a payoff of 2; if alone on market Z, it gets a payoff of a with a ∈ {1,3,4}",
                                             },
                                         ),
                                         class_="text-muted mb-3",
@@ -3917,7 +4136,7 @@ ui.nav_panel(
             ),
         ),
         ui.nav_panel(
-            ui.tags.span("Baysian Spiele", **{"data-i18n-de": "Baysian Spiele", "data-i18n-en": "Bayesian games"}),
+            ui.tags.span("Bayes-Spiele", **{"data-i18n-de": "Bayes-Spiele", "data-i18n-en": "Bayesian games"}),
             ui.tags.div(
                 ui.h2(
                     "Einführung in Bayes-Spiele",
@@ -4062,6 +4281,39 @@ ui.nav_panel(
                                     },
                                     class_="text-muted mb-3",
                                 ),
+                                ui.tags.div(
+                                    ui.tags.div(
+                                        ui.tags.h6(
+                                            "Beispielmatrix: Typ 1",
+                                            class_="mb-2",
+                                            **{"data-i18n-de": "Beispielmatrix: Typ 1", "data-i18n-en": "Example matrix: Type 1"},
+                                        ),
+                                        payoff_table(
+                                            BAYES_INTRO_ROWS,
+                                            BAYES_INTRO_COLS,
+                                            BAYES_INTRO_PAYOFFS_T1,
+                                            row_player_label="Spieler 1 (Typ 1)",
+                                            col_player_label="Spieler 2",
+                                        ),
+                                        class_="col-12 col-xl-6",
+                                    ),
+                                    ui.tags.div(
+                                        ui.tags.h6(
+                                            "Beispielmatrix: Typ 2",
+                                            class_="mb-2",
+                                            **{"data-i18n-de": "Beispielmatrix: Typ 2", "data-i18n-en": "Example matrix: Type 2"},
+                                        ),
+                                        payoff_table(
+                                            BAYES_INTRO_ROWS,
+                                            BAYES_INTRO_COLS,
+                                            BAYES_INTRO_PAYOFFS_T2,
+                                            row_player_label="Spieler 1 (Typ 2)",
+                                            col_player_label="Spieler 2",
+                                        ),
+                                        class_="col-12 col-xl-6",
+                                    ),
+                                    class_="row g-3",
+                                ),
                                 class_="col-12 col-lg-7",
                             ),
                             ui.tags.div(
@@ -4147,9 +4399,461 @@ ui.nav_panel(
                     class_="card shadow-sm h-100",
                     style="background-color:#ffffff;",
                 ),
+                ui.h2(
+                    "Übersicht Bayes-Spiele",
+                    class_="exercise-title",
+                    **{"data-i18n-de": "Übersicht Bayes-Spiele", "data-i18n-en": "Overview of Bayesian games"},
+                ),
+                ui.tags.div(
+                    ui.tags.div(
+                        ui.tags.h5(
+                            "Teil 1: Grundlagen statischer Bayes-Spiele",
+                            class_="card-title",
+                            **{"data-i18n-de": "Teil 1: Grundlagen statischer Bayes-Spiele", "data-i18n-en": "Part 1: Foundations of static Bayesian games"},
+                        ),
+                        ui.tags.ul(
+                            ui.tags.li(
+                                ui.tags.a(
+                                    "Übung 1 – Bayes-Spiel mit einseitiger privater Information",
+                                    href="#",
+                                    onclick="if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('go_to_bayes_ex1', Date.now(), {priority: 'event'}); } return false;",
+                                    class_="toc-link",
+                                    **{
+                                        "data-i18n-de": "Übung 1 – Bayes-Spiel mit einseitiger privater Information",
+                                        "data-i18n-en": "Exercise 1 – Bayesian game with one-sided private information",
+                                    },
+                                )
+                            ),
+                            ui.tags.li(
+                                ui.tags.a(
+                                    "Übung 2a – A-posteriori Wahrscheinlichkeiten in Bayes-Spielen",
+                                    href="#",
+                                    onclick="if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('go_to_bayes_ex2a', Date.now(), {priority: 'event'}); } return false;",
+                                    class_="toc-link",
+                                    **{
+                                        "data-i18n-de": "Übung 2a – A-posteriori Wahrscheinlichkeiten in Bayes-Spielen",
+                                        "data-i18n-en": "Exercise 2a – Posterior probabilities in Bayesian games",
+                                    },
+                                )
+                            ),
+                            ui.tags.li(
+                                ui.tags.a(
+                                    "Übung 2b – Bayes-Nash-Gleichgewichte bei zweiseitiger privater Information",
+                                    href="#",
+                                    onclick="if (window.Shiny && Shiny.setInputValue) { Shiny.setInputValue('go_to_bayes_ex2b', Date.now(), {priority: 'event'}); } return false;",
+                                    class_="toc-link",
+                                    **{
+                                        "data-i18n-de": "Übung 2b – Bayes-Nash-Gleichgewichte bei zweiseitiger privater Information",
+                                        "data-i18n-en": "Exercise 2b – Bayesian Nash equilibria with two-sided private information",
+                                    },
+                                )
+                            ),
+                            class_="mb-0 toc-list",
+                        ),
+                        class_="card-body toc-card-body",
+                    ),
+                    class_="card shadow-sm h-100 mt-4",
+                    style="background-color:#ffffff;",
+                ),
+                ui.input_action_button(
+                    "go_to_bayes_ex1",
+                    ui.tags.span("Zu Teil 1, Übung 1", **{"data-i18n-de": "Zu Teil 1, Übung 1", "data-i18n-en": "Go to Part 1, Exercise 1"}),
+                    class_="btn btn-success mt-4",
+                ),
                 class_="container-fluid px-4",
             ),
             value="bayes_intro",
+        ),
+        ui.nav_panel(
+            ui.tags.span("Bayes Übung 1", **{"data-i18n-de": "Bayes Übung 1", "data-i18n-en": "Bayes Exercise 1"}),
+            ui.tags.div(
+                ui.h2(
+                    "Übung 1 – Bayes-Spiel mit einseitiger privater Information",
+                    class_="exercise-title",
+                    **{
+                        "data-i18n-de": "Übung 1 – Bayes-Spiel mit einseitiger privater Information",
+                        "data-i18n-en": "Exercise 1 – Bayesian game with one-sided private information",
+                    },
+                ),
+                ui.tags.div(
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.div(
+                                ui.tags.h5("Spiel", class_="card-title",
+                                           **{"data-i18n-de": "Spiel", "data-i18n-en": "Game"}),
+                                ui.tags.p(
+                                    "Spieler 1 kennt vor der Entscheidung seinen Typ (1 oder 2), Spieler 2 kennt ihn nicht. "
+                                    "Common Prior: P(Typ 1)=1/4, P(Typ 2)=3/4.",
+                                    **{
+                                        "data-i18n-de": "Spieler 1 kennt vor der Entscheidung seinen Typ (1 oder 2), Spieler 2 kennt ihn nicht. "
+                                        "Common Prior: P(Typ 1)=1/4, P(Typ 2)=3/4.",
+                                        "data-i18n-en": "Player 1 knows their type (1 or 2) before acting, Player 2 does not. "
+                                        "Common prior: P(Type 1)=1/4, P(Type 2)=3/4.",
+                                    },
+                                    class_="text-muted mb-3",
+                                ),
+                                ui.output_ui("bayes_ex1_game_tables"),
+                                ui.tags.div(
+                                    ui.tags.div(
+                                        ui.tags.h6("Notation", **{"data-i18n-de": "Notation", "data-i18n-en": "Notation"}),
+                                        ui.tags.ul(
+                                            ui.tags.li(
+                                                ui.tags.code("s₁ = (s₁(t₁=1), s₁(t₁=2)) ∈ {A,B}×{A,B}"),
+                                                class_="mb-1",
+                                            ),
+                                            ui.tags.li(
+                                                ui.tags.code("s₂ ∈ {X,Y}"),
+                                                class_="mb-1",
+                                            ),
+                                            ui.tags.li(
+                                                ui.tags.code("p(t₁=1)=1/4, p(t₁=2)=3/4"),
+                                                class_="mb-0",
+                                            ),
+                                            class_="mb-0",
+                                        ),
+                                        class_="card-body py-2 exercise-notation-body",
+                                    ),
+                                    class_="card mt-3 notation-card",
+                                    style="background-color:#f7f7f7;",
+                                ),
+                                ui.tags.div(
+                                    ui.input_action_button(
+                                        "new_game_bayes_ex1",
+                                        ui.tags.span("Neues Spiel", **{"data-i18n-de": "Neues Spiel", "data-i18n-en": "New game"}),
+                                        class_="btn btn-outline-primary",
+                                    ),
+                                    ui.input_action_button(
+                                        "help_bayes_ex1",
+                                        ui.tags.span("Hilfe", **{"data-i18n-de": "Hilfe", "data-i18n-en": "Help"}),
+                                        class_="btn btn-outline-primary",
+                                    ),
+                                    class_="d-flex gap-2 mt-3",
+                                ),
+                                ui.output_ui("help_text_bayes_ex1"),
+                                class_="card-body",
+                            ),
+                            class_="card shadow-sm h-100",
+                            style="background-color:#ffffff;",
+                        ),
+                        class_="col exercise-col",
+                    ),
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.div(
+                                ui.tags.h5("Frage", class_="card-title",
+                                           **{"data-i18n-de": "Frage", "data-i18n-en": "Question"}),
+                                ui.tags.p(
+                                    "Welche der folgenden Strategieprofile sind Bayes-Gleichgewichte?",
+                                    **{
+                                        "data-i18n-de": "Welche der folgenden Strategieprofile sind Bayes-Gleichgewichte?",
+                                        "data-i18n-en": "Which of the following strategy profiles are Bayesian equilibria?",
+                                    },
+                                    class_="mt-2 mb-3",
+                                ),
+                                ui.tags.p(
+                                    "Nicht-exklusive Antworten (mehrere können richtig sein).",
+                                    **{
+                                        "data-i18n-de": "Nicht-exklusive Antworten (mehrere können richtig sein).",
+                                        "data-i18n-en": "Non-exclusive answers (multiple can be correct).",
+                                    },
+                                    class_="text-muted mb-3",
+                                ),
+                                ui.tags.div(
+                                    ui.input_checkbox_group(
+                                        "answer_bayes_ex1",
+                                        None,
+                                        choices=["— bitte warten —"],
+                                    ),
+                                    class_="three-col-radios",
+                                ),
+                                ui.input_action_button(
+                                    "check_bayes_ex1",
+                                    ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
+                                    class_="btn btn-primary mt-3",
+                                ),
+                                ui.output_ui("feedback_bayes_ex1"),
+                                class_="card-body",
+                            ),
+                            class_="card shadow-sm h-100",
+                            style="background-color:#ffffff;",
+                        ),
+                        class_="col exercise-col",
+                    ),
+                    class_="row row-cols-1 row-cols-lg-2 g-3 mt-2 align-items-stretch exercise-row",
+                ),
+                ui.tags.div(
+                    ui.input_action_button(
+                        "go_back_bayes_intro",
+                        ui.tags.span("Zurück", **{"data-i18n-de": "Zurück", "data-i18n-en": "Back"}),
+                        class_="btn btn-outline-secondary",
+                    ),
+                    ui.input_action_button(
+                        "go_to_bayes_ex2a_from_ex1",
+                        ui.tags.span("Weiter zu Übung 2a", **{"data-i18n-de": "Weiter zu Übung 2a", "data-i18n-en": "Next to Exercise 2a"}),
+                        class_="btn btn-success",
+                    ),
+                    class_="mt-4 text-start mb-3 d-flex gap-2",
+                ),
+                class_="container-fluid px-4",
+            ),
+            value="bayes_ex1",
+        ),
+        ui.nav_panel(
+            ui.tags.span("Bayes Übung 2a", **{"data-i18n-de": "Bayes Übung 2a", "data-i18n-en": "Bayes Exercise 2a"}),
+            ui.tags.div(
+                ui.h2(
+                    "Übung 2a – A-posteriori Wahrscheinlichkeiten in Bayes-Spielen",
+                    class_="exercise-title",
+                    **{
+                        "data-i18n-de": "Übung 2a – A-posteriori Wahrscheinlichkeiten in Bayes-Spielen",
+                        "data-i18n-en": "Exercise 2a – Posterior probabilities in Bayesian games",
+                    },
+                ),
+                ui.tags.div(
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.div(
+                                ui.tags.h5("Spiel", class_="card-title",
+                                           **{"data-i18n-de": "Spiel", "data-i18n-en": "Game"}),
+                                ui.tags.p(
+                                    "Spieler 1 ist vom Typ a oder b, Spieler 2 vom Typ c oder d. Beide kennen nur ihren eigenen Typ.",
+                                    **{
+                                        "data-i18n-de": "Spieler 1 ist vom Typ a oder b, Spieler 2 vom Typ c oder d. Beide kennen nur ihren eigenen Typ.",
+                                        "data-i18n-en": "Player 1 is type a or b, player 2 is type c or d. Both only know their own type.",
+                                    },
+                                    class_="mb-2",
+                                ),
+                                ui.tags.p(
+                                    "Common prior über Typen:",
+                                    **{"data-i18n-de": "Common prior über Typen:", "data-i18n-en": "Common prior over types:"},
+                                    class_="mb-2",
+                                ),
+                                ui.output_ui("bayes_ex2a_prior_table"),
+                                ui.output_ui("bayes_ex2a_game_tables"),
+                                ui.tags.div(
+                                    ui.tags.div(
+                                        ui.tags.h6("Notation", **{"data-i18n-de": "Notation", "data-i18n-en": "Notation"}),
+                                        ui.tags.ul(
+                                            ui.tags.li(ui.tags.code("Prob(a,c)+Prob(a,d)+Prob(b,c)+Prob(b,d)=1")),
+                                            ui.tags.li(ui.tags.code("Prob(c|a)+Prob(d|a)=1")),
+                                            ui.tags.li(ui.tags.code("Prob(c|b)+Prob(d|b)=1")),
+                                            class_="mb-0",
+                                        ),
+                                        class_="card-body py-2 exercise-notation-body",
+                                    ),
+                                    class_="card mb-3 notation-card",
+                                    style="background-color:#f7f7f7;",
+                                ),
+                                ui.tags.div(
+                                    ui.input_action_button(
+                                        "new_game_bayes_ex2a",
+                                        ui.tags.span("Neues Spiel", **{"data-i18n-de": "Neues Spiel", "data-i18n-en": "New game"}),
+                                        class_="btn btn-outline-primary mt-2",
+                                    ),
+                                    ui.input_action_button(
+                                        "help_bayes_ex2a",
+                                        ui.tags.span("Hilfe", **{"data-i18n-de": "Hilfe", "data-i18n-en": "Help"}),
+                                        class_="btn btn-outline-primary mt-2",
+                                    ),
+                                    class_="d-flex gap-2",
+                                ),
+                                ui.output_ui("help_text_bayes_ex2a"),
+                                class_="card-body",
+                            ),
+                            class_="card shadow-sm h-100",
+                            style="background-color:#ffffff;",
+                        ),
+                        class_="col exercise-col",
+                    ),
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.div(
+                                ui.tags.h5("Frage a)", class_="card-title",
+                                           **{"data-i18n-de": "Frage a)", "data-i18n-en": "Question a)"}),
+                                ui.tags.p(
+                                    "Wie lauten Prob(c|a), Prob(d|a), Prob(c|b) und Prob(d|b)?",
+                                    **{
+                                        "data-i18n-de": "Wie lauten Prob(c|a), Prob(d|a), Prob(c|b) und Prob(d|b)?",
+                                        "data-i18n-en": "What are Prob(c|a), Prob(d|a), Prob(c|b), and Prob(d|b)?",
+                                    },
+                                    class_="mt-2 mb-3",
+                                ),
+                                ui.tags.p(
+                                    "Wähle genau eine Antwort.",
+                                    **{"data-i18n-de": "Wähle genau eine Antwort.", "data-i18n-en": "Choose exactly one answer."},
+                                    class_="mb-3",
+                                ),
+                                ui.tags.div(
+                                    ui.input_radio_buttons(
+                                        "answer_bayes_ex2a",
+                                        None,
+                                        choices=["— bitte warten —"],
+                                    ),
+                                    class_="bayes-ex2a-options",
+                                ),
+                                ui.input_action_button(
+                                    "check_bayes_ex2a",
+                                    ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
+                                    class_="btn btn-primary mt-3",
+                                ),
+                                ui.output_ui("feedback_bayes_ex2a"),
+                                ui.output_ui("intermediate_bayes_ex2a"),
+                                class_="card-body",
+                            ),
+                            class_="card shadow-sm h-100",
+                            style="background-color:#ffffff;",
+                        ),
+                        class_="col exercise-col",
+                    ),
+                    class_="row row-cols-1 row-cols-lg-2 g-3 mt-2 align-items-stretch exercise-row",
+                ),
+                ui.tags.div(
+                    ui.input_action_button(
+                        "go_back_bayes_ex1_from_ex2a",
+                        ui.tags.span("Zurück zu Übung 1", **{"data-i18n-de": "Zurück zu Übung 1", "data-i18n-en": "Back to Exercise 1"}),
+                        class_="btn btn-outline-secondary",
+                    ),
+                    ui.input_action_button(
+                        "go_to_bayes_ex2b_from_ex2a",
+                        ui.tags.span("Weiter zu Übung 2b", **{"data-i18n-de": "Weiter zu Übung 2b", "data-i18n-en": "Next to Exercise 2b"}),
+                        class_="btn btn-success",
+                    ),
+                    class_="mt-4 text-start mb-3 d-flex gap-2",
+                ),
+                class_="container-fluid px-4",
+            ),
+            value="bayes_ex2a",
+        ),
+        ui.nav_panel(
+            ui.tags.span("Bayes Übung 2b", **{"data-i18n-de": "Bayes Übung 2b", "data-i18n-en": "Bayes Exercise 2b"}),
+            ui.tags.div(
+                ui.h2(
+                    "Übung 2b – Bayes-Nash-Gleichgewichte bei zweiseitiger privater Information",
+                    class_="exercise-title",
+                    **{
+                        "data-i18n-de": "Übung 2b – Bayes-Nash-Gleichgewichte bei zweiseitiger privater Information",
+                        "data-i18n-en": "Exercise 2b – Bayesian Nash equilibria with two-sided private information",
+                    },
+                ),
+                ui.tags.div(
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.div(
+                                ui.tags.h5("Spiel", class_="card-title",
+                                           **{"data-i18n-de": "Spiel", "data-i18n-en": "Game"}),
+                                ui.tags.p(
+                                    "Spieler 1 ist vom Typ a oder b, Spieler 2 vom Typ c oder d. Beide kennen nur ihren eigenen Typ.",
+                                    **{
+                                        "data-i18n-de": "Spieler 1 ist vom Typ a oder b, Spieler 2 vom Typ c oder d. Beide kennen nur ihren eigenen Typ.",
+                                        "data-i18n-en": "Player 1 is type a or b, player 2 is type c or d. Both only know their own type.",
+                                    },
+                                    class_="mb-2",
+                                ),
+                                ui.tags.p(
+                                    "Common prior über Typen:",
+                                    **{"data-i18n-de": "Common prior über Typen:", "data-i18n-en": "Common prior over types:"},
+                                    class_="mb-2",
+                                ),
+                                ui.output_ui("bayes_ex2b_prior_table"),
+                                ui.output_ui("bayes_ex2b_game_tables"),
+                                ui.tags.div(
+                                    ui.tags.div(
+                                        ui.tags.h6("Notation", **{"data-i18n-de": "Notation", "data-i18n-en": "Notation"}),
+                                        ui.tags.ul(
+                                            ui.tags.li(ui.tags.code("Prob(a,c)+Prob(a,d)+Prob(b,c)+Prob(b,d)=1")),
+                                            ui.tags.li(ui.tags.code("Prob(c|a)+Prob(d|a)=1")),
+                                            ui.tags.li(ui.tags.code("Prob(c|b)+Prob(d|b)=1")),
+                                            class_="mb-0",
+                                        ),
+                                        class_="card-body py-2 exercise-notation-body",
+                                    ),
+                                    class_="card mb-3 notation-card",
+                                    style="background-color:#f7f7f7;",
+                                ),
+                                ui.tags.div(
+                                    ui.input_action_button(
+                                        "new_game_bayes_ex2a_from_ex2b",
+                                        ui.tags.span("Neues Spiel (a)", **{"data-i18n-de": "Neues Spiel (a)", "data-i18n-en": "New game (a)"}),
+                                        class_="btn btn-outline-primary mt-2",
+                                    ),
+                                    ui.input_action_button(
+                                        "help_bayes_ex2b",
+                                        ui.tags.span("Hilfe", **{"data-i18n-de": "Hilfe", "data-i18n-en": "Help"}),
+                                        class_="btn btn-outline-primary mt-2",
+                                    ),
+                                    class_="d-flex gap-2",
+                                ),
+                                ui.output_ui("help_text_bayes_ex2b"),
+                                class_="card-body",
+                            ),
+                            class_="card shadow-sm h-100",
+                            style="background-color:#ffffff;",
+                        ),
+                        class_="col exercise-col",
+                    ),
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.div(
+                                ui.tags.h5("Frage b)", class_="card-title",
+                                           **{"data-i18n-de": "Frage b)", "data-i18n-en": "Question b)"}),
+                                ui.tags.p(
+                                    "Welche der folgenden Strategieprofile sind Bayes-Gleichgewichte?",
+                                    **{
+                                        "data-i18n-de": "Welche der folgenden Strategieprofile sind Bayes-Gleichgewichte?",
+                                        "data-i18n-en": "Which of the following strategy profiles are Bayesian equilibria?",
+                                    },
+                                    class_="mb-3",
+                                ),
+                                ui.tags.p(
+                                    "Nicht-exklusive Antworten (mehrere können richtig sein).",
+                                    **{
+                                        "data-i18n-de": "Nicht-exklusive Antworten (mehrere können richtig sein).",
+                                        "data-i18n-en": "Non-exclusive answers (multiple can be correct).",
+                                    },
+                                    class_="mb-3",
+                                ),
+                                ui.tags.div(
+                                    ui.input_checkbox_group(
+                                        "answer_bayes_ex2b",
+                                        None,
+                                        choices=["— bitte warten —"],
+                                    ),
+                                    class_="bayes-ex2a-options",
+                                ),
+                                ui.tags.div(
+                                    ui.input_action_button(
+                                        "check_bayes_ex2b",
+                                        ui.tags.span("Antwort prüfen", **{"data-i18n-de": "Antwort prüfen", "data-i18n-en": "Check answer"}),
+                                        class_="btn btn-primary mt-3",
+                                    ),
+                                ),
+                                ui.output_ui("feedback_bayes_ex2b"),
+                                ui.output_ui("intermediate_bayes_ex2a_for_ex2b"),
+                                class_="card-body",
+                            ),
+                            class_="card shadow-sm h-100",
+                            style="background-color:#ffffff;",
+                        ),
+                        class_="col exercise-col",
+                    ),
+                    class_="row row-cols-1 row-cols-lg-2 g-3 mt-2 align-items-stretch exercise-row",
+                ),
+                ui.tags.div(
+                    ui.input_action_button(
+                        "go_back_bayes_ex2a_from_ex2b",
+                        ui.tags.span("Zurück zu Übung 2a", **{"data-i18n-de": "Zurück zu Übung 2a", "data-i18n-en": "Back to Exercise 2a"}),
+                        class_="btn btn-outline-secondary",
+                    ),
+                    ui.input_action_button(
+                        "go_back_bayes_intro_from_ex2b",
+                        ui.tags.span("Zurück zur Inhaltsseite", **{"data-i18n-de": "Zurück zur Inhaltsseite", "data-i18n-en": "Back to table of contents"}),
+                        class_="btn btn-success",
+                    ),
+                    class_="mt-4 text-start mb-3 d-flex gap-2",
+                ),
+                class_="container-fluid px-4",
+            ),
+            value="bayes_ex2b",
         ),
         id="main_tabs",
     ),
@@ -4256,6 +4960,46 @@ def server(input, output, session):
     @reactive.event(input.nav_normalform)
     def _nav_normalform():
         ui.update_navset("main_tabs", selected="intro")
+    @reactive.effect
+    @reactive.event(input.go_to_bayes_ex1)
+    def _go_to_bayes_ex1():
+        ui.update_navset("main_tabs", selected="bayes_ex1")
+    @reactive.effect
+    @reactive.event(input.go_to_bayes_ex2a)
+    def _go_to_bayes_ex2a():
+        ui.update_navset("main_tabs", selected="bayes_ex2a")
+    @reactive.effect
+    @reactive.event(input.go_to_bayes_ex2b)
+    def _go_to_bayes_ex2b():
+        ui.update_navset("main_tabs", selected="bayes_ex2b")
+    @reactive.effect
+    @reactive.event(input.go_to_bayes_ex2a_from_ex1)
+    def _go_to_bayes_ex2a_from_ex1():
+        ui.update_navset("main_tabs", selected="bayes_ex2a")
+    @reactive.effect
+    @reactive.event(input.go_to_bayes_ex2b_from_ex2a)
+    def _go_to_bayes_ex2b_from_ex2a():
+        ui.update_navset("main_tabs", selected="bayes_ex2b")
+    @reactive.effect
+    @reactive.event(input.go_back_bayes_intro)
+    def _go_back_bayes_intro():
+        ui.update_navset("main_tabs", selected="bayes_intro")
+    @reactive.effect
+    @reactive.event(input.go_back_bayes_intro_from_ex2a)
+    def _go_back_bayes_intro_from_ex2a():
+        ui.update_navset("main_tabs", selected="bayes_intro")
+    @reactive.effect
+    @reactive.event(input.go_back_bayes_ex1_from_ex2a)
+    def _go_back_bayes_ex1_from_ex2a():
+        ui.update_navset("main_tabs", selected="bayes_ex1")
+    @reactive.effect
+    @reactive.event(input.go_back_bayes_ex2a_from_ex2b)
+    def _go_back_bayes_ex2a_from_ex2b():
+        ui.update_navset("main_tabs", selected="bayes_ex2a")
+    @reactive.effect
+    @reactive.event(input.go_back_bayes_intro_from_ex2b)
+    def _go_back_bayes_intro_from_ex2b():
+        ui.update_navset("main_tabs", selected="bayes_intro")
 
     # =======================
     # Exercise 1 state
@@ -5759,6 +6503,844 @@ def server(input, output, session):
                 class_="fw-semibold",
             ),
             ui.tags.div(details, class_="mt-2"),
+            class_="alert alert-danger mt-3",
+        )
+
+    # =======================
+    # Bayes Exercise 1 state
+    # =======================
+    game_bayes_ex1 = reactive.value(generate_random_game_bayes_ex1())
+    show_fb_bayes_ex1 = reactive.value(False)
+    show_help_bayes_ex1 = reactive.value(False)
+
+    @reactive.effect
+    @reactive.event(input.new_game_bayes_ex1)
+    def _new_game_bayes_ex1():
+        game_bayes_ex1.set(generate_random_game_bayes_ex1())
+        ui.update_checkbox_group("answer_bayes_ex1", selected=[])
+        show_fb_bayes_ex1.set(False)
+
+    @reactive.effect
+    @reactive.event(input.help_bayes_ex1)
+    def _help_bayes_ex1():
+        show_help_bayes_ex1.set(not show_help_bayes_ex1.get())
+
+    @reactive.effect
+    @reactive.event(input.check_bayes_ex1)
+    def _check_bayes_ex1():
+        show_fb_bayes_ex1.set(True)
+
+    @output
+    @render.ui
+    def bayes_ex1_game_tables():
+        lang = current_lang()
+        params = game_bayes_ex1.get()
+        payoffs_t1, payoffs_t2 = bayes_ex1_payoffs_by_type(params)
+        ui.update_checkbox_group("answer_bayes_ex1", choices=bayes_ex1_profiles(), selected=[])
+        return ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.h6(
+                        "Spieler 1 vom Typ 1",
+                        class_="mb-2",
+                        **{"data-i18n-de": "Spieler 1 vom Typ 1", "data-i18n-en": "Player 1 of type 1"},
+                    ),
+                    payoff_table(
+                        P1_STRATS_BAYES_EX1,
+                        P2_STRATS_BAYES_EX1,
+                        payoff_strings_from_tuple_payoffs(payoffs_t1),
+                        lang=lang,
+                        row_player_label=tr(lang, "Spieler 1 (Typ 1: 25%)", "Player 1 (Type 1: 25%)"),
+                        col_player_label=tr(lang, "Spieler 2", "Player 2"),
+                    ),
+                    class_="col-12 col-xl-6",
+                ),
+                ui.tags.div(
+                    ui.tags.h6(
+                        "Spieler 1 vom Typ 2",
+                        class_="mb-2",
+                        **{"data-i18n-de": "Spieler 1 vom Typ 2", "data-i18n-en": "Player 1 of type 2"},
+                    ),
+                    payoff_table(
+                        P1_STRATS_BAYES_EX1,
+                        P2_STRATS_BAYES_EX1,
+                        payoff_strings_from_tuple_payoffs(payoffs_t2),
+                        lang=lang,
+                        row_player_label=tr(lang, "Spieler 1 (Typ 2: 75%)", "Player 1 (Type 2: 75%)"),
+                        col_player_label=tr(lang, "Spieler 2", "Player 2"),
+                    ),
+                    class_="col-12 col-xl-6",
+                ),
+                class_="row g-3 align-items-start",
+            ),
+        )
+
+    @output
+    @render.ui
+    def help_text_bayes_ex1():
+        lang = current_lang()
+        if not show_help_bayes_ex1.get():
+            return ui.tags.div()
+        return ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.p(
+                        ui.tags.strong(tr(lang, "Vorgehen: ", "Approach: ")),
+                        tr(
+                            lang,
+                            "Prüfe für jedes Profil ((s1(Typ1), s1(Typ2)), s2), ob alle drei Anreizbedingungen erfüllt sind.",
+                            "For each profile ((s1(Type1), s1(Type2)), s2), check whether all three incentive conditions hold.",
+                        ),
+                        class_="text-muted mb-2",
+                    ),
+                    ui.tags.ul(
+                        ui.tags.li(
+                            tr(
+                                lang,
+                                "Spieler 1, Typ 1: Bei gegebenem s2 muss die gewählte Aktion (A oder B) mindestens so gut sein wie die Alternative.",
+                                "Player 1, Type 1: Given s2, the chosen action (A or B) must be at least as good as the alternative.",
+                            )
+                        ),
+                        ui.tags.li(
+                            tr(
+                                lang,
+                                "Spieler 1, Typ 2: Analog dieselbe Bedingung in der Typ-2-Matrix prüfen.",
+                                "Player 1, Type 2: Analogously, check the same condition in the type-2 matrix.",
+                            )
+                        ),
+                        ui.tags.li(
+                            ui.tags.div(
+                                tr(
+                                    lang,
+                                    "Spieler 2: Vergleiche erwartete Auszahlungen von X und Y mit p(Typ1)=1/4 und p(Typ2)=3/4.",
+                                    "Player 2: Compare expected payoffs of X and Y using p(Type1)=1/4 and p(Type2)=3/4.",
+                                )
+                            ),
+                            ui.tags.div(
+                                tr(
+                                    lang,
+                                    "Definition: EU2(X)=1/4·u2(s1(Typ1),X|Typ1)+3/4·u2(s1(Typ2),X|Typ2), "
+                                    "EU2(Y)=1/4·u2(s1(Typ1),Y|Typ1)+3/4·u2(s1(Typ2),Y|Typ2).",
+                                    "Definition: EU2(X)=1/4·u2(s1(Type1),X|Type1)+3/4·u2(s1(Type2),X|Type2), "
+                                    "EU2(Y)=1/4·u2(s1(Type1),Y|Type1)+3/4·u2(s1(Type2),Y|Type2).",
+                                ),
+                                class_="mt-1",
+                            ),
+                        ),
+                        ui.tags.li(
+                            tr(
+                                lang,
+                                "Ein Profil ist Bayes-Gleichgewicht genau dann, wenn alle drei Bedingungen gleichzeitig gelten.",
+                                "A profile is a Bayesian equilibrium iff all three conditions hold simultaneously.",
+                            )
+                        ),
+                        class_="text-muted mb-0",
+                    ),
+                    class_="mt-2",
+                ),
+                class_="card-body py-2 exercise-notation-body",
+            ),
+            class_="card mt-3 notation-card",
+            style="background-color:#f7f7f7;",
+        )
+
+    @output
+    @render.ui
+    def feedback_bayes_ex1():
+        lang = current_lang()
+        if not show_fb_bayes_ex1.get():
+            return ui.tags.div()
+
+        params = game_bayes_ex1.get()
+        chosen = set(input.answer_bayes_ex1() or [])
+        correct = bayes_ex1_correct_choice_set(params)
+        correct_text = ", ".join(sorted(correct)) if correct else tr(lang, "keines der Profile", "none of the profiles")
+
+        def _mark(ok):
+            return "✓" if ok else "✗"
+
+        def _weighted(k1, k2):
+            return 0.25 * params[k1] + 0.75 * params[k2]
+
+        def _reasoning_block(profiles):
+            rules = {
+                "((A,A),X)": (("a", ">=", "e"), ("i", ">=", "m"), ("b", "j", ">=", "d", "l")),
+                "((A,B),X)": (("a", ">=", "e"), ("m", ">=", "i"), ("b", "n", ">=", "d", "p")),
+                "((B,A),X)": (("e", ">=", "a"), ("i", ">=", "m"), ("f", "j", ">=", "h", "l")),
+                "((B,B),X)": (("e", ">=", "a"), ("m", ">=", "i"), ("f", "n", ">=", "h", "p")),
+                "((A,A),Y)": (("c", ">=", "g"), ("k", ">=", "o"), ("b", "j", "<=", "d", "l")),
+                "((A,B),Y)": (("c", ">=", "g"), ("o", ">=", "k"), ("b", "n", "<=", "d", "p")),
+                "((B,A),Y)": (("g", ">=", "c"), ("k", ">=", "o"), ("f", "j", "<=", "h", "l")),
+                "((B,B),Y)": (("g", ">=", "c"), ("o", ">=", "k"), ("f", "n", "<=", "h", "p")),
+            }
+            profile_actions = {
+                "((A,A),X)": ("A", "A", "X"),
+                "((A,B),X)": ("A", "B", "X"),
+                "((B,A),X)": ("B", "A", "X"),
+                "((B,B),X)": ("B", "B", "X"),
+                "((A,A),Y)": ("A", "A", "Y"),
+                "((A,B),Y)": ("A", "B", "Y"),
+                "((B,A),Y)": ("B", "A", "Y"),
+                "((B,B),Y)": ("B", "B", "Y"),
+            }
+            items = []
+            for profile in sorted(profiles):
+                if profile not in rules:
+                    continue
+                a_t1, a_t2, a2 = profile_actions[profile]
+                alt_t1 = "B" if a_t1 == "A" else "A"
+                alt_t2 = "B" if a_t2 == "A" else "A"
+                c1, c2, c3 = rules[profile]
+                l1, op1, r1 = c1
+                l2, op2, r2 = c2
+                x1, x2, op3, y1, y2 = c3
+
+                cond1 = params[l1] >= params[r1]
+                cond2 = params[l2] >= params[r2]
+                lhs = _weighted(x1, x2)
+                rhs = _weighted(y1, y2)
+                cond3 = lhs >= rhs if op3 == ">=" else lhs <= rhs
+
+                items.append(
+                    ui.tags.div(
+                        ui.tags.div(
+                            ui.tags.strong(
+                                tr(
+                                    lang,
+                                    f"{profile} ist richtig weil:",
+                                    f"{profile} is correct because:",
+                                )
+                            )
+                        ),
+                        ui.tags.ol(
+                            ui.tags.li(
+                                tr(
+                                    lang,
+                                    f"Spieler 1, Typ 1 (Spalte {a2}): u1({a_t1},{a2}) {op1} u1({alt_t1},{a2}) "
+                                    f"({params[l1]} {op1} {params[r1]}) {_mark(cond1)}",
+                                    f"Player 1, Type 1 (column {a2}): u1({a_t1},{a2}) {op1} u1({alt_t1},{a2}) "
+                                    f"({params[l1]} {op1} {params[r1]}) {_mark(cond1)}",
+                                ),
+                            ),
+                            ui.tags.li(
+                                tr(
+                                    lang,
+                                    f"Spieler 1, Typ 2 (Spalte {a2}): u1({a_t2},{a2}) {op2} u1({alt_t2},{a2}) "
+                                    f"({params[l2]} {op2} {params[r2]}) {_mark(cond2)}",
+                                    f"Player 1, Type 2 (column {a2}): u1({a_t2},{a2}) {op2} u1({alt_t2},{a2}) "
+                                    f"({params[l2]} {op2} {params[r2]}) {_mark(cond2)}",
+                                ),
+                            ),
+                            ui.tags.li(
+                                tr(
+                                    lang,
+                                    f"Spieler 2: EU2(X)=1/4·u2({a_t1},X|Typ1)+3/4·u2({a_t2},X|Typ2), "
+                                    f"EU2(Y)=1/4·u2({a_t1},Y|Typ1)+3/4·u2({a_t2},Y|Typ2), "
+                                    f"also EU2(X) {op3} EU2(Y) ({lhs:.2f} {op3} {rhs:.2f}) {_mark(cond3)}",
+                                    f"Player 2: EU2(X)=1/4·u2({a_t1},X|Type1)+3/4·u2({a_t2},X|Type2), "
+                                    f"EU2(Y)=1/4·u2({a_t1},Y|Type1)+3/4·u2({a_t2},Y|Type2), "
+                                    f"thus EU2(X) {op3} EU2(Y) ({lhs:.2f} {op3} {rhs:.2f}) {_mark(cond3)}",
+                                ),
+                            ),
+                            class_="mb-1",
+                        ),
+                        class_="mt-2",
+                    )
+                )
+
+            return ui.tags.div(
+                ui.tags.div(*items, class_="mt-2") if items else ui.tags.div(
+                    tr(
+                        lang,
+                        "Es gibt in dieser Ziehung kein Bayes-Gleichgewicht aus den vorgegebenen Profilen.",
+                        "In this draw, none of the listed profiles is a Bayesian equilibrium.",
+                    ),
+                    class_="mt-2 mb-0",
+                ),
+            )
+
+        if chosen == correct:
+            return ui.tags.div(
+                ui.tags.div(tr(lang, "✅ Richtig!", "✅ Correct!"), class_="fw-semibold"),
+                _reasoning_block(correct),
+                class_="alert alert-success mt-3",
+            )
+
+        if not chosen and correct:
+            return ui.tags.div(
+                ui.tags.div(
+                    tr(
+                        lang,
+                        f"❌ Falsch. Richtig ist: {correct_text}.",
+                        f"❌ Incorrect. Correct is: {correct_text}.",
+                    ),
+                    class_="fw-semibold",
+                ),
+                _reasoning_block(correct),
+                class_="alert alert-danger mt-3",
+            )
+
+        return ui.tags.div(
+            ui.tags.div(
+                tr(
+                    lang,
+                    f"❌ Falsch. Richtig ist: {correct_text}.",
+                    f"❌ Incorrect. Correct is: {correct_text}.",
+                ),
+                class_="fw-semibold",
+            ),
+            _reasoning_block(correct),
+            class_="alert alert-danger mt-3",
+        )
+
+    # =======================
+    # Bayes Exercise 2a state
+    # =======================
+    bayes_ex2_params = reactive.value(generate_bayes_ex2_params())
+    bayes_ex2a_option_order = reactive.value(generate_bayes_ex2a_option_order())
+    bayes_ex2b_alt = reactive.value(random.choice(["ab_xy", "ba_xx", "bb_yx"]))
+    show_fb_bayes_ex2a = reactive.value(False)
+    show_help_bayes_ex2a = reactive.value(False)
+    show_fb_bayes_ex2b = reactive.value(False)
+    show_help_bayes_ex2b = reactive.value(False)
+
+    def _reset_bayes_ex2_game():
+        bayes_ex2_params.set(generate_bayes_ex2_params())
+        bayes_ex2a_option_order.set(generate_bayes_ex2a_option_order())
+        bayes_ex2b_alt.set(random.choice(["ab_xy", "ba_xx", "bb_yx"]))
+        show_fb_bayes_ex2a.set(False)
+        show_fb_bayes_ex2b.set(False)
+        ui.update_radio_buttons("answer_bayes_ex2a", selected=None)
+        ui.update_checkbox_group("answer_bayes_ex2b", selected=[])
+
+    @reactive.effect
+    @reactive.event(input.check_bayes_ex2a)
+    def _check_bayes_ex2a():
+        show_fb_bayes_ex2a.set(True)
+        show_fb_bayes_ex2b.set(False)
+
+    @reactive.effect
+    @reactive.event(input.new_game_bayes_ex2a)
+    def _new_game_bayes_ex2a():
+        _reset_bayes_ex2_game()
+
+    @reactive.effect
+    @reactive.event(input.new_game_bayes_ex2a_from_ex2b)
+    def _new_game_bayes_ex2a_from_ex2b():
+        _reset_bayes_ex2_game()
+        ui.update_navset("main_tabs", selected="bayes_ex2a")
+
+    @reactive.effect
+    @reactive.event(input.check_bayes_ex2b)
+    def _check_bayes_ex2b():
+        show_fb_bayes_ex2b.set(True)
+
+    @reactive.effect
+    @reactive.event(input.help_bayes_ex2a)
+    def _help_bayes_ex2a():
+        show_help_bayes_ex2a.set(not show_help_bayes_ex2a.get())
+
+    @reactive.effect
+    @reactive.event(input.help_bayes_ex2b)
+    def _help_bayes_ex2b():
+        show_help_bayes_ex2b.set(not show_help_bayes_ex2b.get())
+
+    def _prior_table_ui():
+        p = bayes_ex2_params.get()
+        den = p["den"]
+        return ui.tags.table(
+            ui.tags.thead(
+                ui.tags.tr(
+                    ui.tags.th("", style="border-right: 1px solid #222;"),
+                    ui.tags.th("Spieler 2: Typ c", **{"data-i18n-de": "Spieler 2: Typ c", "data-i18n-en": "Player 2: Type c"}),
+                    ui.tags.th("Spieler 2: Typ d", **{"data-i18n-de": "Spieler 2: Typ d", "data-i18n-en": "Player 2: Type d"}),
+                )
+            ),
+            ui.tags.tbody(
+                ui.tags.tr(
+                    ui.tags.th("Spieler 1: Typ a", style="border-right: 1px solid #222;", **{"data-i18n-de": "Spieler 1: Typ a", "data-i18n-en": "Player 1: Type a"}),
+                    ui.tags.td(f"{p['w']}/{den}"),
+                    ui.tags.td(f"{p['x']}/{den}"),
+                ),
+                ui.tags.tr(
+                    ui.tags.th("Spieler 1: Typ b", style="border-right: 1px solid #222;", **{"data-i18n-de": "Spieler 1: Typ b", "data-i18n-en": "Player 1: Type b"}),
+                    ui.tags.td(f"{p['y']}/{den}"),
+                    ui.tags.td(f"{p['z']}/{den}"),
+                ),
+            ),
+            class_="table table-bordered text-center align-middle w-auto mb-3",
+        )
+
+    @output
+    @render.ui
+    def bayes_ex2a_prior_table():
+        return _prior_table_ui()
+
+    @output
+    @render.ui
+    def bayes_ex2b_prior_table():
+        return _prior_table_ui()
+
+    def _bayes_ex2_type_game_tables(lang):
+        return ui.tags.div(
+            ui.tags.div(
+                ui.tags.h6(
+                    "Spieler 1 vom Typ a, Spieler 2 vom Typ c",
+                    class_="mb-2",
+                    **{
+                        "data-i18n-de": "Spieler 1 vom Typ a, Spieler 2 vom Typ c",
+                        "data-i18n-en": "Player 1 of type a, player 2 of type c",
+                    },
+                ),
+                payoff_table(
+                    P1_STRATS_BAYES_EX2A,
+                    P2_STRATS_BAYES_EX2A,
+                    payoff_strings_from_tuple_payoffs(BAYES_EX2A_PAYOFFS_A_C),
+                    lang=lang,
+                    row_player_label=tr(lang, "Spieler 1 (Typ a)", "Player 1 (Type a)"),
+                    col_player_label=tr(lang, "Spieler 2 (Typ c)", "Player 2 (Type c)"),
+                ),
+                class_="col-12 col-xl-6",
+            ),
+            ui.tags.div(
+                ui.tags.h6(
+                    "Spieler 1 vom Typ a, Spieler 2 vom Typ d",
+                    class_="mb-2",
+                    **{
+                        "data-i18n-de": "Spieler 1 vom Typ a, Spieler 2 vom Typ d",
+                        "data-i18n-en": "Player 1 of type a, player 2 of type d",
+                    },
+                ),
+                payoff_table(
+                    P1_STRATS_BAYES_EX2A,
+                    P2_STRATS_BAYES_EX2A,
+                    payoff_strings_from_tuple_payoffs(BAYES_EX2A_PAYOFFS_A_D),
+                    lang=lang,
+                    row_player_label=tr(lang, "Spieler 1 (Typ a)", "Player 1 (Type a)"),
+                    col_player_label=tr(lang, "Spieler 2 (Typ d)", "Player 2 (Type d)"),
+                ),
+                class_="col-12 col-xl-6",
+            ),
+            ui.tags.div(
+                ui.tags.h6(
+                    "Spieler 1 vom Typ b, Spieler 2 vom Typ c",
+                    class_="mb-2",
+                    **{
+                        "data-i18n-de": "Spieler 1 vom Typ b, Spieler 2 vom Typ c",
+                        "data-i18n-en": "Player 1 of type b, player 2 of type c",
+                    },
+                ),
+                payoff_table(
+                    P1_STRATS_BAYES_EX2A,
+                    P2_STRATS_BAYES_EX2A,
+                    payoff_strings_from_tuple_payoffs(BAYES_EX2A_PAYOFFS_B_C),
+                    lang=lang,
+                    row_player_label=tr(lang, "Spieler 1 (Typ b)", "Player 1 (Type b)"),
+                    col_player_label=tr(lang, "Spieler 2 (Typ c)", "Player 2 (Type c)"),
+                ),
+                class_="col-12 col-xl-6",
+            ),
+            ui.tags.div(
+                ui.tags.h6(
+                    "Spieler 1 vom Typ b, Spieler 2 vom Typ d",
+                    class_="mb-2",
+                    **{
+                        "data-i18n-de": "Spieler 1 vom Typ b, Spieler 2 vom Typ d",
+                        "data-i18n-en": "Player 1 of type b, player 2 of type d",
+                    },
+                ),
+                payoff_table(
+                    P1_STRATS_BAYES_EX2A,
+                    P2_STRATS_BAYES_EX2A,
+                    payoff_strings_from_tuple_payoffs(BAYES_EX2A_PAYOFFS_B_D),
+                    lang=lang,
+                    row_player_label=tr(lang, "Spieler 1 (Typ b)", "Player 1 (Type b)"),
+                    col_player_label=tr(lang, "Spieler 2 (Typ d)", "Player 2 (Type d)"),
+                ),
+                class_="col-12 col-xl-6",
+            ),
+            class_="row g-3 align-items-start",
+        )
+
+    def _bayes_ex2_help_card(lang):
+        return ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.p(
+                        ui.tags.strong(tr(lang, "Ziel: ", "Goal: ")),
+                        tr(
+                            lang,
+                            "Bestimme die a-posteriori Wahrscheinlichkeiten von Spieler-2-Typen bedingt auf den Typ von Spieler 1.",
+                            "Determine the posterior probabilities of player-2 types conditional on player-1 type.",
+                        ),
+                        class_="mb-2",
+                    ),
+                    ui.tags.ol(
+                        ui.tags.li(
+                            tr(
+                                lang,
+                                "Für Typ a von Spieler 1 normalisierst du die Zeile (w, x): Prob(c|a)=w/(w+x), Prob(d|a)=x/(w+x).",
+                                "For player-1 type a, normalize row (w, x): Prob(c|a)=w/(w+x), Prob(d|a)=x/(w+x).",
+                            )
+                        ),
+                        ui.tags.li(
+                            tr(
+                                lang,
+                                "Für Typ b von Spieler 1 normalisierst du die Zeile (y, z): Prob(c|b)=y/(y+z), Prob(d|b)=z/(y+z).",
+                                "For player-1 type b, normalize row (y, z): Prob(c|b)=y/(y+z), Prob(d|b)=z/(y+z).",
+                            )
+                        ),
+                        ui.tags.li(
+                            tr(
+                                lang,
+                                "Prüfe bei jeder Antwort, dass sich die beiden bedingten Wahrscheinlichkeiten je Zeile zu 1 addieren.",
+                                "Check each option so the two conditional probabilities per row sum to 1.",
+                            )
+                        ),
+                        ui.tags.li(
+                            ui.tags.div(
+                                tr(
+                                    lang,
+                                    "Rechnung (allgemein):",
+                                    "Computation (general):",
+                                ),
+                                class_="mb-1",
+                            ),
+                            ui.tags.div(
+                                ui.tags.code("Prob(c|a)=Prob(a,c)/(Prob(a,c)+Prob(a,d))"),
+                                class_="mb-1",
+                            ),
+                            ui.tags.div(
+                                ui.tags.code("Prob(d|a)=Prob(a,d)/(Prob(a,c)+Prob(a,d))"),
+                                class_="mb-1",
+                            ),
+                            ui.tags.div(
+                                ui.tags.code("Prob(c|b)=Prob(b,c)/(Prob(b,c)+Prob(b,d))"),
+                                class_="mb-1",
+                            ),
+                            ui.tags.div(
+                                ui.tags.code("Prob(d|b)=Prob(b,d)/(Prob(b,c)+Prob(b,d))"),
+                                class_="mb-0",
+                            ),
+                        ),
+                        class_="mb-0",
+                    ),
+                    class_="card-body py-2 exercise-notation-body",
+                ),
+                class_="card mt-3 notation-card",
+                style="background-color:#f7f7f7;",
+            )
+        )
+
+    def _bayes_ex2b_help_card(lang):
+        return ui.tags.div(
+            ui.tags.div(
+                ui.tags.div(
+                    ui.tags.p(
+                        ui.tags.strong(tr(lang, "Ziel: ", "Goal: ")),
+                        tr(
+                            lang,
+                            "Prüfe für die angezeigten Strategieprofile, ob sie Bayes-Gleichgewichte sind.",
+                            "Check whether the shown strategy profiles are Bayesian equilibria.",
+                        ),
+                        class_="mb-2",
+                    ),
+                    ui.tags.ol(
+                        ui.tags.li(
+                            tr(
+                                lang,
+                                "Lies zuerst aus der Prior-Tabelle die vier Basiswahrscheinlichkeiten ab: Prob(a,c), Prob(a,d), Prob(b,c), Prob(b,d).",
+                                "First read the four base probabilities from the prior table: Prob(a,c), Prob(a,d), Prob(b,c), Prob(b,d).",
+                            )
+                        ),
+                        ui.tags.li(
+                            tr(
+                                lang,
+                                "Setze diese Werte in die jeweiligen Prüf-Ungleichungen für die angezeigten Strategieprofile ein.",
+                                "Plug these values into the corresponding check-inequalities for the shown strategy profiles.",
+                            )
+                        ),
+                        ui.tags.li(
+                            tr(
+                                lang,
+                                "Prüfe jede Bedingung einzeln und markiere sie als erfüllt/nicht erfüllt.",
+                                "Check each condition separately and mark it as satisfied/not satisfied.",
+                            )
+                        ),
+                        ui.tags.li(
+                            ui.tags.div(
+                                tr(
+                                    lang,
+                                    "Allgemeine Prüf-Ungleichungen:",
+                                    "General check-inequalities:",
+                                ),
+                                class_="mb-1",
+                            ),
+                            ui.tags.div(ui.tags.code("5·Prob(d|b) ≥ 4·Prob(d|a), 2·Prob(c|b) ≥ 3·Prob(d|b)"), class_="mb-1"),
+                            ui.tags.div(ui.tags.code("3·Prob(d|a) ≥ 2·Prob(c|a), 4·Prob(c|b) ≥ Prob(d|b), 2·Prob(c|b) ≥ Prob(c|a), 3·Prob(d|a) ≥ 5·Prob(d|b)"), class_="mb-0"),
+                        ),
+                        ui.tags.li(
+                            tr(
+                                lang,
+                                "Ein Strategieprofil ist nur dann korrekt auswählbar, wenn alle zugehörigen Bedingungen erfüllt sind.",
+                                "A strategy profile is selectable as correct only if all its required conditions are satisfied.",
+                            )
+                        ),
+                        ui.tags.li(
+                            tr(
+                                lang,
+                                "Da mehrere Profile gleichzeitig gelten können, wähle am Ende alle Profile aus, deren Bedingungen erfüllt sind.",
+                                "Since multiple profiles can hold simultaneously, select all profiles whose conditions are satisfied.",
+                            )
+                        ),
+                        class_="mb-0",
+                    ),
+                    class_="card-body py-2 exercise-notation-body",
+                ),
+                class_="card mt-3 notation-card",
+                style="background-color:#f7f7f7;",
+            )
+        )
+
+    @output
+    @render.ui
+    def bayes_ex2a_game_tables():
+        lang = current_lang()
+        choices, _ = bayes_ex2a_choices_and_correct(bayes_ex2_params.get(), bayes_ex2a_option_order.get())
+        ui.update_radio_buttons("answer_bayes_ex2a", choices=choices, selected=None)
+        return _bayes_ex2_type_game_tables(lang)
+
+    @output
+    @render.ui
+    def bayes_ex2b_game_tables():
+        lang = current_lang()
+        alt_key = bayes_ex2b_alt.get()
+        labels = {
+            "first": "((A,B),(Y,Y))",
+            "ab_xy": "((A,B),(X,Y))",
+            "ba_xx": "((B,A),(X,X))",
+            "bb_yx": "((B,B),(Y,X))",
+        }
+        ui.update_checkbox_group(
+            "answer_bayes_ex2b",
+            choices=[labels["first"], labels[alt_key], tr(lang, "Keines", "None")],
+            selected=[],
+        )
+        return _bayes_ex2_type_game_tables(lang)
+
+    @output
+    @render.ui
+    def help_text_bayes_ex2a():
+        lang = current_lang()
+        if not show_help_bayes_ex2a.get():
+            return ui.tags.div()
+        return _bayes_ex2_help_card(lang)
+
+    @output
+    @render.ui
+    def help_text_bayes_ex2b():
+        lang = current_lang()
+        if not show_help_bayes_ex2b.get():
+            return ui.tags.div()
+        return _bayes_ex2b_help_card(lang)
+
+    @output
+    @render.ui
+    def feedback_bayes_ex2a():
+        lang = current_lang()
+        vals = bayes_ex2a_values(bayes_ex2_params.get())
+
+        if not show_fb_bayes_ex2a.get():
+            return ui.tags.div()
+
+        selected = input.answer_bayes_ex2a()
+        if selected is None or selected == "":
+            return ui.tags.div(
+                tr(lang, "Bitte wähle zuerst eine Antwort aus.", "Please choose an answer first."),
+                class_="alert alert-warning mt-3",
+            )
+
+        _, correct_key = bayes_ex2a_choices_and_correct(bayes_ex2_params.get(), bayes_ex2a_option_order.get())
+        if selected == correct_key:
+            return ui.tags.div(
+                ui.tags.div(tr(lang, "✅ Richtig!", "✅ Correct!"), class_="fw-semibold"),
+                ui.tags.div(
+                    f"Prob(c|a)={frac_str(vals['c_a'])}, Prob(d|a)={frac_str(vals['d_a'])}, "
+                    f"Prob(c|b)={frac_str(vals['c_b'])}, Prob(d|b)={frac_str(vals['d_b'])}",
+                    class_="mt-2",
+                ),
+                class_="alert alert-success mt-3",
+            )
+
+        return ui.tags.div(
+            ui.tags.div(
+                tr(
+                    lang,
+                    "❌ Falsch. Richtig ist:",
+                    "❌ Incorrect. Correct is:",
+                ),
+                class_="fw-semibold",
+            ),
+            ui.tags.div(
+                f"Prob(c|a)={frac_str(vals['c_a'])}, Prob(d|a)={frac_str(vals['d_a'])}, "
+                f"Prob(c|b)={frac_str(vals['c_b'])}, Prob(d|b)={frac_str(vals['d_b'])}",
+                class_="mt-2",
+            ),
+            class_="alert alert-danger mt-3",
+        )
+
+    @output
+    @render.ui
+    def intermediate_bayes_ex2a():
+        lang = current_lang()
+        if not show_fb_bayes_ex2a.get():
+            return ui.tags.div()
+        vals = bayes_ex2a_values(bayes_ex2_params.get())
+        return ui.tags.div(
+            ui.tags.div(
+                ui.tags.strong(tr(lang, "Zwischenergebnis:", "Intermediate result:")),
+                ui.tags.div(
+                    f"Prob(c|a)={frac_str(vals['c_a'])}, Prob(d|a)={frac_str(vals['d_a'])}, "
+                    f"Prob(c|b)={frac_str(vals['c_b'])}, Prob(d|b)={frac_str(vals['d_b'])}",
+                    class_="mt-2",
+                ),
+                ui.tags.div(
+                    f"Prob(a|c)={frac_str(vals['a_c'])}, Prob(b|c)={frac_str(vals['b_c'])}, "
+                    f"Prob(a|d)={frac_str(vals['a_d'])}, Prob(b|d)={frac_str(vals['b_d'])}",
+                    class_="mt-1",
+                ),
+                class_="card-body",
+            ),
+            class_="card border mt-2",
+            style="background-color:#ffffff;",
+        )
+
+    @output
+    @render.ui
+    def intermediate_bayes_ex2a_for_ex2b():
+        lang = current_lang()
+        if not show_fb_bayes_ex2a.get():
+            return ui.tags.div(
+                tr(lang, "Bitte zuerst Teil a abschicken, dann erscheint hier das Zwischenergebnis.", "Please submit part a first; the intermediate result will appear here."),
+                class_="alert alert-warning mt-2",
+            )
+        vals = bayes_ex2a_values(bayes_ex2_params.get())
+        return ui.tags.div(
+            ui.tags.div(
+                ui.tags.strong(tr(lang, "Zwischenergebnis aus Teil a:", "Intermediate result from part a:")),
+                ui.tags.div(
+                    f"Prob(c|a)={frac_str(vals['c_a'])}, Prob(d|a)={frac_str(vals['d_a'])}, "
+                    f"Prob(c|b)={frac_str(vals['c_b'])}, Prob(d|b)={frac_str(vals['d_b'])}",
+                    class_="mt-1",
+                ),
+                ui.tags.div(
+                    f"Prob(a|c)={frac_str(vals['a_c'])}, Prob(b|c)={frac_str(vals['b_c'])}, "
+                    f"Prob(a|d)={frac_str(vals['a_d'])}, Prob(b|d)={frac_str(vals['b_d'])}",
+                    class_="mt-1",
+                ),
+                class_="card-body",
+            ),
+            class_="card border mt-2",
+            style="background-color:#ffffff;",
+        )
+
+    @output
+    @render.ui
+    def feedback_bayes_ex2b():
+        lang = current_lang()
+        p = bayes_ex2_params.get()
+        w, x, y, z = bayes_ex2_probs(p)
+        alt_key = bayes_ex2b_alt.get()
+        labels = {
+            "first": "((A,B),(Y,Y))",
+            "ab_xy": "((A,B),(X,Y))",
+            "ba_xx": "((B,A),(X,X))",
+            "bb_yx": "((B,B),(Y,X))",
+        }
+
+        if not show_fb_bayes_ex2b.get():
+            return ui.tags.div()
+
+        first_ok = (5 * z >= 4 * x) and (2 * y >= 3 * z)
+        if alt_key == "ab_xy":
+            second_ok = False
+        elif alt_key == "ba_xx":
+            second_ok = True
+        else:
+            second_ok = (3 * x >= 2 * w) and (4 * y >= z) and (2 * y >= w) and (3 * x >= 5 * z)
+
+        correct = set()
+        if first_ok:
+            correct.add(labels["first"])
+        if second_ok:
+            correct.add(labels[alt_key])
+        if not correct:
+            correct = {tr(lang, "Keines", "None")}
+
+        def _reason_line(profile):
+            if profile == labels["first"]:
+                c1 = 5 * z >= 4 * x
+                c2 = 2 * y >= 3 * z
+                return tr(
+                    lang,
+                    f"{profile}: {'Ja' if (c1 and c2) else 'Nein'}; "
+                    f"5·Prob(b,d) ≥ 4·Prob(a,d) ({frac_str(5*z)} ≥ {frac_str(4*x)}) {'✓' if c1 else '✗'} und "
+                    f"2·Prob(b,c) ≥ 3·Prob(b,d) ({frac_str(2*y)} ≥ {frac_str(3*z)}) {'✓' if c2 else '✗'}",
+                    f"{profile}: {'Yes' if (c1 and c2) else 'No'}; "
+                    f"5·Prob(b,d) ≥ 4·Prob(a,d) ({frac_str(5*z)} ≥ {frac_str(4*x)}) {'✓' if c1 else '✗'} and "
+                    f"2·Prob(b,c) ≥ 3·Prob(b,d) ({frac_str(2*y)} ≥ {frac_str(3*z)}) {'✓' if c2 else '✗'}",
+                )
+            if profile == labels["ab_xy"]:
+                return tr(
+                    lang,
+                    f"{profile}: Nein (für alle prior Wahrscheinlichkeiten).",
+                    f"{profile}: No (for all prior probabilities).",
+                )
+            if profile == labels["ba_xx"]:
+                return tr(
+                    lang,
+                    f"{profile}: Ja (für alle prior Wahrscheinlichkeiten).",
+                    f"{profile}: Yes (for all prior probabilities).",
+                )
+            c1 = 3 * x >= 2 * w
+            c2 = 4 * y >= z
+            c3 = 2 * y >= w
+            c4 = 3 * x >= 5 * z
+            ok = c1 and c2 and c3 and c4
+            return tr(
+                lang,
+                f"{profile}: {'Ja' if ok else 'Nein'}; "
+                f"3·Prob(a,d) ≥ 2·Prob(a,c) ({frac_str(3*x)} ≥ {frac_str(2*w)}) {'✓' if c1 else '✗'}, "
+                f"4·Prob(b,c) ≥ Prob(b,d) ({frac_str(4*y)} ≥ {frac_str(z)}) {'✓' if c2 else '✗'}, "
+                f"2·Prob(b,c) ≥ Prob(a,c) ({frac_str(2*y)} ≥ {frac_str(w)}) {'✓' if c3 else '✗'}, "
+                f"3·Prob(a,d) ≥ 5·Prob(b,d) ({frac_str(3*x)} ≥ {frac_str(5*z)}) {'✓' if c4 else '✗'}",
+                f"{profile}: {'Yes' if ok else 'No'}; "
+                f"3·Prob(a,d) ≥ 2·Prob(a,c) ({frac_str(3*x)} ≥ {frac_str(2*w)}) {'✓' if c1 else '✗'}, "
+                f"4·Prob(b,c) ≥ Prob(b,d) ({frac_str(4*y)} ≥ {frac_str(z)}) {'✓' if c2 else '✗'}, "
+                f"2·Prob(b,c) ≥ Prob(a,c) ({frac_str(2*y)} ≥ {frac_str(w)}) {'✓' if c3 else '✗'}, "
+                f"3·Prob(a,d) ≥ 5·Prob(b,d) ({frac_str(3*x)} ≥ {frac_str(5*z)}) {'✓' if c4 else '✗'}",
+            )
+
+        reasoning = ui.tags.div(
+            ui.tags.div(tr(lang, "Begründung:", "Reasoning:"), class_="fw-semibold mt-2"),
+            ui.tags.div(_reason_line(labels["first"]), class_="mt-1"),
+            ui.tags.div(_reason_line(labels[alt_key]), class_="mt-1"),
+            class_="mt-1",
+        )
+
+        chosen = set(input.answer_bayes_ex2b() or [])
+        correct_text = ", ".join(sorted(correct))
+        if chosen == correct:
+            return ui.tags.div(
+                ui.tags.div(tr(lang, "✅ Richtig!", "✅ Correct!"), class_="fw-semibold"),
+                ui.tags.div(tr(lang, f"Richtig ist: {correct_text}", f"Correct is: {correct_text}"), class_="mt-1"),
+                reasoning,
+                class_="alert alert-success mt-3",
+            )
+        return ui.tags.div(
+            ui.tags.div(tr(lang, "❌ Falsch.", "❌ Incorrect."), class_="fw-semibold"),
+            ui.tags.div(tr(lang, f"Richtig ist: {correct_text}", f"Correct is: {correct_text}"), class_="mt-1"),
+            reasoning,
             class_="alert alert-danger mt-3",
         )
 
