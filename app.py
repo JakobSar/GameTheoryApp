@@ -4263,9 +4263,9 @@ ui.nav_panel(
                         ui.tags.div(
                             ui.tags.div(
                                 ui.tags.h5(
-                                    "Beispiel (Skizze)",
+                                    "Beispiel-Spiel in Normalform",
                                     class_="card-title",
-                                    **{"data-i18n-de": "Beispiel (Skizze)", "data-i18n-en": "Example (sketch)"},
+                                    **{"data-i18n-de": "Beispiel-Spiel in Normalform", "data-i18n-en": "Example game in normal-form"},
                                 ),
                                 ui.tags.p(
                                     "Spieler 1 hat die Typen t₁ ∈ {1, 2} und Spieler 2 kennt nur Prob(t₁=1)=1/4, Prob(t₁=2)=3/4. "
