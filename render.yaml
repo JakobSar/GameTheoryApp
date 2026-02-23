@@ -2,7 +2,7 @@ services:
   - type: web
     name: game-theory-api
     runtime: docker
-    plan: starter
+    plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: .
     autoDeploy: true
