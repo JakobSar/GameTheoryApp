@@ -1,0 +1,23 @@
+.git
+.gitignore
+.DS_Store
+
+# frontend artifacts not needed for backend container
+frontend/node_modules
+frontend/dist
+
+# local/env caches
+.venv
+.venv GameTheoryApp
+__pycache__
+**/__pycache__
+.pytest_cache
+
+# docs and misc not needed at runtime
+docs
+Anleitungen
+rsconnect-python
+
+# root legacy app files
+app.py
+app Kopie.py
