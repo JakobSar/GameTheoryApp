@@ -656,7 +656,17 @@ function App() {
   const [isNavOpen, setIsNavOpen] = useState(true);
   const [apiBase, setApiBase] = useState(() => {
     const envBase = import.meta.env.VITE_API_BASE;
-    return typeof envBase === "string" ? envBase : "";
+    if (typeof envBase === "string" && envBase.trim()) {
+      return envBase;
+    }
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname;
+      const isLocalHost = host === "localhost" || host === "127.0.0.1";
+      if (!isLocalHost) {
+        return "https://game-theory-api.onrender.com";
+      }
+    }
+    return "";
   });
   const [game, setGame] = useState(initialGame);
   const [selectedNodeId, setSelectedNodeId] = useState(initialGame.root);
