@@ -61,6 +61,44 @@ Bayesian games (incomplete information)
 
 ---
 
+## Migration Scaffold (React + FastAPI)
+
+The repository now also contains a migration-ready backend scaffold for a modular setup:
+
+- FastAPI backend: `/backend/app/main.py`
+- Health endpoint: `GET /healthz`
+- Game-tree solver endpoint: `POST /api/v1/game-tree/solve`
+- Docker setup: `/backend/Dockerfile`, `/docker-compose.yml`
+- CI workflow: `/.github/workflows/backend-ci.yml`
+- Migration guide: `/docs/MIGRATION_PLAN.md`
+
+Run locally (without Docker):
+
+```bash
+pip install -r backend/requirements.txt
+uvicorn backend.app.main:app --reload --port 8000
+```
+
+Run with Docker:
+
+```bash
+docker compose up --build
+```
+
+Frontend (React + Vite):
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Deployment (Vercel + Render):
+
+- Siehe `/docs/DEPLOY.md`
+
+---
+
 ## Installation & Launch
 
 ### 1. Clone the repository
