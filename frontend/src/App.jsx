@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const NODE_W = 170;
 const NODE_H = 88;
@@ -34,38 +34,70 @@ const INTRO_NORMAL = {
   }
 };
 
-const ELIMINATOR_PRESETS = [
-  {
-    rows: ["A", "B", "C"],
-    cols: ["X", "Y", "Z"],
-    payoffs: {
-      "A|X": [6, 2],
-      "A|Y": [6, 3],
-      "A|Z": [6, 1],
-      "B|X": [4, 2],
-      "B|Y": [4, 3],
-      "B|Z": [4, 1],
-      "C|X": [5, 0],
-      "C|Y": [5, 1],
-      "C|Z": [5, 2]
-    }
-  },
-  {
-    rows: ["A", "B", "C"],
-    cols: ["X", "Y", "Z"],
-    payoffs: {
-      "A|X": [7, 1],
-      "A|Y": [7, 4],
-      "A|Z": [7, 2],
-      "B|X": [5, 1],
-      "B|Y": [5, 4],
-      "B|Z": [5, 2],
-      "C|X": [6, 0],
-      "C|Y": [6, 3],
-      "C|Z": [6, 5]
-    }
-  }
-];
+function buildEliminatorPreset(targetRow, targetCol, variant) {
+  const rows = ["A", "B", "C"];
+  const cols = ["X", "Y", "Z"];
+  const otherRows = rows.filter((r) => r !== targetRow);
+  const otherCols = cols.filter((c) => c !== targetCol);
+
+  const rowOrder = variant % 2 === 0 ? [targetRow, otherRows[0], otherRows[1]] : [targetRow, otherRows[1], otherRows[0]];
+  const colOrder = variant % 3 === 0 ? [targetCol, otherCols[1], otherCols[0]] : [targetCol, otherCols[0], otherCols[1]];
+
+  const rowRank = {
+    [rowOrder[0]]: 3,
+    [rowOrder[1]]: 2,
+    [rowOrder[2]]: 1
+  };
+  const colRank = {
+    [colOrder[0]]: 3,
+    [colOrder[1]]: 2,
+    [colOrder[2]]: 1
+  };
+
+  const payoffs = {};
+  rows.forEach((row, rowIndex) => {
+    cols.forEach((col, colIndex) => {
+      const u1 = rowRank[row] * 4 + colIndex + (variant % 2);
+      const u2 = colRank[col] * 4 + rowIndex + ((variant + 1) % 2);
+      payoffs[`${row}|${col}`] = [u1, u2];
+    });
+  });
+
+  return {
+    rows,
+    cols,
+    payoffs,
+    neKey: `${targetRow}|${targetCol}`
+  };
+}
+
+function buildEliminatorPresets() {
+  const targets = [
+    ["A", "X"],
+    ["B", "Y"],
+    ["C", "Z"],
+    ["A", "Y"],
+    ["B", "Z"],
+    ["C", "X"],
+    ["A", "Z"],
+    ["B", "X"],
+    ["C", "Y"],
+    ["A", "X"],
+    ["B", "Y"],
+    ["C", "Z"],
+    ["A", "Y"],
+    ["B", "Z"],
+    ["C", "X"],
+    ["A", "Z"],
+    ["B", "X"],
+    ["C", "Y"],
+    ["A", "X"],
+    ["B", "Y"]
+  ];
+  return targets.map(([row, col], index) => buildEliminatorPreset(row, col, index));
+}
+
+const ELIMINATOR_PRESETS = buildEliminatorPresets();
 
 const INTRO_BAYES_T1 = {
   rows: ["A", "B"],
@@ -231,13 +263,6 @@ const SPECIAL_GAMES = [
   }
 ];
 
-const TREE_EX1_CHOICES = [
-  { id: "ax" },
-  { id: "ay" },
-  { id: "rx" },
-  { id: "ry" }
-];
-
 const NAV = [
   {
     title: { de: "Konzept lernen", en: "Learn a concept" },
@@ -282,20 +307,155 @@ function buildTreeEx1Game() {
     if (payoffAfterL.u1 === payoffR.u1) continue;
 
     const p1Action = payoffAfterL.u1 > payoffR.u1 ? "L" : "R";
-    const correctChoiceId =
-      p1Action === "L" ? (p2Action === "X" ? "ax" : "ay") : p2Action === "X" ? "rx" : "ry";
-    const swapPlayers = Math.random() < 0.5;
 
     return {
       payoffLX,
       payoffLY,
       payoffR,
       p2Action,
-      p1Action,
-      correctChoiceId,
-      swapPlayers
+      p1Action
     };
   }
+}
+
+const TREE_EX2_ROOT_ACTIONS = ["L", "M", "R"];
+const TREE_EX2_P2_ACTIONS = ["U", "D"];
+const TREE_EX2_P1_ACTIONS = ["x", "y"];
+const TREE_EX2_P1_NODES = TREE_EX2_ROOT_ACTIONS.flatMap((rootAction) =>
+  TREE_EX2_P2_ACTIONS.map((p2Action) => `${rootAction}|${p2Action}`)
+);
+
+function buildEmptyTreeEx2Progress() {
+  const phase1Answers = {};
+  TREE_EX2_P1_NODES.forEach((nodeKey) => {
+    phase1Answers[nodeKey] = "";
+  });
+  const phase2Answers = {};
+  TREE_EX2_ROOT_ACTIONS.forEach((rootAction) => {
+    phase2Answers[rootAction] = "";
+  });
+  return {
+    step: 1,
+    phase1Answers,
+    phase1Feedback: "",
+    phase1FeedbackType: "neutral",
+    phase2Answers,
+    phase2Feedback: "",
+    phase2FeedbackType: "neutral",
+    phase3Choices: [],
+    phase3Feedback: "",
+    phase3FeedbackType: "neutral",
+    solved: false
+  };
+}
+
+function buildTreeEx2ProgressSet() {
+  return Array.from({ length: 3 }, () => buildEmptyTreeEx2Progress());
+}
+
+function computeTreeEx2RootBestForP2Choices(game, p2Choices) {
+  let maxU1 = -Infinity;
+  TREE_EX2_ROOT_ACTIONS.forEach((rootAction) => {
+    const p2Action = p2Choices[rootAction];
+    const payoff = game.continuationPayoffs[`${rootAction}|${p2Action}`];
+    if (payoff && payoff[0] > maxU1) {
+      maxU1 = payoff[0];
+    }
+  });
+  return TREE_EX2_ROOT_ACTIONS.filter((rootAction) => {
+    const p2Action = p2Choices[rootAction];
+    const payoff = game.continuationPayoffs[`${rootAction}|${p2Action}`];
+    return payoff && payoff[0] === maxU1;
+  });
+}
+
+function buildTreeEx2Game() {
+  const payoffs = {};
+
+  TREE_EX2_P1_NODES.forEach((nodeKey) => {
+    let payoffX = [randomInt(0, 12), randomInt(0, 12)];
+    let payoffY = [randomInt(0, 12), randomInt(0, 12)];
+    while (payoffX[0] === payoffY[0]) {
+      payoffX = [randomInt(0, 12), randomInt(0, 12)];
+      payoffY = [randomInt(0, 12), randomInt(0, 12)];
+    }
+    payoffs[`${nodeKey}|x`] = payoffX;
+    payoffs[`${nodeKey}|y`] = payoffY;
+  });
+
+  const p1BestByNode = {};
+  TREE_EX2_P1_NODES.forEach((nodeKey) => {
+    const payoffX = payoffs[`${nodeKey}|x`];
+    const payoffY = payoffs[`${nodeKey}|y`];
+    p1BestByNode[nodeKey] = payoffX[0] > payoffY[0] ? "x" : "y";
+  });
+
+  const continuationPayoffs = {};
+  TREE_EX2_ROOT_ACTIONS.forEach((rootAction) => {
+    TREE_EX2_P2_ACTIONS.forEach((p2Action) => {
+      const nodeKey = `${rootAction}|${p2Action}`;
+      const p1Action = p1BestByNode[nodeKey];
+      continuationPayoffs[`${rootAction}|${p2Action}`] = payoffs[`${nodeKey}|${p1Action}`];
+    });
+  });
+
+  const p2BestByRoot = {};
+  TREE_EX2_ROOT_ACTIONS.forEach((rootAction) => {
+    const payoffU = continuationPayoffs[`${rootAction}|U`];
+    const payoffD = continuationPayoffs[`${rootAction}|D`];
+    if (payoffU[1] > payoffD[1]) {
+      p2BestByRoot[rootAction] = ["U"];
+    } else if (payoffD[1] > payoffU[1]) {
+      p2BestByRoot[rootAction] = ["D"];
+    } else {
+      p2BestByRoot[rootAction] = ["U", "D"];
+    }
+  });
+
+  let p2Combinations = [{}];
+  TREE_EX2_ROOT_ACTIONS.forEach((rootAction) => {
+    p2Combinations = p2Combinations.flatMap((combo) =>
+      p2BestByRoot[rootAction].map((p2Action) => ({
+        ...combo,
+        [rootAction]: p2Action
+      }))
+    );
+  });
+
+  const profileMap = new Map();
+  p2Combinations.forEach((p2Choices) => {
+    const bestRootActions = computeTreeEx2RootBestForP2Choices({ continuationPayoffs }, p2Choices);
+    bestRootActions.forEach((rootAction) => {
+      const signature = `${rootAction}|${TREE_EX2_ROOT_ACTIONS.map((r) => p2Choices[r]).join("")}`;
+      if (!profileMap.has(signature)) {
+        profileMap.set(signature, {
+          rootAction,
+          p2Choices: { ...p2Choices },
+          p1Choices: { ...p1BestByNode }
+        });
+      }
+    });
+  });
+
+  const speProfiles = [...profileMap.values()];
+
+  return {
+    payoffs,
+    p1BestByNode,
+    p2BestByRoot,
+    continuationPayoffs,
+    speProfiles
+  };
+}
+
+function buildTreeEx2Set() {
+  let games = [];
+  let attempts = 0;
+  do {
+    games = Array.from({ length: 3 }, () => buildTreeEx2Game());
+    attempts += 1;
+  } while (!games.some((game) => game.speProfiles.length > 1) && attempts < 60);
+  return games;
 }
 
 function payoffFromMap(game, row, col) {
@@ -530,14 +690,56 @@ function payoffAt(game, row, col) {
   return game.payoffs.find((cell) => cell.row === row && cell.col === col);
 }
 
-function NormalGameTable({ game, rowLabel = "Spieler 1", colLabel = "Spieler 2" }) {
+function NormalGameTable({ game, rowLabel = "Spieler 1", colLabel = "Spieler 2", autoScale = true }) {
+  const wrapRef = useRef(null);
+  const scaleShellRef = useRef(null);
+  const tableRef = useRef(null);
+  const [tableScale, setTableScale] = useState(1);
+  const [scaledHeight, setScaledHeight] = useState(null);
+
   if (!game) {
     return <p className="hint">Kein Spiel geladen.</p>;
   }
+
+  useEffect(() => {
+    if (!autoScale) {
+      setTableScale(1);
+      setScaledHeight(null);
+      return undefined;
+    }
+
+    const wrapEl = wrapRef.current;
+    const tableEl = tableRef.current;
+    if (!wrapEl || !tableEl) {
+      return undefined;
+    }
+
+    const updateScale = () => {
+      const safetyWidth = 2;
+      const availableWidth = Math.max(0, wrapEl.clientWidth - safetyWidth);
+      const naturalWidth = tableEl.scrollWidth;
+      const naturalHeight = tableEl.scrollHeight;
+      if (!availableWidth || !naturalWidth) {
+        setTableScale(1);
+        setScaledHeight(null);
+        return;
+      }
+      const nextScale = naturalWidth > availableWidth ? Math.max(0.64, availableWidth / naturalWidth) : 1;
+      const nextHeight = nextScale < 1 ? Math.ceil(naturalHeight * nextScale) + 14 : null;
+      setTableScale((prev) => (Math.abs(prev - nextScale) < 0.004 ? prev : nextScale));
+      setScaledHeight((prev) => (prev === nextHeight ? prev : nextHeight));
+    };
+
+    updateScale();
+    return undefined;
+  }, [autoScale, game, rowLabel, colLabel]);
+
+  const useScale = autoScale && tableScale < 0.999;
   const shortRowLabels = game.rows.every((r) => r.length <= 3);
   const longSideLabel = rowLabel.length > 12;
   const tableClass = [
     "matrix-table",
+    autoScale ? "matrix-table-autoscale" : "",
     game.rows.length === 2 ? "matrix-table-two-rows" : "",
     shortRowLabels ? "compact-row-labels" : "",
     longSideLabel ? "long-side-label" : ""
@@ -546,47 +748,99 @@ function NormalGameTable({ game, rowLabel = "Spieler 1", colLabel = "Spieler 2" 
     .join(" ");
 
   return (
-    <div className="matrix-wrap">
-      <table className={tableClass}>
-        <thead>
-          <tr>
-            <th colSpan={2} />
-            <th colSpan={game.cols.length}>{colLabel}</th>
-          </tr>
-          <tr>
-            <th />
-            <th />
-            {game.cols.map((c) => (
-              <th key={c}>{c}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {game.rows.map((r, idx) => (
-            <tr key={r}>
-              {idx === 0 && (
-                <th rowSpan={game.rows.length} className="player-side-header">
-                  <span className="player-side-label">{rowLabel}</span>
-                </th>
-              )}
-              <th>{r}</th>
-              {game.cols.map((c) => {
-                const cell = payoffAt(game, r, c);
-                return <td key={`${r}-${c}`}>{cell ? `(${cell.u1}, ${cell.u2})` : "-"}</td>;
-              })}
+    <div
+      ref={wrapRef}
+      className={`matrix-wrap${autoScale ? " matrix-wrap-autoscale" : ""}`}
+      style={useScale && scaledHeight ? { height: `${scaledHeight}px` } : undefined}
+    >
+      <div
+        ref={scaleShellRef}
+        className={useScale ? "matrix-scale-shell" : undefined}
+        style={useScale ? { transform: `scale(${tableScale})`, transformOrigin: "top left" } : undefined}
+      >
+        <table ref={tableRef} className={tableClass}>
+          <thead>
+            <tr>
+              <th colSpan={2} />
+              <th colSpan={game.cols.length}>{colLabel}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+            <tr>
+              <th />
+              <th />
+              {game.cols.map((c) => (
+                <th key={c}>{c}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {game.rows.map((r, idx) => (
+              <tr key={r}>
+                {idx === 0 && (
+                  <th rowSpan={game.rows.length} className="player-side-header">
+                    <span className="player-side-label">{rowLabel}</span>
+                  </th>
+                )}
+                <th>{r}</th>
+                {game.cols.map((c) => {
+                  const cell = payoffAt(game, r, c);
+                  return <td key={`${r}-${c}`}>{cell ? `(${cell.u1}, ${cell.u2})` : "-"}</td>;
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
-function StaticPayoffTable({ data, rowLabel = "Player 1", colLabel = "Player 2" }) {
+function StaticPayoffTable({ data, rowLabel = "Player 1", colLabel = "Player 2", autoScale = true }) {
+  const wrapRef = useRef(null);
+  const scaleShellRef = useRef(null);
+  const tableRef = useRef(null);
+  const [tableScale, setTableScale] = useState(1);
+  const [scaledHeight, setScaledHeight] = useState(null);
+
+  useEffect(() => {
+    if (!autoScale) {
+      setTableScale(1);
+      setScaledHeight(null);
+      return undefined;
+    }
+
+    const wrapEl = wrapRef.current;
+    const tableEl = tableRef.current;
+    if (!wrapEl || !tableEl) {
+      return undefined;
+    }
+
+    const updateScale = () => {
+      const safetyWidth = 2;
+      const availableWidth = Math.max(0, wrapEl.clientWidth - safetyWidth);
+      const naturalWidth = tableEl.scrollWidth;
+      const naturalHeight = tableEl.scrollHeight;
+      if (!availableWidth || !naturalWidth) {
+        setTableScale(1);
+        setScaledHeight(null);
+        return;
+      }
+
+      const nextScale = naturalWidth > availableWidth ? Math.max(0.64, availableWidth / naturalWidth) : 1;
+      const nextHeight = nextScale < 1 ? Math.ceil(naturalHeight * nextScale) + 14 : null;
+      setTableScale((prev) => (Math.abs(prev - nextScale) < 0.004 ? prev : nextScale));
+      setScaledHeight((prev) => (prev === nextHeight ? prev : nextHeight));
+    };
+
+    updateScale();
+    return undefined;
+  }, [autoScale, data, rowLabel, colLabel]);
+
+  const useScale = autoScale && tableScale < 0.999;
   const shortRowLabels = data.rows.every((r) => r.length <= 3);
   const longSideLabel = rowLabel.length > 12;
   const tableClass = [
     "matrix-table",
+    autoScale ? "matrix-table-autoscale" : "",
     data.rows.length === 2 ? "matrix-table-two-rows" : "",
     shortRowLabels ? "compact-row-labels" : "",
     longSideLabel ? "long-side-label" : ""
@@ -594,39 +848,49 @@ function StaticPayoffTable({ data, rowLabel = "Player 1", colLabel = "Player 2" 
     .filter(Boolean)
     .join(" ");
   return (
-    <div className="matrix-wrap">
-      <table className={tableClass}>
-        <thead>
-          <tr>
-            <th colSpan={2} />
-            <th colSpan={data.cols.length}>{colLabel}</th>
-          </tr>
-          <tr>
-            <th />
-            <th />
-            {data.cols.map((c) => (
-              <th key={c}>{c}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {data.rows.map((r, idx) => (
-            <tr key={r}>
-              {idx === 0 && (
-                <th rowSpan={data.rows.length} className="player-side-header">
-                  <span className="player-side-label">{rowLabel}</span>
-                </th>
-              )}
-              <th>{r}</th>
-              {data.cols.map((c) => {
-                const key = `${r}|${c}`;
-                const value = data.payoffs[key];
-                return <td key={key}>{value ? `(${value[0]}, ${value[1]})` : "-"}</td>;
-              })}
+    <div
+      ref={wrapRef}
+      className={`matrix-wrap${autoScale ? " matrix-wrap-autoscale" : ""}`}
+      style={useScale && scaledHeight ? { height: `${scaledHeight}px` } : undefined}
+    >
+      <div
+        ref={scaleShellRef}
+        className={useScale ? "matrix-scale-shell" : undefined}
+        style={useScale ? { transform: `scale(${tableScale})`, transformOrigin: "top left" } : undefined}
+      >
+        <table ref={tableRef} className={tableClass}>
+          <thead>
+            <tr>
+              <th colSpan={2} />
+              <th colSpan={data.cols.length}>{colLabel}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+            <tr>
+              <th />
+              <th />
+              {data.cols.map((c) => (
+                <th key={c}>{c}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.rows.map((r, idx) => (
+              <tr key={r}>
+                {idx === 0 && (
+                  <th rowSpan={data.rows.length} className="player-side-header">
+                    <span className="player-side-label">{rowLabel}</span>
+                  </th>
+                )}
+                <th>{r}</th>
+                {data.cols.map((c) => {
+                  const key = `${r}|${c}`;
+                  const value = data.payoffs[key];
+                  return <td key={key}>{value ? `(${value[0]}, ${value[1]})` : "-"}</td>;
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -746,9 +1010,16 @@ function App() {
   const [showHelpBayesEx2b, setShowHelpBayesEx2b] = useState(false);
   const [treePage, setTreePage] = useState("toc");
   const [treeEx1Game, setTreeEx1Game] = useState(() => buildTreeEx1Game());
-  const [treeEx1Selected, setTreeEx1Selected] = useState("");
-  const [treeEx1Feedback, setTreeEx1Feedback] = useState("");
-  const [treeEx1FeedbackType, setTreeEx1FeedbackType] = useState("neutral");
+  const [treeEx1Step, setTreeEx1Step] = useState(1);
+  const [treeEx1Phase1Choice, setTreeEx1Phase1Choice] = useState("");
+  const [treeEx1Phase1Feedback, setTreeEx1Phase1Feedback] = useState("");
+  const [treeEx1Phase1FeedbackType, setTreeEx1Phase1FeedbackType] = useState("neutral");
+  const [treeEx1Phase2Choice, setTreeEx1Phase2Choice] = useState("");
+  const [treeEx1Phase2Feedback, setTreeEx1Phase2Feedback] = useState("");
+  const [treeEx1Phase2FeedbackType, setTreeEx1Phase2FeedbackType] = useState("neutral");
+  const [treeEx2Games, setTreeEx2Games] = useState(() => buildTreeEx2Set());
+  const [treeEx2Progress, setTreeEx2Progress] = useState(() => buildTreeEx2ProgressSet());
+  const [treeEx2ActiveIndex, setTreeEx2ActiveIndex] = useState(0);
   const [showImpressumEmail, setShowImpressumEmail] = useState(false);
   const [showImpressumAddress, setShowImpressumAddress] = useState(false);
   const [showImpressumProject, setShowImpressumProject] = useState(false);
@@ -877,8 +1148,11 @@ function App() {
   }
 
   function resetEliminator() {
-    const nextIndex = randomInt(0, ELIMINATOR_PRESETS.length - 1);
-    const nextGame = ELIMINATOR_PRESETS[nextIndex];
+    const currentNeKey = eliminatorGame?.neKey || "";
+    const candidates = ELIMINATOR_PRESETS.filter((preset) => preset.neKey !== currentNeKey);
+    const pool = candidates.length ? candidates : ELIMINATOR_PRESETS;
+    const nextIndex = randomInt(0, pool.length - 1);
+    const nextGame = pool[nextIndex];
     setEliminatorGame(nextGame);
     setEliminatorActiveRows(nextGame.rows);
     setEliminatorActiveCols(nextGame.cols);
@@ -1919,48 +2193,301 @@ function App() {
 
   function resetTreeEx1() {
     setTreeEx1Game(buildTreeEx1Game());
-    setTreeEx1Selected("");
-    setTreeEx1Feedback("");
-    setTreeEx1FeedbackType("neutral");
+    setTreeEx1Step(1);
+    setTreeEx1Phase1Choice("");
+    setTreeEx1Phase1Feedback("");
+    setTreeEx1Phase1FeedbackType("neutral");
+    setTreeEx1Phase2Choice("");
+    setTreeEx1Phase2Feedback("");
+    setTreeEx1Phase2FeedbackType("neutral");
   }
 
-  function checkTreeEx1() {
-    const firstPlayer = treeEx1Game.swapPlayers ? t("Spieler 2", "Player 2") : t("Spieler 1", "Player 1");
-    const secondPlayer = treeEx1Game.swapPlayers ? t("Spieler 1", "Player 1") : t("Spieler 2", "Player 2");
-    if (!treeEx1Selected) return;
-    if (treeEx1Selected === treeEx1Game.correctChoiceId) {
-      setTreeEx1FeedbackType("success");
-      setTreeEx1Feedback(
-        `${t("Richtig.", "Correct.")} ${secondPlayer} ${t("wählt nach L die Aktion", "chooses action")} ${treeEx1Game.p2Action} (${treeEx1Game.payoffLX.u2} vs. ${treeEx1Game.payoffLY.u2}). ` +
-          `${t("Danach vergleicht", "Then")} ${firstPlayer} L -> ${
-            treeEx1Game.p2Action === "X" ? treeEx1Game.payoffLX.u1 : treeEx1Game.payoffLY.u1
-          } ${t("mit", "with")} R -> ${treeEx1Game.payoffR.u1} ${t("und wählt", "and chooses")} ${treeEx1Game.p1Action}.`
-      );
+  function answerTreeEx1Phase1(action) {
+    if (treeEx1Step !== 1) {
       return;
     }
-    setTreeEx1FeedbackType("error");
-    setTreeEx1Feedback(
-      `${t("Nicht korrekt.", "Not correct.")} ${t("Nutze Rückwärtsinduktion:", "Use backward induction:")} ${secondPlayer} ${t("bevorzugt nach L die Aktion", "prefers action")} ${treeEx1Game.p2Action}. ` +
-        `${t("Dann wählt", "Then")} ${firstPlayer} ${treeEx1Game.p1Action}.`
-    );
+    const bestAction = treeEx1Game.p2Action;
+    const bestPayoff = bestAction === "X" ? treeEx1Game.payoffLX.u2 : treeEx1Game.payoffLY.u2;
+    const otherPayoff = bestAction === "X" ? treeEx1Game.payoffLY.u2 : treeEx1Game.payoffLX.u2;
+    setTreeEx1Phase1Choice(action);
+    if (action === bestAction) {
+      setTreeEx1Phase1FeedbackType("success");
+      setTreeEx1Phase1Feedback(
+        t(
+          `Richtig: Spieler 2 wählt ${bestAction}, weil ${bestPayoff} > ${otherPayoff}.`,
+          `Correct: Player 2 chooses ${bestAction}, because ${bestPayoff} > ${otherPayoff}.`
+        )
+      );
+    } else {
+      setTreeEx1Phase1FeedbackType("error");
+      setTreeEx1Phase1Feedback(
+        t(
+          `${action} ist nicht optimal. Spieler 2 wählt ${bestAction}, weil ${bestPayoff} > ${otherPayoff}.`,
+          `${action} is not optimal. Player 2 chooses ${bestAction}, because ${bestPayoff} > ${otherPayoff}.`
+        )
+      );
+    }
+    setTreeEx1Step(2);
+  }
+
+  function answerTreeEx1Phase2(action) {
+    if (treeEx1Step !== 2) {
+      return;
+    }
+    const payoffAfterLForP1 = treeEx1Game.p2Action === "X" ? treeEx1Game.payoffLX.u1 : treeEx1Game.payoffLY.u1;
+    const payoffAfterRForP1 = treeEx1Game.payoffR.u1;
+    const bestAction = treeEx1Game.p1Action;
+    setTreeEx1Phase2Choice(action);
+    if (action === bestAction) {
+      setTreeEx1Phase2FeedbackType("success");
+      setTreeEx1Phase2Feedback(
+        t(
+          `Richtig: Spieler 1 vergleicht L -> ${payoffAfterLForP1} mit R -> ${payoffAfterRForP1} und wählt ${bestAction}.`,
+          `Correct: Player 1 compares L -> ${payoffAfterLForP1} with R -> ${payoffAfterRForP1} and chooses ${bestAction}.`
+        )
+      );
+    } else {
+      setTreeEx1Phase2FeedbackType("error");
+      setTreeEx1Phase2Feedback(
+        t(
+          `${action} ist nicht optimal. Spieler 1 vergleicht L -> ${payoffAfterLForP1} mit R -> ${payoffAfterRForP1} und wählt ${bestAction}.`,
+          `${action} is not optimal. Player 1 compares L -> ${payoffAfterLForP1} with R -> ${payoffAfterRForP1} and chooses ${bestAction}.`
+        )
+      );
+    }
+    setTreeEx1Step(3);
+  }
+
+  function updateTreeEx2ProgressAt(index, updater) {
+    setTreeEx2Progress((prev) => prev.map((entry, i) => (i === index ? updater(entry) : entry)));
+  }
+
+  function resetTreeEx2() {
+    setTreeEx2Games(buildTreeEx2Set());
+    setTreeEx2Progress(buildTreeEx2ProgressSet());
+    setTreeEx2ActiveIndex(0);
+  }
+
+  function setTreeEx2Phase1Answer(nodeKey, action) {
+    updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+      ...prev,
+      phase1Answers: {
+        ...prev.phase1Answers,
+        [nodeKey]: action
+      },
+      phase1Feedback: "",
+      phase1FeedbackType: "neutral"
+    }));
+  }
+
+  function checkTreeEx2Phase1() {
+    const game = treeEx2Games[treeEx2ActiveIndex];
+    const state = treeEx2Progress[treeEx2ActiveIndex];
+    if (!game || !state || state.step !== 1) {
+      return;
+    }
+    const missing = TREE_EX2_P1_NODES.filter((nodeKey) => !state.phase1Answers[nodeKey]);
+    if (missing.length) {
+      updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+        ...prev,
+        phase1FeedbackType: "warning",
+        phase1Feedback: t(
+          "Bitte beantworte in Phase 1 alle sechs Teilspiele.",
+          "Please answer all six subgames in phase 1."
+        )
+      }));
+      return;
+    }
+    const wrong = TREE_EX2_P1_NODES.filter((nodeKey) => state.phase1Answers[nodeKey] !== game.p1BestByNode[nodeKey]);
+    if (wrong.length) {
+      updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+        ...prev,
+        phase1FeedbackType: "error",
+        phase1Feedback: t(
+          `Noch nicht korrekt. ${wrong.length} von 6 Entscheidungen sind falsch.`,
+          `Not correct yet. ${wrong.length} out of 6 decisions are incorrect.`
+        )
+      }));
+      return;
+    }
+    updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+      ...prev,
+      step: 2,
+      phase1FeedbackType: "success",
+      phase1Feedback: t(
+        "Richtig. Alle letzten Teilspiele sind korrekt gelöst.",
+        "Correct. All terminal subgames are solved correctly."
+      )
+    }));
+  }
+
+  function setTreeEx2Phase2Answer(rootAction, action) {
+    updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+      ...prev,
+      phase2Answers: {
+        ...prev.phase2Answers,
+        [rootAction]: action
+      },
+      phase2Feedback: "",
+      phase2FeedbackType: "neutral"
+    }));
+  }
+
+  function checkTreeEx2Phase2() {
+    const game = treeEx2Games[treeEx2ActiveIndex];
+    const state = treeEx2Progress[treeEx2ActiveIndex];
+    if (!game || !state || state.step !== 2) {
+      return;
+    }
+    const missing = TREE_EX2_ROOT_ACTIONS.filter((rootAction) => !state.phase2Answers[rootAction]);
+    if (missing.length) {
+      updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+        ...prev,
+        phase2FeedbackType: "warning",
+        phase2Feedback: t(
+          "Bitte beantworte in Phase 2 alle drei Entscheidungen von Spieler 2.",
+          "Please answer all three Player-2 decisions in phase 2."
+        )
+      }));
+      return;
+    }
+    const wrong = TREE_EX2_ROOT_ACTIONS.filter((rootAction) => {
+      const selected = state.phase2Answers[rootAction];
+      return !game.p2BestByRoot[rootAction].includes(selected);
+    });
+    if (wrong.length) {
+      updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+        ...prev,
+        phase2FeedbackType: "error",
+        phase2Feedback: t(
+          `Noch nicht korrekt. ${wrong.length} von 3 Entscheidungen sind falsch.`,
+          `Not correct yet. ${wrong.length} out of 3 decisions are incorrect.`
+        )
+      }));
+      return;
+    }
+    updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+      ...prev,
+      step: 3,
+      phase2FeedbackType: "success",
+      phase2Feedback: t(
+        "Richtig. Die Entscheidungen von Spieler 2 sind konsistent mit Rückwärtsinduktion.",
+        "Correct. Player 2's decisions are consistent with backward induction."
+      )
+    }));
+  }
+
+  function toggleTreeEx2Phase3Choice(action) {
+    updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+      ...prev,
+      phase3Choices: prev.phase3Choices.includes(action)
+        ? prev.phase3Choices.filter((entry) => entry !== action)
+        : [...prev.phase3Choices, action],
+      phase3Feedback: "",
+      phase3FeedbackType: "neutral"
+    }));
+  }
+
+  function checkTreeEx2Phase3() {
+    const game = treeEx2Games[treeEx2ActiveIndex];
+    const state = treeEx2Progress[treeEx2ActiveIndex];
+    if (!game || !state || state.step !== 3) {
+      return;
+    }
+    if (!state.phase3Choices.length) {
+      updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+        ...prev,
+        phase3FeedbackType: "warning",
+        phase3Feedback: t(
+          "Bitte wähle in Phase 3 mindestens eine Aktion am Startknoten.",
+          "Please select at least one action at the root in phase 3."
+        )
+      }));
+      return;
+    }
+    const rootBest = computeTreeEx2RootBestForP2Choices(game, state.phase2Answers);
+    const selected = [...state.phase3Choices].sort();
+    const correct = [...rootBest].sort();
+    const sameSet = selected.length === correct.length && selected.every((entry, index) => entry === correct[index]);
+    if (!sameSet) {
+      updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+        ...prev,
+        phase3FeedbackType: "error",
+        phase3Feedback: t(
+          `Nicht korrekt. Wähle exakt alle optimalen Aktionen: ${rootBest.join(", ")}.`,
+          `Not correct. Select exactly all optimal actions: ${rootBest.join(", ")}.`
+        )
+      }));
+      return;
+    }
+    updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+      ...prev,
+      step: 4,
+      solved: true,
+      phase3FeedbackType: "success",
+      phase3Feedback: t(
+        "Richtig. Dieses Spiel ist gelöst.",
+        "Correct. This game is solved."
+      )
+    }));
   }
 
   function renderTreeExercises() {
-    const firstPlayer = treeEx1Game.swapPlayers ? t("Spieler 2", "Player 2") : t("Spieler 1", "Player 1");
-    const secondPlayer = treeEx1Game.swapPlayers ? t("Spieler 1", "Player 1") : t("Spieler 2", "Player 2");
-    const firstNodeLabel = treeEx1Game.swapPlayers ? "P2" : "P1";
-    const secondNodeLabel = treeEx1Game.swapPlayers ? "P1" : "P2";
-    const choiceLabel = (id) => {
-      if (id === "ax") return t("Strategieprofil:", "Strategy profile:") + ` ${firstPlayer} ${t("spielt", "plays")} L; ${secondPlayer} ${t("spielt", "plays")} X ${t("nach L", "after L")}.`;
-      if (id === "ay") return t("Strategieprofil:", "Strategy profile:") + ` ${firstPlayer} ${t("spielt", "plays")} L; ${secondPlayer} ${t("spielt", "plays")} Y ${t("nach L", "after L")}.`;
-      if (id === "rx") return t("Strategieprofil:", "Strategy profile:") + ` ${firstPlayer} ${t("spielt", "plays")} R; ${secondPlayer} ${t("spielt", "plays")} X ${t("nach L", "after L")}.`;
-      return t("Strategieprofil:", "Strategy profile:") + ` ${firstPlayer} ${t("spielt", "plays")} R; ${secondPlayer} ${t("spielt", "plays")} Y ${t("nach L", "after L")}.`;
-    };
+    const firstPlayer = t("Spieler 1", "Player 1");
+    const secondPlayer = t("Spieler 2", "Player 2");
+    const firstNodeLabel = "P1";
+    const secondNodeLabel = "P2";
+    const payoffAfterL = treeEx1Game.p2Action === "X" ? treeEx1Game.payoffLX : treeEx1Game.payoffLY;
+    const payoffAfterLForP1 = treeEx1Game.p2Action === "X" ? treeEx1Game.payoffLX.u1 : treeEx1Game.payoffLY.u1;
+    const phase1Done = treeEx1Step >= 2;
+    const phase2Done = treeEx1Step >= 3;
+    const lEdgeClass = `tree-edge ${phase2Done ? (treeEx1Game.p1Action === "L" ? "bi-active" : "bi-muted") : ""}`.trim();
+    const rEdgeClass = `tree-edge ${phase2Done ? (treeEx1Game.p1Action === "R" ? "bi-active" : "bi-muted") : ""}`.trim();
+    const xEdgeClass = `tree-edge ${phase1Done ? (treeEx1Game.p2Action === "X" ? "bi-active" : "bi-muted") : ""}`.trim();
+    const yEdgeClass = `tree-edge ${phase1Done ? (treeEx1Game.p2Action === "Y" ? "bi-active" : "bi-muted") : ""}`.trim();
+    const rootNodeClass = ["tree-node", "decision", treeEx1Step === 2 ? "bi-current" : ""].filter(Boolean).join(" ");
+    const secondNodeClass = [
+      "tree-node",
+      "decision",
+      treeEx1Step === 1 ? "bi-current" : "",
+      phase1Done ? "bi-selected-terminal" : ""
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const terminalRClass = [
+      "tree-node",
+      "terminal",
+      phase2Done ? (treeEx1Game.p1Action === "R" ? "bi-selected-terminal" : "bi-muted-node") : ""
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const terminalLXClass = [
+      "tree-node",
+      "terminal",
+      phase1Done
+        ? treeEx1Game.p2Action === "X" && (!phase2Done || treeEx1Game.p1Action === "L")
+          ? "bi-selected-terminal"
+          : "bi-muted-node"
+        : ""
+    ]
+      .filter(Boolean)
+      .join(" ");
+    const terminalLYClass = [
+      "tree-node",
+      "terminal",
+      phase1Done
+        ? treeEx1Game.p2Action === "Y" && (!phase2Done || treeEx1Game.p1Action === "L")
+          ? "bi-selected-terminal"
+          : "bi-muted-node"
+        : ""
+    ]
+      .filter(Boolean)
+      .join(" ");
 
     if (treePage === "toc") {
       return (
         <section className="panel">
-          <h2>{t("Übersicht Spielbäume", "Game trees overview")}</h2>
+          <h2>{t("Trainiere Spielbäume", "Train game trees")}</h2>
           <h3>{t("Teil 1: Grundlagen", "Part 1: Fundamentals")}</h3>
           <div className="exercise-link-grid">
             <button
@@ -1972,6 +2499,330 @@ function App() {
               }}
             >
               {t("Übung 1 – Einfaches sequenzielles Spiel", "Exercise 1 - Simple sequential game")}
+            </button>
+            <button
+              type="button"
+              className="exercise-link"
+              onClick={() => {
+                resetTreeEx2();
+                setTreePage("ex2");
+              }}
+            >
+              {t("Übung 2 – Komplexe Spielbäume (3 Spiele)", "Exercise 2 - Complex game trees (3 games)")}
+            </button>
+          </div>
+        </section>
+      );
+    }
+
+    if (treePage === "ex2") {
+      const activeGame = treeEx2Games[treeEx2ActiveIndex];
+      const activeState = treeEx2Progress[treeEx2ActiveIndex];
+      const solvedCount = treeEx2Progress.filter((entry) => entry.solved).length;
+      const rootPos = { x: 46, y: 300 };
+      const p2Pos = {
+        L: { x: 210, y: 80 },
+        M: { x: 210, y: 300 },
+        R: { x: 210, y: 520 }
+      };
+      const p1Pos = {
+        "L|U": { x: 390, y: 30 },
+        "L|D": { x: 390, y: 150 },
+        "M|U": { x: 390, y: 250 },
+        "M|D": { x: 390, y: 350 },
+        "R|U": { x: 390, y: 450 },
+        "R|D": { x: 390, y: 570 }
+      };
+      const terminalPos = {
+        "L|U|x": { x: 650, y: 6 },
+        "L|U|y": { x: 650, y: 54 },
+        "L|D|x": { x: 650, y: 126 },
+        "L|D|y": { x: 650, y: 174 },
+        "M|U|x": { x: 650, y: 226 },
+        "M|U|y": { x: 650, y: 274 },
+        "M|D|x": { x: 650, y: 326 },
+        "M|D|y": { x: 650, y: 374 },
+        "R|U|x": { x: 650, y: 426 },
+        "R|U|y": { x: 650, y: 474 },
+        "R|D|x": { x: 650, y: 546 },
+        "R|D|y": { x: 650, y: 594 }
+      };
+
+      const profileText = (profile) => {
+        const p2Part = TREE_EX2_ROOT_ACTIONS.map((rootAction) => `${rootAction}:${profile.p2Choices[rootAction]}`).join(", ");
+        const p1Part = TREE_EX2_P1_NODES.map((nodeKey) => `${nodeKey}:${profile.p1Choices[nodeKey]}`).join(", ");
+        return `(${profile.rootAction}; P2: ${p2Part}; P1: ${p1Part})`;
+      };
+
+      return (
+        <section className="panel">
+          <h2>{t("Übung 2 – Komplexe Spielbäume (3 Spiele)", "Exercise 2 - Complex game trees (3 games)")}</h2>
+          <p className="hint">
+            {t(
+              "Wie Übung 1, aber mit deutlich mehr Verzweigungen. Löse alle drei Spiele per Rückwärtsinduktion.",
+              "Like exercise 1, but with many more branches. Solve all three games by backward induction."
+            )}
+          </p>
+          <div className="actions">
+            <button type="button" onClick={resetTreeEx2}>{t("Neue 3 Spiele", "New 3 games")}</button>
+            <span className="hint">{t("Gelöst", "Solved")}: {solvedCount}/3</span>
+          </div>
+
+          <div className="choice-list combo-grid">
+            {treeEx2Games.map((_, index) => (
+              <button
+                key={`tree-ex2-switch-${index + 1}`}
+                type="button"
+                className={treeEx2ActiveIndex === index ? "nav-item active" : "nav-item"}
+                onClick={() => setTreeEx2ActiveIndex(index)}
+              >
+                {t("Spiel", "Game")} {index + 1}{treeEx2Progress[index].solved ? " ✓" : ""}
+              </button>
+            ))}
+          </div>
+
+          <div className="exercise-layout tree-ex-layout">
+            <article className="panel nested-panel">
+              <h3>{t("Spiel", "Game")} {treeEx2ActiveIndex + 1}</h3>
+              <div className="tree-example-wrap">
+                <svg viewBox="0 0 940 620" className="tree-example-svg tree-example-svg-large" role="img" aria-label={t("Komplexer Spielbaum", "Complex game tree")}>
+                  <defs>
+                    <marker id="tree-arrow-ex2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                      <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
+                    </marker>
+                  </defs>
+
+                  {TREE_EX2_ROOT_ACTIONS.map((rootAction) => {
+                    const from = rootPos;
+                    const to = p2Pos[rootAction];
+                    const hasSelection = activeState.phase3Choices.length > 0;
+                    const edgeClass =
+                      activeState.step >= 3 && hasSelection
+                        ? `tree-edge ${activeState.phase3Choices.includes(rootAction) ? "bi-active" : "bi-muted"}`
+                        : "tree-edge";
+                    return (
+                      <g key={`root-edge-${rootAction}`}>
+                        <line x1={from.x + 18} y1={from.y} x2={to.x - 22} y2={to.y} className={edgeClass} markerEnd="url(#tree-arrow-ex2)" />
+                        <text x={(from.x + to.x) / 2} y={(from.y + to.y) / 2} className="tree-action" textAnchor="middle" dominantBaseline="middle">{rootAction}</text>
+                      </g>
+                    );
+                  })}
+
+                  {TREE_EX2_ROOT_ACTIONS.flatMap((rootAction) =>
+                    TREE_EX2_P2_ACTIONS.map((p2Action) => {
+                      const from = p2Pos[rootAction];
+                      const nodeKey = `${rootAction}|${p2Action}`;
+                      const to = p1Pos[nodeKey];
+                      const selected = activeState.phase2Answers[rootAction];
+                      const edgeClass =
+                        activeState.step >= 3
+                          ? `tree-edge ${selected === p2Action ? "bi-active" : "bi-muted"}`
+                          : "tree-edge";
+                      return (
+                        <g key={`p2-edge-${nodeKey}`}>
+                          <line x1={from.x + 20} y1={from.y} x2={to.x - 20} y2={to.y} className={edgeClass} markerEnd="url(#tree-arrow-ex2)" />
+                          <text x={(from.x + to.x) / 2} y={(from.y + to.y) / 2} className="tree-action" textAnchor="middle" dominantBaseline="middle">{p2Action}</text>
+                        </g>
+                      );
+                    })
+                  )}
+
+                  {TREE_EX2_P1_NODES.flatMap((nodeKey) =>
+                    TREE_EX2_P1_ACTIONS.map((p1Action) => {
+                      const from = p1Pos[nodeKey];
+                      const to = terminalPos[`${nodeKey}|${p1Action}`];
+                      const edgeClass =
+                        activeState.step >= 2
+                          ? `tree-edge ${activeGame.p1BestByNode[nodeKey] === p1Action ? "bi-active" : "bi-muted"}`
+                          : "tree-edge";
+                      return (
+                        <g key={`p1-edge-${nodeKey}-${p1Action}`}>
+                          <line x1={from.x + 18} y1={from.y} x2={to.x - 24} y2={to.y} className={edgeClass} markerEnd="url(#tree-arrow-ex2)" />
+                          <text x={(from.x + to.x) / 2} y={(from.y + to.y) / 2} className="tree-action" textAnchor="middle" dominantBaseline="middle">{p1Action}</text>
+                        </g>
+                      );
+                    })
+                  )}
+
+                  <circle cx={rootPos.x} cy={rootPos.y} r="20" className={`tree-node decision ${activeState.step === 3 ? "bi-current" : ""}`} />
+                  <text x={rootPos.x} y={rootPos.y} className="tree-label" textAnchor="middle" dominantBaseline="middle">P1</text>
+
+                  {TREE_EX2_ROOT_ACTIONS.map((rootAction) => (
+                    <g key={`p2-node-${rootAction}`}>
+                      <circle
+                        cx={p2Pos[rootAction].x}
+                        cy={p2Pos[rootAction].y}
+                        r="19"
+                        className={`tree-node decision ${activeState.step === 2 ? "bi-current" : ""}`}
+                      />
+                      <text x={p2Pos[rootAction].x} y={p2Pos[rootAction].y} className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                    </g>
+                  ))}
+
+                  {TREE_EX2_P1_NODES.map((nodeKey) => (
+                    <g key={`p1-node-${nodeKey}`}>
+                      <circle
+                        cx={p1Pos[nodeKey].x}
+                        cy={p1Pos[nodeKey].y}
+                        r="17"
+                        className={`tree-node decision ${activeState.step === 1 ? "bi-current" : ""}`}
+                      />
+                      <text x={p1Pos[nodeKey].x} y={p1Pos[nodeKey].y} className="tree-label" textAnchor="middle" dominantBaseline="middle">P1</text>
+                    </g>
+                  ))}
+
+                  {TREE_EX2_P1_NODES.flatMap((nodeKey) =>
+                    TREE_EX2_P1_ACTIONS.map((p1Action) => {
+                      const payoff = activeGame.payoffs[`${nodeKey}|${p1Action}`];
+                      const pos = terminalPos[`${nodeKey}|${p1Action}`];
+                      return (
+                        <g key={`terminal-${nodeKey}-${p1Action}`}>
+                          <circle cx={pos.x} cy={pos.y} r="9" className="tree-node terminal" />
+                          <rect x={pos.x + 14} y={pos.y - 12} width="102" height="24" rx="6" className="tree-payoff-bg" />
+                          <text x={pos.x + 65} y={pos.y} className="tree-payoff" textAnchor="middle" dominantBaseline="middle">
+                            ({payoff[0]}, {payoff[1]})
+                          </text>
+                        </g>
+                      );
+                    })
+                  )}
+                </svg>
+              </div>
+            </article>
+
+            <article className="panel nested-panel">
+              <h3>{t("Denkprozess-Simulator", "Reasoning process simulator")}</h3>
+
+              <h4>{t("Phase 1 - Letzte Teilspiele (6x)", "Phase 1 - Terminal subgames (6x)")}</h4>
+              {TREE_EX2_P1_NODES.map((nodeKey) => {
+                const payoffX = activeGame.payoffs[`${nodeKey}|x`];
+                const payoffY = activeGame.payoffs[`${nodeKey}|y`];
+                return (
+                  <div key={`phase1-select-${nodeKey}`} className="action-row">
+                    <label>{nodeKey}</label>
+                    <select
+                      value={activeState.phase1Answers[nodeKey]}
+                      disabled={activeState.step !== 1}
+                      onChange={(e) => setTreeEx2Phase1Answer(nodeKey, e.target.value)}
+                    >
+                      <option value="">{t("Bitte wählen", "Choose")}</option>
+                      <option value="x">x ({payoffX[0]}, {payoffX[1]})</option>
+                      <option value="y">y ({payoffY[0]}, {payoffY[1]})</option>
+                    </select>
+                  </div>
+                );
+              })}
+              <div className="actions">
+                <button type="button" onClick={checkTreeEx2Phase1} disabled={activeState.step !== 1}>
+                  {t("Phase 1 prüfen", "Check phase 1")}
+                </button>
+              </div>
+              {activeState.phase1Feedback && (
+                <div className={`feedback-box feedback-card ${activeState.phase1FeedbackType}`}>
+                  <strong>{activeState.phase1FeedbackType === "success" ? t("Richtig", "Correct") : t("Hinweis", "Hint")}</strong>
+                  <p>{activeState.phase1Feedback}</p>
+                </div>
+              )}
+
+              {activeState.step >= 2 && (
+                <>
+                  <h4>{t("Phase 2 - Mittlere Teilspiele (3x)", "Phase 2 - Middle subgames (3x)")}</h4>
+                  {TREE_EX2_ROOT_ACTIONS.map((rootAction) => {
+                    const payoffU = activeGame.continuationPayoffs[`${rootAction}|U`];
+                    const payoffD = activeGame.continuationPayoffs[`${rootAction}|D`];
+                    return (
+                      <div key={`phase2-select-${rootAction}`} className="action-row">
+                        <label>{t("Nach", "After")} {rootAction}</label>
+                        <select
+                          value={activeState.phase2Answers[rootAction]}
+                          disabled={activeState.step !== 2}
+                          onChange={(e) => setTreeEx2Phase2Answer(rootAction, e.target.value)}
+                        >
+                          <option value="">{t("Bitte wählen", "Choose")}</option>
+                          <option value="U">U ({payoffU[0]}, {payoffU[1]})</option>
+                          <option value="D">D ({payoffD[0]}, {payoffD[1]})</option>
+                        </select>
+                      </div>
+                    );
+                  })}
+                  <div className="actions">
+                    <button type="button" onClick={checkTreeEx2Phase2} disabled={activeState.step !== 2}>
+                      {t("Phase 2 prüfen", "Check phase 2")}
+                    </button>
+                  </div>
+                  {activeState.phase2Feedback && (
+                    <div className={`feedback-box feedback-card ${activeState.phase2FeedbackType}`}>
+                      <strong>{activeState.phase2FeedbackType === "success" ? t("Richtig", "Correct") : t("Hinweis", "Hint")}</strong>
+                      <p>{activeState.phase2Feedback}</p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {activeState.step >= 3 && (
+                <>
+                  <h4>{t("Phase 3 - Startknoten", "Phase 3 - Root")}</h4>
+                  <p className="hint">
+                    {t(
+                      "Welche Aktionen sind am Startknoten optimal? (Mehrfachauswahl möglich)",
+                      "Which actions are optimal at the root? (Multiple selection allowed)"
+                    )}
+                  </p>
+                  <div className="actions">
+                    {TREE_EX2_ROOT_ACTIONS.map((rootAction) => (
+                      <button
+                        key={`phase3-choice-${rootAction}`}
+                        type="button"
+                        className={activeState.phase3Choices.includes(rootAction) ? "phase3-toggle active" : "phase3-toggle"}
+                        onClick={() => toggleTreeEx2Phase3Choice(rootAction)}
+                        disabled={activeState.step !== 3}
+                      >
+                        {rootAction}
+                      </button>
+                    ))}
+                  </div>
+                  {activeState.phase3Choices.length > 0 && (
+                    <p className="hint">
+                      {t("Gewählte Aktionen:", "Chosen actions:")} <code>{activeState.phase3Choices.join(", ")}</code>
+                    </p>
+                  )}
+                  <div className="actions">
+                    <button type="button" onClick={checkTreeEx2Phase3} disabled={activeState.step !== 3}>
+                      {t("Phase 3 prüfen", "Check phase 3")}
+                    </button>
+                  </div>
+                  {activeState.phase3Feedback && (
+                    <div className={`feedback-box feedback-card ${activeState.phase3FeedbackType}`}>
+                      <strong>{activeState.phase3FeedbackType === "success" ? t("Richtig", "Correct") : t("Hinweis", "Hint")}</strong>
+                      <p>{activeState.phase3Feedback}</p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {activeState.solved && (
+                <div className="notation-box">
+                  <h4>{t("Teilspielperfekte Gleichgewichte", "Subgame-perfect equilibria")}</h4>
+                  <p className="hint">
+                    {activeGame.speProfiles.length > 1
+                      ? t("In diesem Spiel gibt es mehrere SPE.", "This game has multiple SPE.")
+                      : t("In diesem Spiel gibt es ein eindeutiges SPE.", "This game has a unique SPE.")}
+                  </p>
+                  <ul className="intro-list">
+                    {activeGame.speProfiles.map((profile, index) => (
+                      <li key={`spe-profile-${index}`}>
+                        <code>{profileText(profile)}</code>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </article>
+          </div>
+
+          <div className="actions">
+            <button type="button" onClick={() => setTreePage("toc")}>
+              {t("Zurück zur Inhaltsseite", "Back to overview")}
             </button>
           </div>
         </section>
@@ -1995,21 +2846,21 @@ function App() {
                   </marker>
                 </defs>
 
-                <line x1="65.2" y1="124.4" x2="192.8" y2="87.6" className="tree-edge" markerEnd="url(#tree-arrow-ex1)" />
-                <line x1="64.4" y1="137.9" x2="209.0" y2="200.2" className="tree-edge" markerEnd="url(#tree-arrow-ex1)" />
-                <line x1="231.9" y1="79.9" x2="408.1" y2="61.3" className="tree-edge" markerEnd="url(#tree-arrow-ex1)" />
-                <line x1="231.1" y1="87.8" x2="408.5" y2="141.5" className="tree-edge" markerEnd="url(#tree-arrow-ex1)" />
+                <line x1="65.2" y1="124.4" x2="192.8" y2="87.6" className={lEdgeClass} markerEnd="url(#tree-arrow-ex1)" />
+                <line x1="64.4" y1="137.9" x2="209.0" y2="200.2" className={rEdgeClass} markerEnd="url(#tree-arrow-ex1)" />
+                <line x1="231.9" y1="79.9" x2="408.1" y2="61.3" className={xEdgeClass} markerEnd="url(#tree-arrow-ex1)" />
+                <line x1="231.1" y1="87.8" x2="408.5" y2="141.5" className={yEdgeClass} markerEnd="url(#tree-arrow-ex1)" />
 
                 <text x="129.0" y="106.0" className="tree-action" textAnchor="middle" dominantBaseline="middle">L</text>
                 <text x="136.7" y="169.0" className="tree-action" textAnchor="middle" dominantBaseline="middle">R</text>
                 <text x="320.0" y="70.6" className="tree-action" textAnchor="middle" dominantBaseline="middle">X</text>
                 <text x="319.8" y="114.7" className="tree-action" textAnchor="middle" dominantBaseline="middle">Y</text>
 
-                <circle cx="46" cy="130" r="20" className="tree-node decision" />
-                <circle cx="212" cy="82" r="20" className="tree-node decision" />
-                <circle cx="220" cy="205" r="12" className="tree-node terminal" />
-                <circle cx="420" cy="60" r="12" className="tree-node terminal" />
-                <circle cx="420" cy="145" r="12" className="tree-node terminal" />
+                <circle cx="46" cy="130" r="20" className={rootNodeClass} />
+                <circle cx="212" cy="82" r="20" className={secondNodeClass} />
+                <circle cx="220" cy="205" r="12" className={terminalRClass} />
+                <circle cx="420" cy="60" r="12" className={terminalLXClass} />
+                <circle cx="420" cy="145" r="12" className={terminalLYClass} />
 
                 <text x="46" y="130" className="tree-label" textAnchor="middle" dominantBaseline="middle">{firstNodeLabel}</text>
                 <text x="212" y="82" className="tree-label" textAnchor="middle" dominantBaseline="middle">{secondNodeLabel}</text>
@@ -2035,32 +2886,95 @@ function App() {
           </article>
 
           <article className="panel nested-panel">
-            <h3>{t("Frage", "Question")}</h3>
-            <p className="hint">{t("Welches Strategieprofil ist teilspielperfekt?", "Which strategy profile is subgame-perfect?")}</p>
-            <div className="choice-list">
-              {TREE_EX1_CHOICES.map((choice) => (
-                <label key={choice.id} className="choice-item">
-                  <input
-                    type="radio"
-                    name="tree-ex1-choice"
-                    value={choice.id}
-                    checked={treeEx1Selected === choice.id}
-                    onChange={(e) => setTreeEx1Selected(e.target.value)}
-                  />
-                  <span>{choiceLabel(choice.id)}</span>
-                </label>
-              ))}
-            </div>
-            <button type="button" onClick={checkTreeEx1} disabled={!treeEx1Selected}>{t("Antwort prüfen", "Check answer")}</button>
-            {treeEx1Feedback && (
-              <div className={`feedback-box feedback-card ${treeEx1FeedbackType}`}>
-                <strong>{treeEx1FeedbackType === "success" ? t("Richtig", "Correct") : t("Nicht korrekt", "Not correct")}</strong>
-                <p>{treeEx1Feedback}</p>
+            <h3>{t("Denkprozess-Simulator", "Reasoning process simulator")}</h3>
+            <p className="hint">
+              {t(
+                "Löse das Spiel über Rückwärtsinduktion in drei Schritten.",
+                "Solve the game by backward induction in three steps."
+              )}
+            </p>
+
+            <h4>{t("Phase 1 - Letztes Teilspiel", "Phase 1 - Last subgame")}</h4>
+            <p className="hint">
+              {secondPlayer} {t("ist am Zug nach L. Was macht er?", "moves after L. What does this player do?")}
+            </p>
+            {treeEx1Step === 1 && (
+              <div className="actions">
+                <button type="button" onClick={() => answerTreeEx1Phase1("X")}>
+                  X ({treeEx1Game.payoffLX.u1}, {treeEx1Game.payoffLX.u2})
+                </button>
+                <button type="button" onClick={() => answerTreeEx1Phase1("Y")}>
+                  Y ({treeEx1Game.payoffLY.u1}, {treeEx1Game.payoffLY.u2})
+                </button>
+              </div>
+            )}
+            {treeEx1Phase1Feedback && (
+              <div className={`feedback-box feedback-card ${treeEx1Phase1FeedbackType}`}>
+                <strong>{treeEx1Phase1FeedbackType === "success" ? t("Richtig", "Correct") : t("Nicht korrekt", "Not correct")}</strong>
+                <p>{treeEx1Phase1Feedback}</p>
+              </div>
+            )}
+            {treeEx1Phase1Choice && treeEx1Step >= 2 && (
+              <p className="hint">
+                {t("Gewählte Aktion:", "Chosen action:")} <code>{treeEx1Phase1Choice}</code>
+              </p>
+            )}
+
+            {treeEx1Step >= 2 && (
+              <>
+                <h4>{t("Phase 2 - Antizipation", "Phase 2 - Anticipation")}</h4>
+                <p className="hint">
+                  {firstPlayer}{" "}
+                  {t(
+                    `weiß, dass nach L ${treeEx1Game.p2Action} gespielt wird. Was wählt er?`,
+                    `knows that after L, ${treeEx1Game.p2Action} is played. What does this player choose?`
+                  )}
+                </p>
+                {treeEx1Step === 2 && (
+                  <div className="actions">
+                    <button type="button" onClick={() => answerTreeEx1Phase2("L")}>
+                      L ({payoffAfterL.u1}, {payoffAfterL.u2})
+                    </button>
+                    <button type="button" onClick={() => answerTreeEx1Phase2("R")}>
+                      R ({treeEx1Game.payoffR.u1}, {treeEx1Game.payoffR.u2})
+                    </button>
+                  </div>
+                )}
+                {treeEx1Phase2Choice && treeEx1Step === 3 && (
+                  <p className="hint">
+                    {t("Gewählte Aktion:", "Chosen action:")} <code>{treeEx1Phase2Choice}</code>
+                  </p>
+                )}
+                {treeEx1Phase2Feedback && (
+                  <div className={`feedback-box feedback-card ${treeEx1Phase2FeedbackType}`}>
+                    <strong>{treeEx1Phase2FeedbackType === "success" ? t("Richtig", "Correct") : t("Nicht korrekt", "Not correct")}</strong>
+                    <p>{treeEx1Phase2Feedback}</p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {treeEx1Step >= 3 && (
+              <div className="notation-box">
+                <h4>{t("Phase 3 - Ergebnis", "Phase 3 - Result")}</h4>
+                <p className="hint">{t("Das ist das teilspielperfekte Gleichgewicht:", "This is the subgame-perfect equilibrium:")}</p>
+                <p>
+                  <code>({treeEx1Game.p1Action} ; {treeEx1Game.p2Action} nach L)</code>
+                </p>
               </div>
             )}
           </article>
         </div>
         <div className="actions">
+          <button
+            type="button"
+            onClick={() => {
+              resetTreeEx2();
+              setTreePage("ex2");
+            }}
+          >
+            {t("Zur Übung 2", "Go to exercise 2")}
+          </button>
           <button type="button" onClick={() => setTreePage("toc")}>{t("Zurück zur Inhaltsseite", "Back to overview")}</button>
         </div>
       </section>
@@ -3373,19 +4287,21 @@ function App() {
 
   function renderSpecialGames() {
     return (
-      <section className="panel">
-        <h2>Fünf besondere Spiele der Spieltheorie</h2>
-        <p className="hint">Ein Beispielspiel (Strategien, Nutzen (u₁, u₂)), die zentrale Idee und typische Ergebnisse.</p>
+      <>
+        <section className="panel">
+          <h2>Fünf besondere Spiele der Spieltheorie</h2>
+          <p className="hint">Ein Beispielspiel (Strategien, Nutzen (u₁, u₂)), die zentrale Idee und typische Ergebnisse.</p>
+        </section>
         {SPECIAL_GAMES.map((g) => (
-          <section className="panel nested-panel" key={g.title}>
+          <section className="panel special-card" key={g.title}>
             <h3>{g.title}</h3>
             <div className="special-row">
-              <article className="panel nested-panel">
+              <article className="special-block">
                 <h4>Beispielspiel</h4>
                 <p className="hint">{g.intro}</p>
-                <StaticPayoffTable data={g.table} rowLabel="Spieler 1" colLabel="Spieler 2" />
+                <StaticPayoffTable data={g.table} rowLabel="Spieler 1" colLabel="Spieler 2" autoScale />
               </article>
-              <article className="panel nested-panel">
+              <article className="special-block">
                 <h4>Erklärung</h4>
                 <ul className="intro-list">
                   {g.bullets.map((b) => (
@@ -3396,7 +4312,7 @@ function App() {
             </div>
           </section>
         ))}
-      </section>
+      </>
     );
   }
 
@@ -3425,7 +4341,7 @@ function App() {
     if (bayesPage === "toc") {
       return (
         <section className="panel">
-          <h2>{t("Übersicht Bayes-Spiele", "Overview of Bayesian games")}</h2>
+          <h2>{t("Trainiere Bayes-Spiele", "Train Bayesian games")}</h2>
           <h3>{t("Teil 1: Grundlagen statischer Bayes-Spiele", "Part 1: Foundations of static Bayesian games")}</h3>
           <div className="exercise-link-grid">
             <button type="button" className="exercise-link" onClick={() => setBayesPage("ex1")}>

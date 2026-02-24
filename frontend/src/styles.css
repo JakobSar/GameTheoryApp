@@ -394,6 +394,23 @@ button:disabled {
   margin: 0.7rem 0;
 }
 
+.matrix-wrap-autoscale {
+  overflow-x: auto;
+  overflow-y: hidden;
+  width: 100%;
+  max-width: 100%;
+  padding-bottom: 6px;
+}
+
+.matrix-scale-shell {
+  display: inline-block;
+}
+
+.matrix-table.matrix-table-autoscale {
+  width: max-content;
+  min-width: 100%;
+}
+
 .matrix-table {
   border-collapse: separate;
   border-spacing: 0;
@@ -735,6 +752,25 @@ button:disabled {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
+  min-width: 0;
+}
+
+.special-block {
+  border: 1px solid rgba(29, 32, 28, 0.14);
+  border-radius: 12px;
+  padding: 0.75rem 0.8rem;
+  background: rgba(255, 255, 255, 0.5);
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.special-block h4 {
+  margin-top: 0;
+}
+
+.special-card h3 {
+  margin-top: 0;
 }
 
 .bayes-prior-card {
@@ -816,6 +852,19 @@ button:disabled {
   display: block;
 }
 
+.tree-example-svg-large {
+  height: 500px;
+}
+
+.phase3-toggle {
+  width: auto;
+}
+
+.phase3-toggle.active {
+  background: #0f766e;
+  color: #f8fffd;
+}
+
 .tree-ex-layout > .panel {
   min-width: 0;
 }
@@ -894,11 +943,20 @@ button:disabled {
 }
 
 .tree-node.bi-current {
-  stroke-width: 3;
+  stroke-width: 4;
+  filter: drop-shadow(0 0 6px rgba(15, 118, 110, 0.32));
+}
+
+.tree-node.decision.bi-current {
+  fill: #bbf7d0;
 }
 
 .tree-node.bi-selected-terminal {
   stroke-width: 3;
+}
+
+.tree-node.terminal.bi-selected-terminal {
+  fill: #fde68a;
 }
 
 .tree-node.bi-muted-node {
@@ -1180,6 +1238,14 @@ body.dark-mode .tree-edge.bi-active {
 
 body.dark-mode .tree-edge.bi-fight {
   stroke: #f59e0b;
+}
+
+body.dark-mode .tree-node.decision.bi-current {
+  fill: #0f3d30;
+}
+
+body.dark-mode .tree-node.terminal.bi-selected-terminal {
+  fill: #7c5a1f;
 }
 
 body.dark-mode .feedback-card.success {

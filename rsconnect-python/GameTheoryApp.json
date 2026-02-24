@@ -5,7 +5,7 @@
         "app_url": "https://jakobsar.shinyapps.io/game-theory-trainer/",
         "app_id": "16448445",
         "app_guid": null,
-        "title": "Game-Theory-Trainer",
+        "title": "game-theory-trainer",
         "app_mode": "python-shiny",
         "app_store_version": 1
     }
