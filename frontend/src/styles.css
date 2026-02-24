@@ -708,6 +708,17 @@ button:disabled {
   color: var(--muted);
 }
 
+.impressum-project-blurb {
+  margin: 0.7rem 0 0;
+  width: 100%;
+  line-height: 1.5;
+  color: #284438;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid rgba(15, 118, 110, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.52);
+}
+
 .impressum-grid {
   margin-top: 1rem;
   display: grid;
@@ -742,6 +753,20 @@ button:disabled {
 .impressum-detail {
   margin: 0.55rem 0 0;
   color: var(--muted);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.impressum-detail a {
+  color: inherit;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.impressum-detail-static {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
 }
 
 .ex5-table select {
@@ -1286,6 +1311,12 @@ body.dark-mode .eliminator-compare-item.weak {
 body.dark-mode .impressum-card {
   background: rgba(17, 25, 22, 0.78);
   border-color: rgba(232, 238, 234, 0.2);
+}
+
+body.dark-mode .impressum-project-blurb {
+  background: rgba(17, 25, 22, 0.78);
+  border-color: rgba(159, 230, 221, 0.28);
+  color: #d6f5ee;
 }
 
 body.dark-mode .impressum-toggle {

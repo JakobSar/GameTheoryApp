@@ -4733,7 +4733,18 @@ function App() {
         <section className="panel impressum-wrap">
           <div className="impressum-head">
             <h2>{t("Impressum", "Imprint")}</h2>
-            <p className="impressum-subtitle">{t("Transparenz zu Verantwortlichen, Institution und Projekt.", "Transparency on responsible persons, institution, and project.")}</p>
+            <p className="impressum-subtitle">
+              {t(
+                "Kontakt, Verantwortung und ein kurzer Überblick zur GameTheoryApp.",
+                "Contact, responsibility, and a short overview of GameTheoryApp."
+              )}
+            </p>
+            <p className="impressum-project-blurb">
+              {t(
+                "Die GameTheoryApp ist ein interaktives Lernprojekt für Spieltheorie: Studierende trainieren Normalform-, Bayes- und extensive Spiele mit direktem Feedback zu Nash-Gleichgewichten, Dominanz und Rückwärtsinduktion.",
+                "GameTheoryApp is an interactive game-theory learning project: students practice normal-form, Bayesian, and extensive games with instant feedback on Nash equilibria, dominance, and backward induction."
+              )}
+            </p>
           </div>
 
           <div className="impressum-grid">
@@ -4776,8 +4787,14 @@ function App() {
             </article>
 
             <article className="impressum-card">
-              <h3>{t("Projekt", "Project")}</h3>
+              <h3>{t("GitHub Repository", "GitHub Repository")}</h3>
               <p className="impressum-main">GameTheoryApp</p>
+              <p className="impressum-detail impressum-detail-static">
+                {t(
+                  "React-Frontend, FastAPI-Backend, API-Endpunkte, spieltheoretischer Solver und automatisierte Tests.",
+                  "Technical content: React frontend, FastAPI backend, API endpoints, game-theory solver, and automated tests."
+                )}
+              </p>
               <button
                 type="button"
                 className="inline-link-btn impressum-toggle"
@@ -4795,7 +4812,7 @@ function App() {
             </article>
           </div>
 
-          <p className="impressum-tagline">{t("Aus Mannheim für die Welt 🌍", "From Mannheim to the world 🌍")}</p>
+          <p className="impressum-tagline">{t("Aus Mannheim für die Welt", "From Mannheim to the world")}</p>
         </section>
       );
     }
