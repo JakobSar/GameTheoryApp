@@ -44,6 +44,12 @@ body {
   margin-bottom: 0.35rem;
 }
 
+@media (max-width: 899px) {
+  .app-shell.nav-collapsed .content-area > .home-wrap {
+    margin-top: 1rem;
+  }
+}
+
 .hero p {
   margin: 0;
   line-height: 1.5;

@@ -3056,8 +3056,8 @@ function App() {
         </div>
 
         <div className="actions">
-          <button type="button" onClick={nextBackwardStep} disabled={backwardStep >= 2}>{t("Nächster Schritt", "Next step")}</button>
           <button type="button" onClick={prevBackwardStep} disabled={backwardStep <= 0}>{t("Schritt zurück", "Previous step")}</button>
+          <button type="button" onClick={nextBackwardStep} disabled={backwardStep >= 2}>{t("Nächster Schritt", "Next step")}</button>
         </div>
 
         {backwardStep === 0 && (
@@ -3139,6 +3139,17 @@ function App() {
         </section>
 
         {renderStrategyEliminatorCard()}
+        <div className="actions">
+          <button
+            type="button"
+            onClick={() => {
+              setActivePage("solve-normal");
+              setNormalPage("toc");
+            }}
+          >
+            {t("Zu Normalformspielen", "Go to normal-form games")}
+          </button>
+        </div>
       </>
     );
   }
@@ -3220,6 +3231,18 @@ function App() {
             <li><code>EUᵢ(s)</code>: {t("erwarteter Nutzen unter dem common prior.", "expected utility under the common prior.")}</li>
           </ul>
         </section>
+
+        <div className="actions">
+          <button
+            type="button"
+            onClick={() => {
+              setActivePage("solve-bayesian");
+              setBayesPage("toc");
+            }}
+          >
+            {t("Zu Bayes-Spielen", "Go to Bayesian games")}
+          </button>
+        </div>
       </section>
     );
   }
@@ -3331,7 +3354,19 @@ function App() {
           </section>
         </div>
       </section>
+
       {renderBackwardInductionCard()}
+      <div className="actions">
+        <button
+          type="button"
+          onClick={() => {
+            setActivePage("solve-tree");
+            setTreePage("toc");
+          }}
+        >
+          {t("Zu Spielbäumen", "Go to game trees")}
+        </button>
+      </div>
       </>
     );
   }
