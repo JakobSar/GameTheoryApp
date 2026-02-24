@@ -3026,7 +3026,7 @@ function App() {
               </marker>
             </defs>
 
-            <line x1="66.2" y1="122.5" x2="202.2" y2="65.5" className={`tree-edge ${stepTwoDone ? "bi-active" : ""}`} markerEnd="url(#bi-arrow)" />
+            <line x1="66.2" y1="122.5" x2="209.0" y2="62.6" className={`tree-edge ${stepTwoDone ? "bi-active" : ""}`} markerEnd="url(#bi-arrow)" />
             <line x1="66.8" y1="137.2" x2="193.6" y2="184.8" className="tree-edge" markerEnd="url(#bi-arrow)" />
             <line x1="231.5" y1="184.0" x2="409.2" y2="164.8" className={`tree-edge ${stepOneDone ? "bi-active bi-fight" : ""}`} markerEnd="url(#bi-arrow)" />
             <line x1="231.5" y1="186.4" x2="409.2" y2="214.8" className={`tree-edge ${stepOneDone ? "bi-muted" : ""}`} markerEnd="url(#bi-arrow)" />
