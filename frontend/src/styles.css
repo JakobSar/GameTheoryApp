@@ -18,6 +18,7 @@
 html,
 body {
   overflow-x: hidden;
+  background-color: var(--bg);
 }
 
 html {
@@ -25,6 +26,13 @@ html {
   overscroll-behavior-x: none;
   overscroll-behavior: none;
   overflow-y: auto;
+  min-height: 100%;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(15, 118, 110, 0.13), transparent 35%),
+    radial-gradient(circle at 80% 0%, rgba(234, 179, 8, 0.19), transparent 32%),
+    var(--bg);
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 
 body {
@@ -34,6 +42,7 @@ body {
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   color: var(--text);
   font-family: "Avenir Next", "Helvetica Neue", "Segoe UI", sans-serif;
   background: transparent;
