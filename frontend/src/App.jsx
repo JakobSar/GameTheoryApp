@@ -345,12 +345,21 @@ function buildEmptyTreeEx2Progress() {
     phase3Choices: [],
     phase3Feedback: "",
     phase3FeedbackType: "neutral",
+    speChoices: [],
+    speFeedback: "",
+    speFeedbackType: "neutral",
     solved: false
   };
 }
 
 function buildTreeEx2ProgressSet() {
-  return Array.from({ length: 3 }, () => buildEmptyTreeEx2Progress());
+  return Array.from({ length: 2 }, () => buildEmptyTreeEx2Progress());
+}
+
+function treeEx2ProfileSignature(profile) {
+  const p2Part = TREE_EX2_ROOT_ACTIONS.map((rootAction) => profile.p2Choices[rootAction]).join("");
+  const p1Part = TREE_EX2_P1_NODES.map((nodeKey) => profile.p1Choices[nodeKey]).join("");
+  return `${profile.rootAction}|${p2Part}|${p1Part}`;
 }
 
 function computeTreeEx2RootBestForP2Choices(game, p2Choices) {
@@ -367,6 +376,27 @@ function computeTreeEx2RootBestForP2Choices(game, p2Choices) {
     const payoff = game.continuationPayoffs[`${rootAction}|${p2Action}`];
     return payoff && payoff[0] === maxU1;
   });
+}
+
+function computeTreeEx2RootBestWithIndifference(game, p2Choices) {
+  let combinations = [{}];
+  TREE_EX2_ROOT_ACTIONS.forEach((rootAction) => {
+    const selected = p2Choices[rootAction];
+    const options = selected === "indifferent" ? ["U", "D"] : [selected];
+    combinations = combinations.flatMap((combo) =>
+      options.map((p2Action) => ({
+        ...combo,
+        [rootAction]: p2Action
+      }))
+    );
+  });
+
+  const bestRootSet = new Set();
+  combinations.forEach((combo) => {
+    const bestRoots = computeTreeEx2RootBestForP2Choices(game, combo);
+    bestRoots.forEach((rootAction) => bestRootSet.add(rootAction));
+  });
+  return TREE_EX2_ROOT_ACTIONS.filter((rootAction) => bestRootSet.has(rootAction));
 }
 
 function buildTreeEx2Game() {
@@ -438,24 +468,45 @@ function buildTreeEx2Game() {
   });
 
   const speProfiles = [...profileMap.values()];
+  const speSignatures = new Set(speProfiles.map(treeEx2ProfileSignature));
+
+  const allProfiles = [];
+  p2Combinations.forEach((p2Choices) => {
+    TREE_EX2_ROOT_ACTIONS.forEach((rootAction) => {
+      allProfiles.push({
+        rootAction,
+        p2Choices: { ...p2Choices },
+        p1Choices: { ...p1BestByNode }
+      });
+    });
+  });
+  const wrongProfiles = allProfiles.filter((profile) => !speSignatures.has(treeEx2ProfileSignature(profile)));
+  const selectedWrong = wrongProfiles.slice(0, Math.max(2, 6 - speProfiles.length));
+  const speOptions = [...speProfiles, ...selectedWrong].map((profile, index) => ({
+    id: `opt-${index + 1}-${treeEx2ProfileSignature(profile)}`,
+    profile,
+    isCorrect: speSignatures.has(treeEx2ProfileSignature(profile))
+  }));
 
   return {
     payoffs,
     p1BestByNode,
     p2BestByRoot,
     continuationPayoffs,
-    speProfiles
+    speProfiles,
+    speOptions
   };
 }
 
 function buildTreeEx2Set() {
-  let games = [];
+  let baseGame = buildTreeEx2Game();
   let attempts = 0;
-  do {
-    games = Array.from({ length: 3 }, () => buildTreeEx2Game());
+  while (baseGame.speProfiles.length <= 1 && attempts < 60) {
+    baseGame = buildTreeEx2Game();
     attempts += 1;
-  } while (!games.some((game) => game.speProfiles.length > 1) && attempts < 60);
-  return games;
+  }
+  const sameGameCopy = JSON.parse(JSON.stringify(baseGame));
+  return [baseGame, sameGameCopy];
 }
 
 function payoffFromMap(game, row, col) {
@@ -936,6 +987,32 @@ function Ex5AnswerTable({ game, answers, onAnswerChange, choices, autoScale = tr
   );
 }
 
+function LevelSwitch({ value, onChange, leftLabel, rightLabel, ariaLabel }) {
+  return (
+    <div className="level-switch" role="tablist" aria-label={ariaLabel}>
+      <span className={`level-switch-thumb ${value === 1 ? "is-right" : ""}`} aria-hidden="true" />
+      <button
+        type="button"
+        role="tab"
+        aria-selected={value === 0}
+        className={`level-switch-option ${value === 0 ? "active" : ""}`}
+        onClick={() => onChange(0)}
+      >
+        {leftLabel}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={value === 1}
+        className={`level-switch-option ${value === 1 ? "active" : ""}`}
+        onClick={() => onChange(1)}
+      >
+        {rightLabel}
+      </button>
+    </div>
+  );
+}
+
 function App() {
   const [uiLang, setUiLang] = useState(() => {
     if (typeof window === "undefined") {
@@ -1058,6 +1135,10 @@ function App() {
   const [treeEx1Phase2Choice, setTreeEx1Phase2Choice] = useState("");
   const [treeEx1Phase2Feedback, setTreeEx1Phase2Feedback] = useState("");
   const [treeEx1Phase2FeedbackType, setTreeEx1Phase2FeedbackType] = useState("neutral");
+  const [treeEx1ActiveLevel, setTreeEx1ActiveLevel] = useState(0);
+  const [treeEx1HardChoices, setTreeEx1HardChoices] = useState([]);
+  const [treeEx1HardFeedback, setTreeEx1HardFeedback] = useState("");
+  const [treeEx1HardFeedbackType, setTreeEx1HardFeedbackType] = useState("neutral");
   const [treeEx2Games, setTreeEx2Games] = useState(() => buildTreeEx2Set());
   const [treeEx2Progress, setTreeEx2Progress] = useState(() => buildTreeEx2ProgressSet());
   const [treeEx2ActiveIndex, setTreeEx2ActiveIndex] = useState(0);
@@ -2243,6 +2324,65 @@ function App() {
     setTreeEx1Phase2Choice("");
     setTreeEx1Phase2Feedback("");
     setTreeEx1Phase2FeedbackType("neutral");
+    setTreeEx1HardChoices([]);
+    setTreeEx1HardFeedback("");
+    setTreeEx1HardFeedbackType("neutral");
+  }
+
+  function toggleTreeEx1HardChoice(optionId) {
+    setTreeEx1HardChoices((prev) =>
+      prev.includes(optionId) ? prev.filter((entry) => entry !== optionId) : [...prev, optionId]
+    );
+    setTreeEx1HardFeedback("");
+    setTreeEx1HardFeedbackType("neutral");
+  }
+
+  function checkTreeEx1Hard() {
+    const p2BestActions = [];
+    if (treeEx1Game.payoffLX.u2 >= treeEx1Game.payoffLY.u2) p2BestActions.push("X");
+    if (treeEx1Game.payoffLY.u2 >= treeEx1Game.payoffLX.u2) p2BestActions.push("Y");
+
+    const correctIds = [];
+    p2BestActions.forEach((p2Action) => {
+      const p1AfterL = p2Action === "X" ? treeEx1Game.payoffLX.u1 : treeEx1Game.payoffLY.u1;
+      const p1AfterR = treeEx1Game.payoffR.u1;
+      if (p1AfterL >= p1AfterR) correctIds.push(`L-${p2Action}`);
+      if (p1AfterR >= p1AfterL) correctIds.push(`R-${p2Action}`);
+    });
+
+    if (!treeEx1HardChoices.length) {
+      setTreeEx1HardFeedbackType("warning");
+      setTreeEx1HardFeedback(
+        t(
+          "Bitte wähle mindestens ein Strategieprofil aus.",
+          "Please select at least one strategy profile."
+        )
+      );
+      return;
+    }
+
+    const selected = [...treeEx1HardChoices].sort();
+    const correct = [...new Set(correctIds)].sort();
+    const sameSet = selected.length === correct.length && selected.every((entry, index) => entry === correct[index]);
+
+    if (!sameSet) {
+      setTreeEx1HardFeedbackType("error");
+      setTreeEx1HardFeedback(
+        t(
+          "Nicht korrekt. Wähle exakt alle SPE-Profile aus.",
+          "Not correct. Select exactly all SPE profiles."
+        )
+      );
+      return;
+    }
+
+    setTreeEx1HardFeedbackType("success");
+    setTreeEx1HardFeedback(
+      t(
+        "Richtig. Die SPE-Profile wurden korrekt identifiziert.",
+        "Correct. The SPE profiles were identified correctly."
+      )
+    );
   }
 
   function answerTreeEx1Phase1(action) {
@@ -2306,9 +2446,10 @@ function App() {
   }
 
   function resetTreeEx2() {
+    const currentIndex = treeEx2ActiveIndex;
     setTreeEx2Games(buildTreeEx2Set());
     setTreeEx2Progress(buildTreeEx2ProgressSet());
-    setTreeEx2ActiveIndex(0);
+    setTreeEx2ActiveIndex(currentIndex);
   }
 
   function setTreeEx2Phase1Answer(nodeKey, action) {
@@ -2376,7 +2517,7 @@ function App() {
     }));
   }
 
-  function checkTreeEx2Phase2() {
+function checkTreeEx2Phase2() {
     const game = treeEx2Games[treeEx2ActiveIndex];
     const state = treeEx2Progress[treeEx2ActiveIndex];
     if (!game || !state || state.step !== 2) {
@@ -2396,7 +2537,11 @@ function App() {
     }
     const wrong = TREE_EX2_ROOT_ACTIONS.filter((rootAction) => {
       const selected = state.phase2Answers[rootAction];
-      return !game.p2BestByRoot[rootAction].includes(selected);
+      const best = game.p2BestByRoot[rootAction];
+      if (selected === "indifferent") {
+        return !(best.includes("U") && best.includes("D"));
+      }
+      return !best.includes(selected);
     });
     if (wrong.length) {
       updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
@@ -2431,6 +2576,59 @@ function App() {
     }));
   }
 
+  function toggleTreeEx2SpeChoice(optionId) {
+    updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+      ...prev,
+      speChoices: prev.speChoices.includes(optionId)
+        ? prev.speChoices.filter((entry) => entry !== optionId)
+        : [...prev.speChoices, optionId],
+      speFeedback: "",
+      speFeedbackType: "neutral"
+    }));
+  }
+
+  function checkTreeEx2SpeOnly() {
+    const game = treeEx2Games[treeEx2ActiveIndex];
+    const state = treeEx2Progress[treeEx2ActiveIndex];
+    if (!game || !state) {
+      return;
+    }
+    if (!state.speChoices.length) {
+      updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+        ...prev,
+        speFeedbackType: "warning",
+        speFeedback: t(
+          "Bitte wähle mindestens ein Strategieprofil aus.",
+          "Please select at least one strategy profile."
+        )
+      }));
+      return;
+    }
+    const correctIds = game.speOptions.filter((opt) => opt.isCorrect).map((opt) => opt.id).sort();
+    const selectedIds = [...state.speChoices].sort();
+    const sameSet = selectedIds.length === correctIds.length && selectedIds.every((entry, index) => entry === correctIds[index]);
+    if (!sameSet) {
+      updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+        ...prev,
+        speFeedbackType: "error",
+        speFeedback: t(
+          "Nicht korrekt. Wähle exakt alle SPE-Profile aus.",
+          "Not correct. Select exactly all SPE profiles."
+        )
+      }));
+      return;
+    }
+    updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+      ...prev,
+      solved: true,
+      speFeedbackType: "success",
+      speFeedback: t(
+        "Richtig. Die SPE-Profile wurden korrekt identifiziert.",
+        "Correct. The SPE profiles were identified correctly."
+      )
+    }));
+  }
+
   function checkTreeEx2Phase3() {
     const game = treeEx2Games[treeEx2ActiveIndex];
     const state = treeEx2Progress[treeEx2ActiveIndex];
@@ -2448,7 +2646,7 @@ function App() {
       }));
       return;
     }
-    const rootBest = computeTreeEx2RootBestForP2Choices(game, state.phase2Answers);
+    const rootBest = computeTreeEx2RootBestWithIndifference(game, state.phase2Answers);
     const selected = [...state.phase3Choices].sort();
     const correct = [...rootBest].sort();
     const sameSet = selected.length === correct.length && selected.every((entry, index) => entry === correct[index]);
@@ -2482,6 +2680,12 @@ function App() {
     const secondNodeLabel = "P2";
     const payoffAfterL = treeEx1Game.p2Action === "X" ? treeEx1Game.payoffLX : treeEx1Game.payoffLY;
     const payoffAfterLForP1 = treeEx1Game.p2Action === "X" ? treeEx1Game.payoffLX.u1 : treeEx1Game.payoffLY.u1;
+    const treeEx1ProfileOptions = [
+      { id: "L-X", p1: "L", p2: "X" },
+      { id: "L-Y", p1: "L", p2: "Y" },
+      { id: "R-X", p1: "R", p2: "X" },
+      { id: "R-Y", p1: "R", p2: "Y" }
+    ];
     const phase1Done = treeEx1Step >= 2;
     const phase2Done = treeEx1Step >= 3;
     const lEdgeClass = `tree-edge ${phase2Done ? (treeEx1Game.p1Action === "L" ? "bi-active" : "bi-muted") : ""}`.trim();
@@ -2551,7 +2755,7 @@ function App() {
                 setTreePage("ex2");
               }}
             >
-              {t("Übung 2 – Komplexe Spielbäume (3 Spiele)", "Exercise 2 - Complex game trees (3 games)")}
+              {t("Übung 2 – Dreistufiges sequenzielles Spiel", "Exercise 2 - Three-stage sequential game")}
             </button>
           </div>
         </section>
@@ -2561,7 +2765,7 @@ function App() {
     if (treePage === "ex2") {
       const activeGame = treeEx2Games[treeEx2ActiveIndex];
       const activeState = treeEx2Progress[treeEx2ActiveIndex];
-      const solvedCount = treeEx2Progress.filter((entry) => entry.solved).length;
+      const isSimulator = treeEx2ActiveIndex === 0;
       const rootPos = { x: 46, y: 300 };
       const p2Pos = {
         L: { x: 210, y: 80 },
@@ -2599,34 +2803,29 @@ function App() {
 
       return (
         <section className="panel">
-          <h2>{t("Übung 2 – Komplexe Spielbäume (3 Spiele)", "Exercise 2 - Complex game trees (3 games)")}</h2>
+          <h2>{t("Übung 2 – Dreistufiges sequenzielles Spiel", "Exercise 2 - Three-stage sequential game")}</h2>
+          <LevelSwitch
+            value={treeEx2ActiveIndex}
+            onChange={setTreeEx2ActiveIndex}
+            leftLabel={`${t("Denkprozess-Simulator (Easy)", "Reasoning process simulator (Easy)")}${treeEx2Progress[0].solved ? " ✓" : ""}`}
+            rightLabel={`${t("SPE-Check (Hard)", "SPE check (hard)")}${treeEx2Progress[1].solved ? " ✓" : ""}`}
+            ariaLabel={t("Levelauswahl Übung 2", "Exercise 2 level switch")}
+          />
           <p className="hint">
-            {t(
-              "Wie Übung 1, aber mit deutlich mehr Verzweigungen. Löse alle drei Spiele per Rückwärtsinduktion.",
-              "Like exercise 1, but with many more branches. Solve all three games by backward induction."
-            )}
+            {isSimulator
+              ? t(
+                  "Easy: Folge dem Denkprozess Schritt für Schritt per Rückwärtsinduktion.",
+                  "Easy: Follow the reasoning process step by step via backward induction."
+                )
+              : t(
+                  "Hard: Bestimme direkt alle teilspielperfekten Gleichgewichte (SPE).",
+                  "Hard: Identify all subgame-perfect equilibria (SPE) directly."
+                )}
           </p>
-          <div className="actions">
-            <button type="button" onClick={resetTreeEx2}>{t("Neue 3 Spiele", "New 3 games")}</button>
-            <span className="hint">{t("Gelöst", "Solved")}: {solvedCount}/3</span>
-          </div>
-
-          <div className="choice-list combo-grid">
-            {treeEx2Games.map((_, index) => (
-              <button
-                key={`tree-ex2-switch-${index + 1}`}
-                type="button"
-                className={treeEx2ActiveIndex === index ? "nav-item active" : "nav-item"}
-                onClick={() => setTreeEx2ActiveIndex(index)}
-              >
-                {t("Spiel", "Game")} {index + 1}{treeEx2Progress[index].solved ? " ✓" : ""}
-              </button>
-            ))}
-          </div>
 
           <div className="exercise-layout tree-ex-layout">
             <article className="panel nested-panel">
-              <h3>{t("Spiel", "Game")} {treeEx2ActiveIndex + 1}</h3>
+              <h3>{t("Spiel", "Game")}</h3>
               <div className="tree-example-wrap">
                 <svg viewBox="0 0 940 620" className="tree-example-svg tree-example-svg-large" role="img" aria-label={t("Komplexer Spielbaum", "Complex game tree")}>
                   <defs>
@@ -2659,7 +2858,7 @@ function App() {
                       const selected = activeState.phase2Answers[rootAction];
                       const edgeClass =
                         activeState.step >= 3
-                          ? `tree-edge ${selected === p2Action ? "bi-active" : "bi-muted"}`
+                          ? `tree-edge ${(selected === p2Action || selected === "indifferent") ? "bi-active" : "bi-muted"}`
                           : "tree-edge";
                       return (
                         <g key={`p2-edge-${nodeKey}`}>
@@ -2731,18 +2930,71 @@ function App() {
                   )}
                 </svg>
               </div>
+              <div className="actions">
+                <button type="button" onClick={resetTreeEx2}>{t("Neues Spiel", "New game")}</button>
+              </div>
             </article>
 
             <article className="panel nested-panel">
-              <h3>{t("Denkprozess-Simulator", "Reasoning process simulator")}</h3>
+              <h3>{isSimulator ? t("Denkprozess-Simulator", "Reasoning process simulator") : t("SPE-Abfrage", "SPE check")}</h3>
+
+              {!isSimulator && (
+                <>
+                  <p className="hint">
+                    {t(
+                      "Wähle exakt alle Strategieprofile aus, die ein teilspielperfektes Gleichgewicht sind.",
+                      "Select exactly all strategy profiles that are subgame-perfect equilibria."
+                    )}
+                  </p>
+                  <div className="choice-list">
+                    {activeGame.speOptions.map((option) => (
+                      <label key={option.id} className="choice-item checkbox-item">
+                        <input
+                          type="checkbox"
+                          checked={activeState.speChoices.includes(option.id)}
+                          onChange={() => toggleTreeEx2SpeChoice(option.id)}
+                        />
+                        <span><code>{profileText(option.profile)}</code></span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="actions">
+                    <button type="button" onClick={checkTreeEx2SpeOnly}>
+                      {t("SPE prüfen", "Check SPE")}
+                    </button>
+                  </div>
+                  {activeState.speFeedback && (
+                    <div className={`feedback-box feedback-card ${activeState.speFeedbackType}`}>
+                      <strong>{activeState.speFeedbackType === "success" ? t("Richtig", "Correct") : t("Hinweis", "Hint")}</strong>
+                      <p>{activeState.speFeedback}</p>
+                    </div>
+                  )}
+                  {activeState.solved && (
+                    <div className="notation-box">
+                      <h4>{t("Teilspielperfekte Gleichgewichte", "Subgame-perfect equilibria")}</h4>
+                      <ul className="intro-list">
+                        {activeGame.speProfiles.map((profile, index) => (
+                          <li key={`spe-profile-hard-${index}`}>
+                            <code>{profileText(profile)}</code>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {isSimulator && (
+                <>
 
               <h4>{t("Phase 1 - Letzte Teilspiele (6x)", "Phase 1 - Terminal subgames (6x)")}</h4>
               {TREE_EX2_P1_NODES.map((nodeKey) => {
                 const payoffX = activeGame.payoffs[`${nodeKey}|x`];
                 const payoffY = activeGame.payoffs[`${nodeKey}|y`];
+                const [rootAction, p2Action] = nodeKey.split("|");
                 return (
                   <div key={`phase1-select-${nodeKey}`} className="action-row">
-                    <label>{nodeKey}</label>
+                    <label>{`${rootAction} → ${p2Action}`}</label>
                     <select
                       value={activeState.phase1Answers[nodeKey]}
                       disabled={activeState.step !== 1}
@@ -2768,11 +3020,12 @@ function App() {
               )}
 
               {activeState.step >= 2 && (
-                <>
+                <div className="tree-phase2-block">
                   <h4>{t("Phase 2 - Mittlere Teilspiele (3x)", "Phase 2 - Middle subgames (3x)")}</h4>
                   {TREE_EX2_ROOT_ACTIONS.map((rootAction) => {
                     const payoffU = activeGame.continuationPayoffs[`${rootAction}|U`];
                     const payoffD = activeGame.continuationPayoffs[`${rootAction}|D`];
+                    const indifferent = payoffU[1] === payoffD[1];
                     return (
                       <div key={`phase2-select-${rootAction}`} className="action-row">
                         <label>{t("Nach", "After")} {rootAction}</label>
@@ -2784,6 +3037,11 @@ function App() {
                           <option value="">{t("Bitte wählen", "Choose")}</option>
                           <option value="U">U ({payoffU[0]}, {payoffU[1]})</option>
                           <option value="D">D ({payoffD[0]}, {payoffD[1]})</option>
+                          {indifferent && (
+                            <option value="indifferent">
+                              {t("Indifferent (U oder D)", "Indifferent (U or D)")}
+                            </option>
+                          )}
                         </select>
                       </div>
                     );
@@ -2799,13 +3057,13 @@ function App() {
                       <p>{activeState.phase2Feedback}</p>
                     </div>
                   )}
-                </>
+                </div>
               )}
 
               {activeState.step >= 3 && (
-                <>
+                <div className="tree-phase3-block">
                   <h4>{t("Phase 3 - Startknoten", "Phase 3 - Root")}</h4>
-                  <p className="hint">
+                  <p className="hint tree-phase3-prompt">
                     {t(
                       "Welche Aktionen sind am Startknoten optimal? (Mehrfachauswahl möglich)",
                       "Which actions are optimal at the root? (Multiple selection allowed)"
@@ -2840,7 +3098,7 @@ function App() {
                       <p>{activeState.phase3Feedback}</p>
                     </div>
                   )}
-                </>
+                </div>
               )}
 
               {activeState.solved && (
@@ -2860,13 +3118,29 @@ function App() {
                   </ul>
                 </div>
               )}
+                </>
+              )}
             </article>
           </div>
 
           <div className="actions">
-            <button type="button" onClick={() => setTreePage("toc")}>
-              {t("Zurück zur Inhaltsseite", "Back to overview")}
-            </button>
+            {treeEx2ActiveIndex === 0 ? (
+              <>
+                <button type="button" onClick={() => setTreePage("ex1")}>
+                  {t("Zurück", "Back")}
+                </button>
+                <button type="button" onClick={() => setTreeEx2ActiveIndex(1)}>
+                  {t("Weiter zu SPE-Check (Hard)", "Next to SPE check (hard)")}
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" onClick={() => setTreePage("ex1")}>{t("Zurück", "Back")}</button>
+                <button type="button" onClick={() => setTreePage("toc")}>
+                  {t("Weiter zur Inhaltsseite", "Next to overview")}
+                </button>
+              </>
+            )}
           </div>
         </section>
       );
@@ -2875,6 +3149,24 @@ function App() {
     return (
       <section className="panel">
         <h2>{t("Übung 1 – Einfaches sequenzielles Spiel", "Exercise 1 - Simple sequential game")}</h2>
+        <LevelSwitch
+          value={treeEx1ActiveLevel}
+          onChange={setTreeEx1ActiveLevel}
+          leftLabel={t("Denkprozess-Simulator (Easy)", "Reasoning process simulator (Easy)")}
+          rightLabel={t("SPE-Check (Hard)", "SPE check (hard)")}
+          ariaLabel={t("Levelauswahl Übung 1", "Exercise 1 level switch")}
+        />
+        <p className="hint">
+          {treeEx1ActiveLevel === 0
+            ? t(
+                "Easy: Folge dem Denkprozess Schritt für Schritt per Rückwärtsinduktion.",
+                "Easy: Follow the reasoning process step by step via backward induction."
+              )
+            : t(
+                "Hard: Bestimme direkt alle teilspielperfekten Gleichgewichte (SPE).",
+                "Hard: Identify all subgame-perfect equilibria (SPE) directly."
+              )}
+        </p>
         <div className="exercise-layout tree-ex-layout">
           <article className="panel nested-panel">
             <h3>{t("Spiel", "Game")}</h3>
@@ -2929,96 +3221,140 @@ function App() {
           </article>
 
           <article className="panel nested-panel">
-            <h3>{t("Denkprozess-Simulator", "Reasoning process simulator")}</h3>
-            <p className="hint">
-              {t(
-                "Löse das Spiel über Rückwärtsinduktion in drei Schritten.",
-                "Solve the game by backward induction in three steps."
-              )}
-            </p>
-
-            <h4>{t("Phase 1 - Letztes Teilspiel", "Phase 1 - Last subgame")}</h4>
-            <p className="hint">
-              {secondPlayer} {t("ist am Zug nach L. Was macht er?", "moves after L. What does this player do?")}
-            </p>
-            {treeEx1Step === 1 && (
-              <div className="actions">
-                <button type="button" onClick={() => answerTreeEx1Phase1("X")}>
-                  X ({treeEx1Game.payoffLX.u1}, {treeEx1Game.payoffLX.u2})
-                </button>
-                <button type="button" onClick={() => answerTreeEx1Phase1("Y")}>
-                  Y ({treeEx1Game.payoffLY.u1}, {treeEx1Game.payoffLY.u2})
-                </button>
-              </div>
-            )}
-            {treeEx1Phase1Feedback && (
-              <div className={`feedback-box feedback-card ${treeEx1Phase1FeedbackType}`}>
-                <strong>{treeEx1Phase1FeedbackType === "success" ? t("Richtig", "Correct") : t("Nicht korrekt", "Not correct")}</strong>
-                <p>{treeEx1Phase1Feedback}</p>
-              </div>
-            )}
-            {treeEx1Phase1Choice && treeEx1Step >= 2 && (
-              <p className="hint">
-                {t("Gewählte Aktion:", "Chosen action:")} <code>{treeEx1Phase1Choice}</code>
-              </p>
-            )}
-
-            {treeEx1Step >= 2 && (
+            <h3 className={treeEx1ActiveLevel === 0 ? "tree-easy-heading" : undefined}>
+              {treeEx1ActiveLevel === 0 ? t("Denkprozess-Simulator (Easy)", "Reasoning process simulator (Easy)") : t("SPE-Check (Hard)", "SPE check (hard)")}
+            </h3>
+            {treeEx1ActiveLevel === 0 ? (
               <>
-                <h4>{t("Phase 2 - Antizipation", "Phase 2 - Anticipation")}</h4>
-                <p className="hint">
-                  {firstPlayer}{" "}
+                <p className="hint tree-easy-intro">
                   {t(
-                    `weiß, dass nach L ${treeEx1Game.p2Action} gespielt wird. Was wählt er?`,
-                    `knows that after L, ${treeEx1Game.p2Action} is played. What does this player choose?`
+                    "Löse das Spiel über Rückwärtsinduktion in zwei Schritten.",
+                    "Solve the game by backward induction in two steps."
                   )}
                 </p>
-                {treeEx1Step === 2 && (
+
+                <h4 className="tree-phase-title">{t("Phase 1 - Letztes Teilspiel", "Phase 1 - Last subgame")}</h4>
+                <p className="hint tree-phase-prompt">
+                  {secondPlayer} {t("ist am Zug nach L. Was macht er?", "moves after L. What does this player do?")}
+                </p>
+                {treeEx1Step === 1 && (
                   <div className="actions">
-                    <button type="button" onClick={() => answerTreeEx1Phase2("L")}>
-                      L ({payoffAfterL.u1}, {payoffAfterL.u2})
+                    <button type="button" onClick={() => answerTreeEx1Phase1("X")}>
+                      X ({treeEx1Game.payoffLX.u1}, {treeEx1Game.payoffLX.u2})
                     </button>
-                    <button type="button" onClick={() => answerTreeEx1Phase2("R")}>
-                      R ({treeEx1Game.payoffR.u1}, {treeEx1Game.payoffR.u2})
+                    <button type="button" onClick={() => answerTreeEx1Phase1("Y")}>
+                      Y ({treeEx1Game.payoffLY.u1}, {treeEx1Game.payoffLY.u2})
                     </button>
                   </div>
                 )}
-                {treeEx1Phase2Choice && treeEx1Step === 3 && (
-                  <p className="hint">
-                    {t("Gewählte Aktion:", "Chosen action:")} <code>{treeEx1Phase2Choice}</code>
-                  </p>
+                {treeEx1Phase1Feedback && (
+                  <div className={`feedback-box feedback-card ${treeEx1Phase1FeedbackType}`}>
+                    <strong>{treeEx1Phase1FeedbackType === "success" ? t("Richtig", "Correct") : t("Nicht korrekt", "Not correct")}</strong>
+                    <p>{treeEx1Phase1Feedback}</p>
+                  </div>
                 )}
-                {treeEx1Phase2Feedback && (
-                  <div className={`feedback-box feedback-card ${treeEx1Phase2FeedbackType}`}>
-                    <strong>{treeEx1Phase2FeedbackType === "success" ? t("Richtig", "Correct") : t("Nicht korrekt", "Not correct")}</strong>
-                    <p>{treeEx1Phase2Feedback}</p>
+                {treeEx1Step >= 2 && (
+                  <div className="tree-phase2-block">
+                    <h4 className="tree-phase2-title">{t("Phase 2 - Antizipation", "Phase 2 - Anticipation")}</h4>
+                    <p className="hint tree-phase2-prompt">
+                      {firstPlayer}{" "}
+                      {t(
+                        `weiß, dass nach L ${treeEx1Game.p2Action} gespielt wird. Was wählt er?`,
+                        `knows that after L, ${treeEx1Game.p2Action} is played. What does this player choose?`
+                      )}
+                    </p>
+                    {treeEx1Step === 2 && (
+                      <div className="actions">
+                        <button type="button" onClick={() => answerTreeEx1Phase2("L")}>
+                          L ({payoffAfterL.u1}, {payoffAfterL.u2})
+                        </button>
+                        <button type="button" onClick={() => answerTreeEx1Phase2("R")}>
+                          R ({treeEx1Game.payoffR.u1}, {treeEx1Game.payoffR.u2})
+                        </button>
+                      </div>
+                    )}
+                    {treeEx1Phase2Feedback && (
+                      <div className={`feedback-box feedback-card ${treeEx1Phase2FeedbackType}`}>
+                        <strong>{treeEx1Phase2FeedbackType === "success" ? t("Richtig", "Correct") : t("Nicht korrekt", "Not correct")}</strong>
+                        <p>{treeEx1Phase2Feedback}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {treeEx1Step >= 3 && (
+                  <div className="notation-box tree-result-box">
+                    <h4>{t("Ergebnis", "Result")}</h4>
+                    <p className="hint">{t("Das ist das teilspielperfekte Gleichgewicht:", "This is the subgame-perfect equilibrium:")}</p>
+                    <p>
+                      <code>({treeEx1Game.p1Action} ; {treeEx1Game.p2Action} nach L)</code>
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="hint">
+                  {t(
+                    "Wähle exakt alle Strategieprofile aus, die ein teilspielperfektes Gleichgewicht sind.",
+                    "Select exactly all strategy profiles that are subgame-perfect equilibria."
+                  )}
+                </p>
+                <div className="choice-list">
+                  {treeEx1ProfileOptions.map((option) => (
+                    <label key={option.id} className="choice-item checkbox-item">
+                      <input
+                        type="checkbox"
+                        checked={treeEx1HardChoices.includes(option.id)}
+                        onChange={() => toggleTreeEx1HardChoice(option.id)}
+                      />
+                      <span><code>({option.p1}; {option.p2} {t("nach L", "after L")})</code></span>
+                    </label>
+                  ))}
+                </div>
+                <div className="actions">
+                  <button type="button" onClick={checkTreeEx1Hard}>
+                    {t("SPE prüfen", "Check SPE")}
+                  </button>
+                </div>
+                {treeEx1HardFeedback && (
+                  <div className={`feedback-box feedback-card ${treeEx1HardFeedbackType}`}>
+                    <strong>{treeEx1HardFeedbackType === "success" ? t("Richtig", "Correct") : t("Hinweis", "Hint")}</strong>
+                    <p>{treeEx1HardFeedback}</p>
                   </div>
                 )}
               </>
             )}
-
-            {treeEx1Step >= 3 && (
-              <div className="notation-box">
-                <h4>{t("Phase 3 - Ergebnis", "Phase 3 - Result")}</h4>
-                <p className="hint">{t("Das ist das teilspielperfekte Gleichgewicht:", "This is the subgame-perfect equilibrium:")}</p>
-                <p>
-                  <code>({treeEx1Game.p1Action} ; {treeEx1Game.p2Action} nach L)</code>
-                </p>
-              </div>
-            )}
           </article>
         </div>
         <div className="actions">
-          <button
-            type="button"
-            onClick={() => {
-              resetTreeEx2();
-              setTreePage("ex2");
-            }}
-          >
-            {t("Zur Übung 2", "Go to exercise 2")}
-          </button>
-          <button type="button" onClick={() => setTreePage("toc")}>{t("Zurück zur Inhaltsseite", "Back to overview")}</button>
+          {treeEx1ActiveLevel === 0 ? (
+            <>
+              <button type="button" onClick={() => setTreePage("toc")}>{t("Zurück", "Back")}</button>
+              <button
+                type="button"
+                onClick={() => {
+                  resetTreeEx2();
+                  setTreePage("ex2");
+                }}
+              >
+                {t("Weiter zu Übung 2", "Next to exercise 2")}
+              </button>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={() => setTreePage("toc")}>{t("Zurück", "Back")}</button>
+              <button
+                type="button"
+                onClick={() => {
+                  resetTreeEx2();
+                  setTreePage("ex2");
+                }}
+              >
+                {t("Weiter zu Übung 2", "Next to exercise 2")}
+              </button>
+            </>
+          )}
         </div>
       </section>
     );

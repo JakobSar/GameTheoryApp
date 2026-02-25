@@ -391,6 +391,46 @@ button:disabled {
   color: #4b5f53;
 }
 
+.tree-easy-intro {
+  margin-top: 0;
+  margin-bottom: 0.45rem;
+}
+
+.tree-easy-heading {
+  margin-top: 0.1rem;
+  margin-bottom: 0.2rem;
+}
+
+.tree-phase-title {
+  margin-top: 0.15rem;
+  margin-bottom: 0.2rem;
+}
+
+.tree-phase-prompt {
+  margin-top: 0.2rem;
+}
+
+.tree-phase2-block {
+  padding-top: 1.15rem;
+}
+
+.tree-phase3-block {
+  padding-top: 1.15rem;
+}
+
+.tree-phase2-title {
+  margin-top: 0;
+  margin-bottom: 0.15rem;
+}
+
+.tree-phase2-prompt {
+  margin-top: 0.15rem;
+}
+
+.tree-phase3-prompt {
+  margin-top: 0;
+}
+
 .exercise-layout .hint {
   color: var(--text);
 }
@@ -544,6 +584,59 @@ button:disabled {
   grid-template-columns: repeat(3, minmax(90px, 1fr));
 }
 
+.level-switch {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin: 0.8rem 0;
+  border: 1px solid rgba(33, 54, 42, 0.22);
+  border-radius: 12px;
+  background: rgba(191, 168, 130, 0.22);
+  overflow: hidden;
+}
+
+.level-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: calc(50% - 2px);
+  height: calc(100% - 4px);
+  border-radius: 10px;
+  background: rgba(191, 168, 130, 0.62);
+  transition: transform 180ms ease;
+  z-index: 0;
+}
+
+.level-switch-thumb.is-right {
+  transform: translateX(100%);
+}
+
+.level-switch-option {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: #1d3a2e;
+  text-align: center;
+  padding: 0.65rem 0.8rem;
+  transition: color 180ms ease;
+  white-space: normal;
+  line-height: 1.2;
+  font-size: 0.95rem;
+}
+
+.level-switch-option.active {
+  color: #f8fffd;
+}
+
+.level-switch-option:hover {
+  transform: none;
+  filter: none;
+}
+
 .choice-item {
   display: flex;
   align-items: center;
@@ -631,6 +724,26 @@ button:disabled {
 
 .notation-box h4 {
   margin: 0 0 0.45rem;
+}
+
+.tree-result-box {
+  padding: 0.75rem 0.85rem;
+}
+
+.tree-result-box h4 {
+  margin-bottom: 0.35rem;
+}
+
+.tree-result-box p {
+  margin: 0.2rem 0;
+}
+
+.tree-result-box p:last-child {
+  margin-bottom: 0;
+}
+
+.tree-result-box code {
+  font-weight: 600;
 }
 
 .feedback-box {
@@ -1167,6 +1280,23 @@ body.dark-mode .home-link {
   border-color: rgba(205, 218, 212, 0.24);
 }
 
+body.dark-mode .level-switch {
+  background: rgba(143, 122, 88, 0.2);
+  border-color: rgba(205, 218, 212, 0.24);
+}
+
+body.dark-mode .level-switch-thumb {
+  background: rgba(143, 122, 88, 0.58);
+}
+
+body.dark-mode .level-switch-option {
+  color: #dce7e2;
+}
+
+body.dark-mode .level-switch-option.active {
+  color: #f6fdfb;
+}
+
 .error {
   border-color: rgba(185, 28, 28, 0.35);
 }
@@ -1266,6 +1396,10 @@ body.dark-mode .choice-item {
 body.dark-mode .notation-box {
   background: #141d19;
   border-color: rgba(232, 238, 234, 0.18);
+}
+
+body.dark-mode .tree-result-box code {
+  color: #e9f2ed;
 }
 
 body.dark-mode .bayes-prior-card {
