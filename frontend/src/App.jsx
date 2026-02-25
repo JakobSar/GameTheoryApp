@@ -1170,17 +1170,14 @@ function App() {
       return "de";
     }
     const storedLang = window.localStorage.getItem("gt-lang");
-    return storedLang === "en" ? "en" : "de";
+    if (storedLang === "de" || storedLang === "en") {
+      return storedLang;
+    }
+    const systemLang = (window.navigator?.language || "").toLowerCase();
+    return systemLang.startsWith("de") ? "de" : "en";
   });
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window === "undefined") {
-      return false;
-    }
-    const storedTheme = window.localStorage.getItem("gt-theme");
-    if (storedTheme === "dark") {
-      return true;
-    }
-    if (storedTheme === "light") {
       return false;
     }
     return Boolean(window.matchMedia?.("(prefers-color-scheme: dark)").matches);
@@ -1363,7 +1360,6 @@ function App() {
   useEffect(() => {
     document.body.classList.toggle("dark-mode", isDarkMode);
     document.documentElement.classList.toggle("dark-mode", isDarkMode);
-    window.localStorage.setItem("gt-theme", isDarkMode ? "dark" : "light");
     return () => {
       document.body.classList.remove("dark-mode");
       document.documentElement.classList.remove("dark-mode");
