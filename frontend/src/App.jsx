@@ -690,16 +690,11 @@ function payoffAt(game, row, col) {
   return game.payoffs.find((cell) => cell.row === row && cell.col === col);
 }
 
-function NormalGameTable({ game, rowLabel = "Spieler 1", colLabel = "Spieler 2", autoScale = true }) {
+function useMatrixAutoScale(autoScale, dependencies = []) {
   const wrapRef = useRef(null);
-  const scaleShellRef = useRef(null);
   const tableRef = useRef(null);
   const [tableScale, setTableScale] = useState(1);
   const [scaledHeight, setScaledHeight] = useState(null);
-
-  if (!game) {
-    return <p className="hint">Kein Spiel geladen.</p>;
-  }
 
   useEffect(() => {
     if (!autoScale) {
@@ -714,9 +709,9 @@ function NormalGameTable({ game, rowLabel = "Spieler 1", colLabel = "Spieler 2",
       return undefined;
     }
 
+    let frameId = 0;
     const updateScale = () => {
-      const safetyWidth = 2;
-      const availableWidth = Math.max(0, wrapEl.clientWidth - safetyWidth);
+      const availableWidth = Math.max(0, wrapEl.clientWidth - 1);
       const naturalWidth = tableEl.scrollWidth;
       const naturalHeight = tableEl.scrollHeight;
       if (!availableWidth || !naturalWidth) {
@@ -724,17 +719,51 @@ function NormalGameTable({ game, rowLabel = "Spieler 1", colLabel = "Spieler 2",
         setScaledHeight(null);
         return;
       }
-      const nextScale = naturalWidth > availableWidth ? Math.max(0.64, availableWidth / naturalWidth) : 1;
-      const nextHeight = nextScale < 1 ? Math.ceil(naturalHeight * nextScale) + 14 : null;
-      setTableScale((prev) => (Math.abs(prev - nextScale) < 0.004 ? prev : nextScale));
+
+      const rawScale = naturalWidth > availableWidth ? availableWidth / naturalWidth : 1;
+      const nextScale = Math.min(1, Math.max(0.64, rawScale));
+      const nextHeight = nextScale < 0.999 ? Math.ceil(naturalHeight * nextScale) + 10 : null;
+
+      setTableScale((prev) => (Math.abs(prev - nextScale) < 0.002 ? prev : nextScale));
       setScaledHeight((prev) => (prev === nextHeight ? prev : nextHeight));
     };
 
-    updateScale();
-    return undefined;
-  }, [autoScale, game, rowLabel, colLabel]);
+    const requestUpdate = () => {
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+      frameId = requestAnimationFrame(updateScale);
+    };
+
+    requestUpdate();
+
+    let resizeObserver;
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(requestUpdate);
+      resizeObserver.observe(wrapEl);
+      resizeObserver.observe(tableEl);
+    }
+    window.addEventListener("resize", requestUpdate);
+
+    return () => {
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+      window.removeEventListener("resize", requestUpdate);
+      resizeObserver?.disconnect();
+    };
+  }, [autoScale, ...dependencies]);
 
   const useScale = autoScale && tableScale < 0.999;
+  return { wrapRef, tableRef, tableScale, scaledHeight, useScale };
+}
+
+function NormalGameTable({ game, rowLabel = "Spieler 1", colLabel = "Spieler 2", autoScale = true }) {
+  const { wrapRef, tableRef, tableScale, scaledHeight, useScale } = useMatrixAutoScale(autoScale, [game, rowLabel, colLabel]);
+
+  if (!game) {
+    return <p className="hint">Kein Spiel geladen.</p>;
+  }
   const shortRowLabels = game.rows.every((r) => r.length <= 3);
   const longSideLabel = rowLabel.length > 12;
   const tableClass = [
@@ -754,7 +783,6 @@ function NormalGameTable({ game, rowLabel = "Spieler 1", colLabel = "Spieler 2",
       style={useScale && scaledHeight ? { height: `${scaledHeight}px` } : undefined}
     >
       <div
-        ref={scaleShellRef}
         className={useScale ? "matrix-scale-shell" : undefined}
         style={useScale ? { transform: `scale(${tableScale})`, transformOrigin: "top left" } : undefined}
       >
@@ -795,47 +823,7 @@ function NormalGameTable({ game, rowLabel = "Spieler 1", colLabel = "Spieler 2",
 }
 
 function StaticPayoffTable({ data, rowLabel = "Player 1", colLabel = "Player 2", autoScale = true }) {
-  const wrapRef = useRef(null);
-  const scaleShellRef = useRef(null);
-  const tableRef = useRef(null);
-  const [tableScale, setTableScale] = useState(1);
-  const [scaledHeight, setScaledHeight] = useState(null);
-
-  useEffect(() => {
-    if (!autoScale) {
-      setTableScale(1);
-      setScaledHeight(null);
-      return undefined;
-    }
-
-    const wrapEl = wrapRef.current;
-    const tableEl = tableRef.current;
-    if (!wrapEl || !tableEl) {
-      return undefined;
-    }
-
-    const updateScale = () => {
-      const safetyWidth = 2;
-      const availableWidth = Math.max(0, wrapEl.clientWidth - safetyWidth);
-      const naturalWidth = tableEl.scrollWidth;
-      const naturalHeight = tableEl.scrollHeight;
-      if (!availableWidth || !naturalWidth) {
-        setTableScale(1);
-        setScaledHeight(null);
-        return;
-      }
-
-      const nextScale = naturalWidth > availableWidth ? Math.max(0.64, availableWidth / naturalWidth) : 1;
-      const nextHeight = nextScale < 1 ? Math.ceil(naturalHeight * nextScale) + 14 : null;
-      setTableScale((prev) => (Math.abs(prev - nextScale) < 0.004 ? prev : nextScale));
-      setScaledHeight((prev) => (prev === nextHeight ? prev : nextHeight));
-    };
-
-    updateScale();
-    return undefined;
-  }, [autoScale, data, rowLabel, colLabel]);
-
-  const useScale = autoScale && tableScale < 0.999;
+  const { wrapRef, tableRef, tableScale, scaledHeight, useScale } = useMatrixAutoScale(autoScale, [data, rowLabel, colLabel]);
   const shortRowLabels = data.rows.every((r) => r.length <= 3);
   const longSideLabel = rowLabel.length > 12;
   const tableClass = [
@@ -854,7 +842,6 @@ function StaticPayoffTable({ data, rowLabel = "Player 1", colLabel = "Player 2",
       style={useScale && scaledHeight ? { height: `${scaledHeight}px` } : undefined}
     >
       <div
-        ref={scaleShellRef}
         className={useScale ? "matrix-scale-shell" : undefined}
         style={useScale ? { transform: `scale(${tableScale})`, transformOrigin: "top left" } : undefined}
       >
@@ -885,6 +872,59 @@ function StaticPayoffTable({ data, rowLabel = "Player 1", colLabel = "Player 2",
                   const key = `${r}|${c}`;
                   const value = data.payoffs[key];
                   return <td key={key}>{value ? `(${value[0]}, ${value[1]})` : "-"}</td>;
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function Ex5AnswerTable({ game, answers, onAnswerChange, choices, autoScale = true }) {
+  const { wrapRef, tableRef, tableScale, scaledHeight, useScale } = useMatrixAutoScale(autoScale, [game, answers, choices]);
+
+  if (!game) {
+    return null;
+  }
+
+  return (
+    <div
+      ref={wrapRef}
+      className={`matrix-wrap${autoScale ? " matrix-wrap-autoscale" : ""}`}
+      style={useScale && scaledHeight ? { height: `${scaledHeight}px` } : undefined}
+    >
+      <div
+        className={useScale ? "matrix-scale-shell" : undefined}
+        style={useScale ? { transform: `scale(${tableScale})`, transformOrigin: "top left" } : undefined}
+      >
+        <table ref={tableRef} className="matrix-table matrix-table-autoscale ex5-table">
+          <thead>
+            <tr>
+              <th />
+              {game.cols.map((c) => (
+                <th key={c}>{c}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {game.rows.map((r) => (
+              <tr key={r}>
+                <th>{r}</th>
+                {game.cols.map((c) => {
+                  const key = `${r}|${c}`;
+                  return (
+                    <td key={key}>
+                      <select value={answers[key] || "no"} onChange={(e) => onAnswerChange(key, e.target.value)}>
+                        {choices.map((ch) => (
+                          <option key={ch.id} value={ch.id}>
+                            {ch.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                  );
                 })}
               </tr>
             ))}
@@ -2602,7 +2642,7 @@ function App() {
                         : "tree-edge";
                     return (
                       <g key={`root-edge-${rootAction}`}>
-                        <line x1={from.x + 18} y1={from.y} x2={to.x - 22} y2={to.y} className={edgeClass} markerEnd="url(#tree-arrow-ex2)" />
+                        <line x1={from.x + 20} y1={from.y} x2={to.x - 19} y2={to.y} className={edgeClass} markerEnd="url(#tree-arrow-ex2)" />
                         <text x={(from.x + to.x) / 2} y={(from.y + to.y) / 2} className="tree-action" textAnchor="middle" dominantBaseline="middle">{rootAction}</text>
                       </g>
                     );
@@ -2620,7 +2660,7 @@ function App() {
                           : "tree-edge";
                       return (
                         <g key={`p2-edge-${nodeKey}`}>
-                          <line x1={from.x + 20} y1={from.y} x2={to.x - 20} y2={to.y} className={edgeClass} markerEnd="url(#tree-arrow-ex2)" />
+                          <line x1={from.x + 19} y1={from.y} x2={to.x - 17} y2={to.y} className={edgeClass} markerEnd="url(#tree-arrow-ex2)" />
                           <text x={(from.x + to.x) / 2} y={(from.y + to.y) / 2} className="tree-action" textAnchor="middle" dominantBaseline="middle">{p2Action}</text>
                         </g>
                       );
@@ -2637,7 +2677,7 @@ function App() {
                           : "tree-edge";
                       return (
                         <g key={`p1-edge-${nodeKey}-${p1Action}`}>
-                          <line x1={from.x + 18} y1={from.y} x2={to.x - 24} y2={to.y} className={edgeClass} markerEnd="url(#tree-arrow-ex2)" />
+                          <line x1={from.x + 17} y1={from.y} x2={to.x - 9} y2={to.y} className={edgeClass} markerEnd="url(#tree-arrow-ex2)" />
                           <text x={(from.x + to.x) / 2} y={(from.y + to.y) / 2} className="tree-action" textAnchor="middle" dominantBaseline="middle">{p1Action}</text>
                         </g>
                       );
@@ -3400,40 +3440,12 @@ function App() {
               <p className="hint">{t("Wählen Sie für jede Strategiekombination, ob es sich dabei um ein striktes oder nicht striktes Nash GG handelt.", "For each strategy combination, choose whether it is a strict or non-strict Nash equilibrium.")}</p>
               {ex5Data && (
                 <>
-                  <div className="matrix-wrap">
-                    <table className="matrix-table ex5-table">
-                      <thead>
-                        <tr>
-                          <th />
-                          {ex5Data.game.cols.map((c) => (
-                            <th key={c}>{c}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {ex5Data.game.rows.map((r) => (
-                          <tr key={r}>
-                            <th>{r}</th>
-                            {ex5Data.game.cols.map((c) => {
-                              const key = `${r}|${c}`;
-                              return (
-                                <td key={key}>
-                                  <select
-                                    value={ex5Answers[key] || "no"}
-                                    onChange={(e) => setEx5Answers((prev) => ({ ...prev, [key]: e.target.value }))}
-                                  >
-                                    {ex5Data.cell_choices.map((ch) => (
-                                      <option key={ch.id} value={ch.id}>{ch.label}</option>
-                                    ))}
-                                  </select>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <Ex5AnswerTable
+                    game={ex5Data.game}
+                    answers={ex5Answers}
+                    choices={ex5Data.cell_choices}
+                    onAnswerChange={(key, value) => setEx5Answers((prev) => ({ ...prev, [key]: value }))}
+                  />
                   <button type="button" onClick={checkEx5} disabled={legacyLoading}>{t("Antwort prüfen", "Check answer")}</button>
                   {ex5Feedback && (
                     <div className={`feedback-box feedback-card ${ex5FeedbackType}`}>
