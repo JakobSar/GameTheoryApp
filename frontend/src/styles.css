@@ -17,9 +17,18 @@
 
 html,
 body {
-  overscroll-behavior-y: auto;
   overflow-x: hidden;
+}
+
+html {
+  overscroll-behavior-y: none;
+  overscroll-behavior-x: none;
+  overscroll-behavior: none;
   overflow-y: auto;
+}
+
+body {
+  overflow-y: visible;
 }
 
 body {
@@ -50,7 +59,10 @@ html::before {
 .page {
   max-width: 1300px;
   margin: 0 auto;
-  padding: 2rem 1rem 3rem;
+  padding-top: calc(2rem + env(safe-area-inset-top, 0px));
+  padding-right: calc(1rem + env(safe-area-inset-right, 0px));
+  padding-bottom: calc(3rem + env(safe-area-inset-bottom, 0px));
+  padding-left: calc(1rem + env(safe-area-inset-left, 0px));
 }
 
 .hero h1 {
@@ -1531,6 +1543,14 @@ body.dark-mode .impressum-toggle {
   .app-shell {
     grid-template-columns: 300px 1fr;
     align-items: start;
+  }
+
+  .side-nav {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0.6rem;
+    align-self: start;
+    height: fit-content;
   }
 
   .app-shell.nav-collapsed {

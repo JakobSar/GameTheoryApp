@@ -263,6 +263,8 @@ const SPECIAL_GAMES = [
   }
 ];
 
+const SPECIAL_QUIZ_TYPES = ["pd", "chicken", "stag", "bos", "ultimatum"];
+
 const NAV = [
   {
     title: { de: "Konzept lernen", en: "Learn a concept" },
@@ -293,6 +295,107 @@ function toNumberOrZero(value) {
 
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function buildSpecialGameQuiz(previousTypeKey = "") {
+  const pool = SPECIAL_QUIZ_TYPES.filter((key) => key !== previousTypeKey);
+  const typeKey = pool[randomInt(0, pool.length - 1)];
+
+  if (typeKey === "pd") {
+    const r = randomInt(4, 8);
+    const t = r + randomInt(1, 4);
+    const p = Math.max(1, r - randomInt(2, 4));
+    const s = Math.max(0, p - randomInt(1, 3));
+    return {
+      typeKey,
+      table: {
+        rows: ["A", "B"],
+        cols: ["X", "Y"],
+        payoffs: {
+          "A|X": [r, r],
+          "A|Y": [s, t],
+          "B|X": [t, s],
+          "B|Y": [p, p]
+        }
+      }
+    };
+  }
+
+  if (typeKey === "chicken") {
+    const r = randomInt(4, 8);
+    const t = r + randomInt(1, 3);
+    const s = Math.max(1, r - randomInt(1, 2));
+    const w = Math.max(0, s - randomInt(2, 4));
+    return {
+      typeKey,
+      table: {
+        rows: ["A", "B"],
+        cols: ["X", "Y"],
+        payoffs: {
+          "A|X": [r, r],
+          "A|Y": [s, t],
+          "B|X": [t, s],
+          "B|Y": [w, w]
+        }
+      }
+    };
+  }
+
+  if (typeKey === "stag") {
+    const a = randomInt(7, 11);
+    const d = randomInt(3, 6);
+    const c = Math.max(2, d - randomInt(1, 2));
+    const b = Math.max(0, c - randomInt(2, 3));
+    return {
+      typeKey,
+      table: {
+        rows: ["A", "B"],
+        cols: ["X", "Y"],
+        payoffs: {
+          "A|X": [a, a],
+          "A|Y": [b, c],
+          "B|X": [c, b],
+          "B|Y": [d, d]
+        }
+      }
+    };
+  }
+
+  if (typeKey === "bos") {
+    const high = randomInt(5, 9);
+    const low = randomInt(3, high - 1);
+    const off = randomInt(0, 1);
+    return {
+      typeKey,
+      table: {
+        rows: ["A", "B"],
+        cols: ["X", "Y"],
+        payoffs: {
+          "A|X": [high, low],
+          "A|Y": [off, off],
+          "B|X": [off, off],
+          "B|Y": [low, high]
+        }
+      }
+    };
+  }
+
+  const fair = randomInt(5, 8);
+  const unfairP1 = fair + randomInt(2, 4);
+  const unfairP2 = randomInt(1, Math.max(1, fair - 2));
+  return {
+    typeKey: "ultimatum",
+    table: {
+      rows: ["A", "B"],
+      cols: ["X", "Y"],
+      payoffs: {
+        "A|X": [fair, fair],
+        "A|Y": [0, 0],
+        "B|X": [unfairP1, unfairP2],
+        "B|Y": [0, 0]
+      }
+    }
+  };
 }
 
 function buildTreeEx1Game() {
@@ -1145,6 +1248,10 @@ function App() {
   const [showImpressumEmail, setShowImpressumEmail] = useState(false);
   const [showImpressumAddress, setShowImpressumAddress] = useState(false);
   const [showImpressumProject, setShowImpressumProject] = useState(false);
+  const [specialQuizData, setSpecialQuizData] = useState(() => buildSpecialGameQuiz());
+  const [specialQuizSelected, setSpecialQuizSelected] = useState("");
+  const [specialQuizFeedback, setSpecialQuizFeedback] = useState("");
+  const [specialQuizFeedbackType, setSpecialQuizFeedbackType] = useState("neutral");
   const [eliminatorGame, setEliminatorGame] = useState(() => ELIMINATOR_PRESETS[0]);
   const [eliminatorActiveRows, setEliminatorActiveRows] = useState(() => ELIMINATOR_PRESETS[0].rows);
   const [eliminatorActiveCols, setEliminatorActiveCols] = useState(() => ELIMINATOR_PRESETS[0].cols);
@@ -1286,6 +1393,54 @@ function App() {
     setEliminatorFeedbackType("neutral");
     setEliminatorShowWhy(false);
     setEliminatorShowNash(false);
+  }
+
+  function getSpecialQuizTypeLabel(typeKey) {
+    switch (typeKey) {
+      case "pd":
+        return t("Gefangenendilemma", "Prisoner's dilemma");
+      case "chicken":
+        return t("Feiglingsspiel (Chicken)", "Chicken game");
+      case "stag":
+        return t("Jagdspiel (Stag Hunt)", "Stag hunt");
+      case "bos":
+        return t("Kampf der Geschlechter", "Battle of the sexes");
+      default:
+        return t("Ultimatumspiel", "Ultimatum game");
+    }
+  }
+
+  function resetSpecialQuiz() {
+    setSpecialQuizData((prev) => buildSpecialGameQuiz(prev?.typeKey || ""));
+    setSpecialQuizSelected("");
+    setSpecialQuizFeedback("");
+    setSpecialQuizFeedbackType("neutral");
+  }
+
+  function checkSpecialQuiz() {
+    if (!specialQuizSelected) {
+      setSpecialQuizFeedbackType("warning");
+      setSpecialQuizFeedback(t("Bitte wähle zuerst einen Spieltyp aus.", "Please select a game type first."));
+      return;
+    }
+    const isCorrect = specialQuizSelected === specialQuizData.typeKey;
+    if (!isCorrect) {
+      setSpecialQuizFeedbackType("error");
+      setSpecialQuizFeedback(
+        t(
+          `Nicht korrekt. Das gezeigte Spiel ist ein ${getSpecialQuizTypeLabel(specialQuizData.typeKey)}.`,
+          `Not correct. The shown game is a ${getSpecialQuizTypeLabel(specialQuizData.typeKey)}.`
+        )
+      );
+      return;
+    }
+    setSpecialQuizFeedbackType("success");
+    setSpecialQuizFeedback(
+      t(
+        `Richtig. Das ist ein ${getSpecialQuizTypeLabel(specialQuizData.typeKey)}.`,
+        `Correct. This is a ${getSpecialQuizTypeLabel(specialQuizData.typeKey)}.`
+      )
+    );
   }
 
   function answerEliminator(answerYes) {
@@ -4637,11 +4792,19 @@ function checkTreeEx2Phase2() {
   }
 
   function renderSpecialGames() {
+    const specialQuizOptions = [
+      { key: "pd", label: t("Gefangenendilemma", "Prisoner's dilemma") },
+      { key: "chicken", label: t("Feiglingsspiel (Chicken)", "Chicken game") },
+      { key: "stag", label: t("Jagdspiel (Stag Hunt)", "Stag hunt") },
+      { key: "bos", label: t("Kampf der Geschlechter", "Battle of the sexes") },
+      { key: "ultimatum", label: t("Ultimatumspiel", "Ultimatum game") }
+    ];
+
     return (
       <>
         <section className="panel">
           <h2>Fünf besondere Spiele der Spieltheorie</h2>
-          <p className="hint">Ein Beispielspiel (Strategien, Nutzen (u₁, u₂)), die zentrale Idee und typische Ergebnisse.</p>
+          <p className="hint">Ein Beispielspiel (Strategien, Nutzen (u₁, u₂)), die zentrale Idee und typische Ergebnisse. Unten findest du dazu eine Übung.</p>
         </section>
         {SPECIAL_GAMES.map((g) => (
           <section className="panel special-card" key={g.title}>
@@ -4663,6 +4826,60 @@ function checkTreeEx2Phase2() {
             </div>
           </section>
         ))}
+
+        <section className="panel special-card">
+          <h3>{t("Übung: Spieltyp erkennen", "Exercise: identify the game type")}</h3>
+          <div className="special-row">
+            <article className="special-block">
+              <h4>{t("Spiel", "Game")}</h4>
+              <p className="hint">
+                {t(
+                  "Bestimme anhand der Matrix, welches der fünf besonderen Spiele gezeigt wird.",
+                  "Identify which of the five special games is shown based on the matrix."
+                )}
+              </p>
+              <StaticPayoffTable data={specialQuizData.table} rowLabel={t("Spieler 1", "Player 1")} colLabel={t("Spieler 2", "Player 2")} autoScale />
+            </article>
+            <article className="special-block">
+              <h4>{t("Frage", "Question")}</h4>
+              <p className="hint">{t("Um welchen Spieltyp handelt es sich?", "Which game type is this?")}</p>
+              <div className="choice-list">
+                {specialQuizOptions.map((option) => (
+                  <label key={option.key} className="choice-item">
+                    <input
+                      type="radio"
+                      name="special-game-quiz"
+                      value={option.key}
+                      checked={specialQuizSelected === option.key}
+                      onChange={(e) => {
+                        setSpecialQuizSelected(e.target.value);
+                        setSpecialQuizFeedback("");
+                        setSpecialQuizFeedbackType("neutral");
+                      }}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="actions">
+                <button type="button" onClick={checkSpecialQuiz}>
+                  {t("Antwort prüfen", "Check answer")}
+                </button>
+              </div>
+              {specialQuizFeedback && (
+                <div className={`feedback-box feedback-card ${specialQuizFeedbackType}`}>
+                  <strong>{specialQuizFeedbackType === "success" ? t("Richtig", "Correct") : t("Hinweis", "Hint")}</strong>
+                  <p>{specialQuizFeedback}</p>
+                </div>
+              )}
+            </article>
+          </div>
+          <div className="actions">
+            <button type="button" onClick={resetSpecialQuiz}>
+              {t("Neues Spiel", "New game")}
+            </button>
+          </div>
+        </section>
       </>
     );
   }
