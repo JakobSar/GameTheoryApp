@@ -695,9 +695,11 @@ function useMatrixAutoScale(autoScale, dependencies = []) {
   const tableRef = useRef(null);
   const [tableScale, setTableScale] = useState(1);
   const [scaledHeight, setScaledHeight] = useState(null);
+  const isFirefox = typeof navigator !== "undefined" && /firefox/i.test(navigator.userAgent);
+  const shouldAutoScale = autoScale && !isFirefox;
 
   useEffect(() => {
-    if (!autoScale) {
+    if (!shouldAutoScale) {
       setTableScale(1);
       setScaledHeight(null);
       return undefined;
@@ -751,14 +753,14 @@ function useMatrixAutoScale(autoScale, dependencies = []) {
       window.removeEventListener("resize", requestUpdate);
       resizeObserver?.disconnect();
     };
-  }, [autoScale, ...dependencies]);
+  }, [shouldAutoScale, ...dependencies]);
 
-  const useScale = autoScale && tableScale < 0.999;
-  return { wrapRef, tableRef, tableScale, scaledHeight, useScale };
+  const useScale = shouldAutoScale && tableScale < 0.999;
+  return { wrapRef, tableRef, tableScale, scaledHeight, useScale, shouldAutoScale };
 }
 
 function NormalGameTable({ game, rowLabel = "Spieler 1", colLabel = "Spieler 2", autoScale = true }) {
-  const { wrapRef, tableRef, tableScale, scaledHeight, useScale } = useMatrixAutoScale(autoScale, [game, rowLabel, colLabel]);
+  const { wrapRef, tableRef, tableScale, scaledHeight, useScale, shouldAutoScale } = useMatrixAutoScale(autoScale, [game, rowLabel, colLabel]);
 
   if (!game) {
     return <p className="hint">Kein Spiel geladen.</p>;
@@ -767,7 +769,7 @@ function NormalGameTable({ game, rowLabel = "Spieler 1", colLabel = "Spieler 2",
   const longSideLabel = rowLabel.length > 12;
   const tableClass = [
     "matrix-table",
-    autoScale ? "matrix-table-autoscale" : "",
+    shouldAutoScale ? "matrix-table-autoscale" : "",
     game.rows.length === 2 ? "matrix-table-two-rows" : "",
     shortRowLabels ? "compact-row-labels" : "",
     longSideLabel ? "long-side-label" : ""
@@ -778,7 +780,7 @@ function NormalGameTable({ game, rowLabel = "Spieler 1", colLabel = "Spieler 2",
   return (
     <div
       ref={wrapRef}
-      className={`matrix-wrap${autoScale ? " matrix-wrap-autoscale" : ""}`}
+      className={`matrix-wrap${shouldAutoScale ? " matrix-wrap-autoscale" : ""}`}
       style={useScale && scaledHeight ? { height: `${scaledHeight}px` } : undefined}
     >
       <div
@@ -822,12 +824,12 @@ function NormalGameTable({ game, rowLabel = "Spieler 1", colLabel = "Spieler 2",
 }
 
 function StaticPayoffTable({ data, rowLabel = "Player 1", colLabel = "Player 2", autoScale = true }) {
-  const { wrapRef, tableRef, tableScale, scaledHeight, useScale } = useMatrixAutoScale(autoScale, [data, rowLabel, colLabel]);
+  const { wrapRef, tableRef, tableScale, scaledHeight, useScale, shouldAutoScale } = useMatrixAutoScale(autoScale, [data, rowLabel, colLabel]);
   const shortRowLabels = data.rows.every((r) => r.length <= 3);
   const longSideLabel = rowLabel.length > 12;
   const tableClass = [
     "matrix-table",
-    autoScale ? "matrix-table-autoscale" : "",
+    shouldAutoScale ? "matrix-table-autoscale" : "",
     data.rows.length === 2 ? "matrix-table-two-rows" : "",
     shortRowLabels ? "compact-row-labels" : "",
     longSideLabel ? "long-side-label" : ""
@@ -837,7 +839,7 @@ function StaticPayoffTable({ data, rowLabel = "Player 1", colLabel = "Player 2",
   return (
     <div
       ref={wrapRef}
-      className={`matrix-wrap${autoScale ? " matrix-wrap-autoscale" : ""}`}
+      className={`matrix-wrap${shouldAutoScale ? " matrix-wrap-autoscale" : ""}`}
       style={useScale && scaledHeight ? { height: `${scaledHeight}px` } : undefined}
     >
       <div
@@ -882,7 +884,7 @@ function StaticPayoffTable({ data, rowLabel = "Player 1", colLabel = "Player 2",
 }
 
 function Ex5AnswerTable({ game, answers, onAnswerChange, choices, autoScale = true }) {
-  const { wrapRef, tableRef, tableScale, scaledHeight, useScale } = useMatrixAutoScale(autoScale, [game, answers, choices]);
+  const { wrapRef, tableRef, tableScale, scaledHeight, useScale, shouldAutoScale } = useMatrixAutoScale(autoScale, [game, answers, choices]);
 
   if (!game) {
     return null;
@@ -891,14 +893,14 @@ function Ex5AnswerTable({ game, answers, onAnswerChange, choices, autoScale = tr
   return (
     <div
       ref={wrapRef}
-      className={`matrix-wrap${autoScale ? " matrix-wrap-autoscale" : ""}`}
+      className={`matrix-wrap${shouldAutoScale ? " matrix-wrap-autoscale" : ""}`}
       style={useScale && scaledHeight ? { height: `${scaledHeight}px` } : undefined}
     >
       <div
         className={useScale ? "matrix-scale-shell" : undefined}
         style={useScale ? { transform: `scale(${tableScale})`, transformOrigin: "top left" } : undefined}
       >
-        <table ref={tableRef} className="matrix-table matrix-table-autoscale ex5-table">
+        <table ref={tableRef} className={`matrix-table ${shouldAutoScale ? "matrix-table-autoscale " : ""}ex5-table`}>
           <thead>
             <tr>
               <th />
