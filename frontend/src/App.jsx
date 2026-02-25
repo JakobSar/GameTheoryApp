@@ -741,7 +741,6 @@ function useMatrixAutoScale(autoScale, dependencies = []) {
     if (typeof ResizeObserver !== "undefined") {
       resizeObserver = new ResizeObserver(requestUpdate);
       resizeObserver.observe(wrapEl);
-      resizeObserver.observe(tableEl);
     }
     window.addEventListener("resize", requestUpdate);
 
@@ -1120,9 +1119,11 @@ function App() {
 
   useEffect(() => {
     document.body.classList.toggle("dark-mode", isDarkMode);
+    document.documentElement.classList.toggle("dark-mode", isDarkMode);
     window.localStorage.setItem("gt-theme", isDarkMode ? "dark" : "light");
     return () => {
       document.body.classList.remove("dark-mode");
+      document.documentElement.classList.remove("dark-mode");
     };
   }, [isDarkMode]);
 
