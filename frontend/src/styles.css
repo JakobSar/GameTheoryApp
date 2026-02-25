@@ -696,6 +696,49 @@ body.dark-mode .hint {
   overflow-x: auto;
   gap: 1rem;
   padding-bottom: 0.2rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.intro-grid-one-line::-webkit-scrollbar {
+  display: none;
+}
+
+.h-scroll-shell {
+  position: relative;
+}
+
+.h-scroll-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(29, 32, 28, 0.22);
+  background: rgba(255, 253, 247, 0.55);
+  color: #244236;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  line-height: 1;
+  padding: 0;
+  z-index: 3;
+  backdrop-filter: blur(2px);
+}
+
+.h-scroll-arrow.left {
+  left: 0.28rem;
+}
+
+.h-scroll-arrow.right {
+  right: 0.28rem;
+}
+
+.h-scroll-arrow:hover {
+  transform: translateY(-50%);
+  filter: none;
 }
 
 .intro-grid-3 {
@@ -1189,6 +1232,22 @@ body.dark-mode .hint {
   background: #f4f7f4;
   color: #1d3a2e;
   border: 1px solid rgba(33, 54, 42, 0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+}
+
+.exercise-link-title {
+  display: block;
+}
+
+.exercise-link-meta {
+  display: block;
+  font-size: 0.78rem;
+  color: #4f6358;
+  line-height: 1.25;
+  opacity: 0.95;
 }
 
 .exercise-layout {
@@ -1266,6 +1325,10 @@ body.dark-mode .hint {
   margin-bottom: 0.45rem;
 }
 
+.home-card {
+  width: 100%;
+}
+
 .home-card p {
   margin-top: 0;
   color: var(--muted);
@@ -1281,6 +1344,20 @@ body.dark-mode .hint {
   background: #f3f8f5;
   color: #1d3a2e;
   border: 1px solid rgba(33, 54, 42, 0.22);
+}
+
+.home-link.split-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.home-link-count {
+  margin-left: auto;
+  white-space: nowrap;
+  opacity: 0.88;
+  font-size: 0.92em;
 }
 
 body.dark-mode .home-hero {
@@ -1320,6 +1397,12 @@ body.dark-mode .level-switch-option {
 
 body.dark-mode .level-switch-option.active {
   color: #f6fdfb;
+}
+
+body.dark-mode .h-scroll-arrow {
+  border-color: rgba(232, 238, 234, 0.24);
+  background: rgba(15, 21, 19, 0.5);
+  color: #dce7e2;
 }
 
 .error {
@@ -1396,6 +1479,10 @@ body.dark-mode .exercise-link {
   background: #18221e;
   color: #dce7e2;
   border-color: rgba(205, 218, 212, 0.24);
+}
+
+body.dark-mode .exercise-link-meta {
+  color: #bdd5c8;
 }
 
 body.dark-mode .nav-item.active {
@@ -1593,7 +1680,7 @@ body.dark-mode .impressum-toggle {
   }
 
   .home-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .home-card-wide {

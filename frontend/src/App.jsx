@@ -98,6 +98,7 @@ function buildEliminatorPresets() {
 }
 
 const ELIMINATOR_PRESETS = buildEliminatorPresets();
+const EXERCISE_PROGRESS_KEY = "gt-exercise-progress-v1";
 
 const INTRO_BAYES_T1 = {
   rows: ["A", "B"],
@@ -548,6 +549,25 @@ function computeTreeEx2RootBestWithIndifference(game, p2Choices) {
     bestRoots.forEach((rootAction) => bestRootSet.add(rootAction));
   });
   return TREE_EX2_ROOT_ACTIONS.filter((rootAction) => bestRootSet.has(rootAction));
+}
+
+function loadExerciseProgress() {
+  if (typeof window === "undefined") {
+    return {};
+  }
+  try {
+    const raw = window.localStorage.getItem(EXERCISE_PROGRESS_KEY);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    return parsed;
+  } catch {
+    return {};
+  }
 }
 
 function buildTreeEx2Game() {
@@ -1164,6 +1184,81 @@ function LevelSwitch({ value, onChange, leftLabel, rightLabel, ariaLabel }) {
   );
 }
 
+function HorizontalArrowScroller({ className = "", children, leftAriaLabel, rightAriaLabel }) {
+  const trackRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return undefined;
+
+    let frameId = 0;
+    const updateScrollState = () => {
+      const maxScrollLeft = Math.max(0, el.scrollWidth - el.clientWidth);
+      setCanScrollLeft(el.scrollLeft > 4);
+      setCanScrollRight(el.scrollLeft < maxScrollLeft - 4);
+    };
+
+    const scheduleUpdate = () => {
+      if (frameId) cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(updateScrollState);
+    };
+
+    scheduleUpdate();
+    el.addEventListener("scroll", scheduleUpdate, { passive: true });
+    window.addEventListener("resize", scheduleUpdate);
+
+    let resizeObserver;
+    if (typeof ResizeObserver !== "undefined") {
+      resizeObserver = new ResizeObserver(scheduleUpdate);
+      resizeObserver.observe(el);
+    }
+
+    return () => {
+      if (frameId) cancelAnimationFrame(frameId);
+      el.removeEventListener("scroll", scheduleUpdate);
+      window.removeEventListener("resize", scheduleUpdate);
+      resizeObserver?.disconnect();
+    };
+  }, []);
+
+  function scrollByDirection(direction) {
+    const el = trackRef.current;
+    if (!el) return;
+    const scrollDelta = Math.max(240, Math.floor(el.clientWidth * 0.75));
+    el.scrollBy({ left: direction * scrollDelta, behavior: "smooth" });
+  }
+
+  return (
+    <div className="h-scroll-shell">
+      <div ref={trackRef} className={className}>
+        {children}
+      </div>
+      {canScrollLeft && (
+        <button
+          type="button"
+          className="h-scroll-arrow left"
+          aria-label={leftAriaLabel}
+          onClick={() => scrollByDirection(-1)}
+        >
+          &#8249;
+        </button>
+      )}
+      {canScrollRight && (
+        <button
+          type="button"
+          className="h-scroll-arrow right"
+          aria-label={rightAriaLabel}
+          onClick={() => scrollByDirection(1)}
+        >
+          &#8250;
+        </button>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [uiLang, setUiLang] = useState(() => {
     if (typeof window === "undefined") {
@@ -1312,6 +1407,7 @@ function App() {
   const [eliminatorShowWhy, setEliminatorShowWhy] = useState(false);
   const [eliminatorShowNash, setEliminatorShowNash] = useState(false);
   const [backwardStep, setBackwardStep] = useState(0);
+  const [exerciseProgress, setExerciseProgress] = useState(() => loadExerciseProgress());
 
   const endpoint = useMemo(() => {
     if (!apiBase.trim()) {
@@ -1371,6 +1467,63 @@ function App() {
     document.documentElement.lang = uiLang;
     window.localStorage.setItem("gt-lang", uiLang);
   }, [uiLang]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(EXERCISE_PROGRESS_KEY, JSON.stringify(exerciseProgress));
+    } catch {
+      // Ignore storage failures in private mode / restricted environments.
+    }
+  }, [exerciseProgress]);
+
+  function recordExerciseAttempt(exerciseKey, { correct, lastState, solved }) {
+    setExerciseProgress((prev) => {
+      const current = prev[exerciseKey] || { attempts: 0, correct: 0, solved: false, lastState: "", updatedAt: 0 };
+      const nextAttempts = current.attempts + 1;
+      const nextCorrect = current.correct + (correct ? 1 : 0);
+      const nextSolved = current.solved || (typeof solved === "boolean" ? solved : !!correct);
+      return {
+        ...prev,
+        [exerciseKey]: {
+          attempts: nextAttempts,
+          correct: nextCorrect,
+          solved: nextSolved,
+          lastState: lastState || "",
+          updatedAt: Date.now()
+        }
+      };
+    });
+  }
+
+  function buildProgressMeta(progressKeys) {
+    const keys = Array.isArray(progressKeys) ? progressKeys : [progressKeys];
+    const entries = keys.map((key) => exerciseProgress[key]).filter(Boolean);
+    if (!entries.length) {
+      return t("Offen", "Open");
+    }
+
+    const attempts = entries.reduce((sum, entry) => sum + (entry.attempts || 0), 0);
+    const correct = entries.reduce((sum, entry) => sum + (entry.correct || 0), 0);
+    const errorRate = attempts > 0 ? Math.round(((attempts - correct) / attempts) * 100) : null;
+    const solvedCount = entries.reduce((sum, entry) => sum + (entry.solved ? 1 : 0), 0);
+    const solvedText = keys.length === 1
+      ? (entries[0].solved ? t("Gelöst", "Solved") : t("Offen", "Open"))
+      : t(`${solvedCount}/${keys.length} gelöst`, `${solvedCount}/${keys.length} solved`);
+    if (solvedCount === 0) {
+      return solvedText;
+    }
+    const rateText = errorRate == null ? "–" : `${errorRate}%`;
+    return t(
+      `${solvedText} · Fehlerquote: ${rateText}`,
+      `${solvedText} · Error rate: ${rateText}`
+    );
+  }
+
+  function solvedCountLabel(progressKeys) {
+    const keys = Array.isArray(progressKeys) ? progressKeys : [progressKeys];
+    const solved = keys.reduce((sum, key) => sum + (exerciseProgress[key]?.solved ? 1 : 0), 0);
+    return t(`(${solved}/${keys.length} gelöst)`, `(${solved}/${keys.length} solved)`);
+  }
 
   function apiUrl(path) {
     if (!apiBase.trim()) {
@@ -1481,6 +1634,11 @@ function App() {
           `Not correct. The shown game is a ${getSpecialQuizTypeLabel(specialQuizData.typeKey)}.`
         )
       );
+      recordExerciseAttempt("special_quiz", {
+        correct: false,
+        lastState: specialQuizSelected,
+        solved: false
+      });
       return;
     }
     setSpecialQuizFeedbackType("success");
@@ -1490,6 +1648,11 @@ function App() {
         `Correct. This is a ${getSpecialQuizTypeLabel(specialQuizData.typeKey)}.`
       )
     );
+    recordExerciseAttempt("special_quiz", {
+      correct: true,
+      lastState: specialQuizSelected,
+      solved: true
+    });
   }
 
   function answerEliminator(answerYes) {
@@ -1655,6 +1818,7 @@ function App() {
       }
       setEx1Feedback(`${body.feedback}`);
       setEx1FeedbackType(body.correct ? "success" : "error");
+      recordExerciseAttempt("normal_ex1", { correct: body.correct, lastState: ex1Selected });
     } catch (err) {
       setError(err.message || "exercise check failed");
     } finally {
@@ -1705,6 +1869,7 @@ function App() {
       }
       setEx2Feedback(`${body.feedback}\n${body.explanation}`);
       setEx2FeedbackType(body.correct ? "success" : "error");
+      recordExerciseAttempt("normal_ex2", { correct: body.correct, lastState: ex2Selected });
     } catch (err) {
       setError(err.message || "exercise check failed");
     } finally {
@@ -1755,6 +1920,7 @@ function App() {
       }
       setEx3Feedback(`${body.feedback}\n${body.explanation}`);
       setEx3FeedbackType(body.correct ? "success" : "error");
+      recordExerciseAttempt("normal_ex3", { correct: body.correct, lastState: ex3Selected });
     } catch (err) {
       setError(err.message || "exercise check failed");
     } finally {
@@ -1805,6 +1971,7 @@ function App() {
       }
       setEx4Feedback(`${body.feedback}\n${body.explanation}`);
       setEx4FeedbackType(body.correct ? "success" : "error");
+      recordExerciseAttempt("normal_ex4", { correct: body.correct, lastState: ex4Selected.join(", ") || "-" });
     } catch (err) {
       setError(err.message || "exercise check failed");
     } finally {
@@ -1864,6 +2031,11 @@ function App() {
       }
       setEx5Feedback(body.feedback);
       setEx5FeedbackType(body.correct ? "success" : (body.missing > 0 ? "warning" : "error"));
+      recordExerciseAttempt("normal_ex5", {
+        correct: !!body.correct,
+        lastState: `cells=${answers.length}`,
+        solved: !!body.correct
+      });
     } catch (err) {
       setError(err.message || "exercise check failed");
     } finally {
@@ -1914,6 +2086,7 @@ function App() {
       }
       setEx6Feedback(body.feedback);
       setEx6FeedbackType(body.correct ? "success" : "error");
+      recordExerciseAttempt("normal_ex6", { correct: body.correct, lastState: ex6Selected });
     } catch (err) {
       setError(err.message || "exercise check failed");
     } finally {
@@ -1964,6 +2137,7 @@ function App() {
       }
       setEx7Feedback(`${body.feedback}\n${body.details}`);
       setEx7FeedbackType(body.correct ? "success" : "error");
+      recordExerciseAttempt("normal_ex7", { correct: body.correct, lastState: ex7Selected.join(", ") || "-" });
     } catch (err) {
       setError(err.message || "exercise check failed");
     } finally {
@@ -2014,6 +2188,7 @@ function App() {
       }
       setEx8Feedback(`${body.feedback}\n${body.details}`);
       setEx8FeedbackType(body.correct ? "success" : "error");
+      recordExerciseAttempt("normal_ex8", { correct: body.correct, lastState: ex8Selected.join(", ") || "-" });
     } catch (err) {
       setError(err.message || "exercise check failed");
     } finally {
@@ -2065,6 +2240,7 @@ function App() {
       }
       setEx9Feedback(body.feedback);
       setEx9FeedbackType(body.correct ? "success" : "error");
+      recordExerciseAttempt("normal_ex9", { correct: body.correct, lastState: ex9Selected });
     } catch (err) {
       setError(err.message || "exercise check failed");
     } finally {
@@ -2116,6 +2292,7 @@ function App() {
       const correctText = body.correct_choice_ids?.length ? body.correct_choice_ids.join(", ") : "keines";
       setBayesEx1Feedback(`${body.feedback}\n${legacyLang === "de" ? "Richtig ist" : "Correct is"}: ${correctText}`);
       setBayesEx1FeedbackType(body.correct ? "success" : "error");
+      recordExerciseAttempt("bayes_ex1", { correct: body.correct, lastState: bayesEx1Selected.join(", ") || "-" });
     } catch (err) {
       setError(err.message || "exercise check failed");
     } finally {
@@ -2174,6 +2351,7 @@ function App() {
       setBayesEx2aFeedbackType(body.correct ? "success" : "error");
       setBayesEx2aIntermediate(body.intermediate || "");
       setBayesEx2aSubmitted(true);
+      recordExerciseAttempt("bayes_ex2a", { correct: body.correct, lastState: bayesEx2aSelected });
     } catch (err) {
       setError(err.message || "exercise check failed");
     } finally {
@@ -2226,6 +2404,7 @@ function App() {
       }
       setBayesEx2bFeedback(`${body.feedback}\n${body.details}`);
       setBayesEx2bFeedbackType(body.correct ? "success" : "error");
+      recordExerciseAttempt("bayes_ex2b", { correct: body.correct, lastState: bayesEx2bSelected.join(", ") || "-" });
     } catch (err) {
       setError(err.message || "exercise check failed");
     } finally {
@@ -2577,6 +2756,11 @@ function App() {
           "Not correct. Select exactly all SPE profiles."
         )
       );
+      recordExerciseAttempt("tree_ex1_hard", {
+        correct: false,
+        lastState: treeEx1HardChoices.join(", ") || "-",
+        solved: false
+      });
       return;
     }
 
@@ -2587,6 +2771,11 @@ function App() {
         "Correct. The SPE profiles were identified correctly."
       )
     );
+    recordExerciseAttempt("tree_ex1_hard", {
+      correct: true,
+      lastState: treeEx1HardChoices.join(", ") || "-",
+      solved: true
+    });
   }
 
   function answerTreeEx1Phase1(action) {
@@ -2642,6 +2831,12 @@ function App() {
         )
       );
     }
+    const easySolved = treeEx1Phase1Choice === treeEx1Game.p2Action && action === bestAction;
+    recordExerciseAttempt("tree_ex1_easy", {
+      correct: easySolved,
+      solved: easySolved,
+      lastState: `${treeEx1Phase1Choice || "-"} / ${action}`
+    });
     setTreeEx1Step(3);
   }
 
@@ -2820,6 +3015,11 @@ function checkTreeEx2Phase2() {
           "Not correct. Select exactly all SPE profiles."
         )
       }));
+      recordExerciseAttempt("tree_ex2_hard", {
+        correct: false,
+        solved: false,
+        lastState: state.speChoices.join(", ") || "-"
+      });
       return;
     }
     updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
@@ -2831,6 +3031,11 @@ function checkTreeEx2Phase2() {
         "Correct. The SPE profiles were identified correctly."
       )
     }));
+    recordExerciseAttempt("tree_ex2_hard", {
+      correct: true,
+      solved: true,
+      lastState: state.speChoices.join(", ") || "-"
+    });
   }
 
   function checkTreeEx2Phase3() {
@@ -2863,6 +3068,11 @@ function checkTreeEx2Phase2() {
           `Not correct. Select exactly all optimal actions: ${rootBest.join(", ")}.`
         )
       }));
+      recordExerciseAttempt("tree_ex2_easy", {
+        correct: false,
+        solved: false,
+        lastState: state.phase3Choices.join(", ") || "-"
+      });
       return;
     }
     updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
@@ -2875,6 +3085,11 @@ function checkTreeEx2Phase2() {
         "Correct. This game is solved."
       )
     }));
+    recordExerciseAttempt("tree_ex2_easy", {
+      correct: true,
+      solved: true,
+      lastState: state.phase3Choices.join(", ") || "-"
+    });
   }
 
   function renderTreeExercises() {
@@ -2949,7 +3164,12 @@ function checkTreeEx2Phase2() {
                 setTreePage("ex1");
               }}
             >
-              {t("Übung 1 – Einfaches sequenzielles Spiel", "Exercise 1 - Simple sequential game")}
+              <span className="exercise-link-title">
+                {t("Übung 1 – Einfaches sequenzielles Spiel", "Exercise 1 - Simple sequential game")}
+              </span>
+              <span className="exercise-link-meta">
+                {buildProgressMeta(["tree_ex1_easy", "tree_ex1_hard"])}
+              </span>
             </button>
             <button
               type="button"
@@ -2959,7 +3179,12 @@ function checkTreeEx2Phase2() {
                 setTreePage("ex2");
               }}
             >
-              {t("Übung 2 – Dreistufiges sequenzielles Spiel", "Exercise 2 - Three-stage sequential game")}
+              <span className="exercise-link-title">
+                {t("Übung 2 – Dreistufiges sequenzielles Spiel", "Exercise 2 - Three-stage sequential game")}
+              </span>
+              <span className="exercise-link-meta">
+                {buildProgressMeta(["tree_ex2_easy", "tree_ex2_hard"])}
+              </span>
             </button>
           </div>
         </section>
@@ -3566,19 +3791,19 @@ function checkTreeEx2Phase2() {
 
   function renderNormalExercises() {
     const exLinksTeil1 = [
-      { key: "ex1", label: t("Übung 1 – Beste Antworten", "Exercise 1 - Best responses") },
-      { key: "ex2", label: t("Übung 2 – Strikt dominante Strategien", "Exercise 2 - Strictly dominant strategies") },
-      { key: "ex3", label: t("Übung 3 – Dominante Strategien (schwach oder strikt)", "Exercise 3 - Dominant strategies (weak or strict)") },
-      { key: "ex4", label: t("Übung 4 – Nash-Gleichgewichte in reinen Strategien", "Exercise 4 - Nash equilibria in pure strategies") },
-      { key: "ex5", label: t("Übung 5 – Nash-Gleichgewichte in reinen Strategien (strikt)", "Exercise 5 - Nash equilibria in pure strategies (strict)") },
-      { key: "ex6", label: t("Übung 6 – Nash-Gleichgewicht in gemischten Strategien", "Exercise 6 - Nash equilibrium in mixed strategies") }
+      { key: "ex1", progressKey: "normal_ex1", label: t("Übung 1 – Beste Antworten", "Exercise 1 - Best responses") },
+      { key: "ex2", progressKey: "normal_ex2", label: t("Übung 2 – Strikt dominante Strategien", "Exercise 2 - Strictly dominant strategies") },
+      { key: "ex3", progressKey: "normal_ex3", label: t("Übung 3 – Dominante Strategien (schwach oder strikt)", "Exercise 3 - Dominant strategies (weak or strict)") },
+      { key: "ex4", progressKey: "normal_ex4", label: t("Übung 4 – Nash-Gleichgewichte in reinen Strategien", "Exercise 4 - Nash equilibria in pure strategies") },
+      { key: "ex5", progressKey: "normal_ex5", label: t("Übung 5 – Nash-Gleichgewichte in reinen Strategien (strikt)", "Exercise 5 - Nash equilibria in pure strategies (strict)") },
+      { key: "ex6", progressKey: "normal_ex6", label: t("Übung 6 – Nash-Gleichgewicht in gemischten Strategien", "Exercise 6 - Nash equilibrium in mixed strategies") }
     ];
     const exLinksTeil2 = [
-      { key: "ex7", label: t("Übung 1 – Trembling-Hand-Perfektion", "Exercise 1 - Trembling-hand perfection") },
-      { key: "ex8", label: t("Übung 2 – Evolutionär stabile Strategien", "Exercise 2 - Evolutionarily stable strategies") }
+      { key: "ex7", progressKey: "normal_ex7", label: t("Übung 1 – Trembling-Hand-Perfektion", "Exercise 1 - Trembling-hand perfection") },
+      { key: "ex8", progressKey: "normal_ex8", label: t("Übung 2 – Evolutionär stabile Strategien", "Exercise 2 - Evolutionarily stable strategies") }
     ];
     const exLinksTeil3 = [
-      { key: "ex9", label: t("Übung 1 – Gemischtes Nash-Gleichgewicht im Marktauswahlspiel", "Exercise 1 - Mixed Nash equilibrium in the market selection game") }
+      { key: "ex9", progressKey: "normal_ex9", label: t("Übung 1 – Gemischtes Nash-Gleichgewicht im Marktauswahlspiel", "Exercise 1 - Mixed Nash equilibrium in the market selection game") }
     ];
 
     if (normalPage === "toc") {
@@ -3594,7 +3819,8 @@ function checkTreeEx2Phase2() {
                 className="exercise-link"
                 onClick={() => setNormalPage(link.key)}
               >
-                {link.label}
+                <span className="exercise-link-title">{link.label}</span>
+                <span className="exercise-link-meta">{buildProgressMeta(link.progressKey)}</span>
               </button>
             ))}
           </div>
@@ -3607,7 +3833,8 @@ function checkTreeEx2Phase2() {
                 className="exercise-link"
                 onClick={() => setNormalPage(link.key)}
               >
-                {link.label}
+                <span className="exercise-link-title">{link.label}</span>
+                <span className="exercise-link-meta">{buildProgressMeta(link.progressKey)}</span>
               </button>
             ))}
           </div>
@@ -3620,7 +3847,8 @@ function checkTreeEx2Phase2() {
                 className="exercise-link"
                 onClick={() => setNormalPage(link.key)}
               >
-                {link.label}
+                <span className="exercise-link-title">{link.label}</span>
+                <span className="exercise-link-meta">{buildProgressMeta(link.progressKey)}</span>
               </button>
             ))}
           </div>
@@ -4567,7 +4795,11 @@ function checkTreeEx2Phase2() {
             )}
           </p>
 
-          <div className="intro-grid intro-grid-one-line intro-grid-3">
+          <HorizontalArrowScroller
+            className="intro-grid intro-grid-one-line intro-grid-3"
+            leftAriaLabel={t("Nach links scrollen", "Scroll left")}
+            rightAriaLabel={t("Nach rechts scrollen", "Scroll right")}
+          >
             <article className="panel nested-panel">
               <h3 className="def-title"><span className="def-badge">1</span><span>{t("Spielermenge", "Player set")}</span></h3>
               <p>{t("Die Spielermenge ist N. In allen Beispielen gibt es genau zwei Spieler N = {1, 2}.", "The player set is N. In all examples there are exactly two players N = {1, 2}.")}</p>
@@ -4585,7 +4817,7 @@ function checkTreeEx2Phase2() {
               <h3 className="def-title"><span className="def-badge">3</span><span>{t("Nutzenfunktionen", "Payoff functions")}</span></h3>
               <p>{t("Jeder Strategiekombination wird ein Nutzen zugeordnet. Bei zwei Spielern schreibt man (u₁, u₂).", "Each strategy combination is assigned a payoff for each player. With two players we write (u₁, u₂).")}</p>
             </article>
-          </div>
+          </HorizontalArrowScroller>
 
           <div className="intro-grid intro-grid-one-line intro-grid-2">
             <section className="panel nested-panel">
@@ -4601,7 +4833,7 @@ function checkTreeEx2Phase2() {
                 <li><code>S₁ = {"{A, B}"}</code>: {t("Strategiemenge von Spieler 1.", "Strategy set of Player 1.")}</li>
                 <li><code>S₂ = {"{X, Y, Z}"}</code>: {t("Strategiemenge von Spieler 2.", "Strategy set of Player 2.")}</li>
                 <li><code>s = (s₁, s₂)</code>: {t("Strategiekombination z.B.", "Strategy combination e.g.")} <code>(A, Y)</code>.</li>
-                <li><code>u = (u₁, u₂)</code>: {t("Auszahlung (Spieler 1, Spieler 2).", "Payoff (Player 1, Player 2).")}</li>
+                <li><code>u = (u₁, u₂)</code>: {t("Nutzen (Spieler 1, Spieler 2).", "Payoff (Player 1, Player 2).")}</li>
               </ul>
             </section>
           </div>
@@ -4634,7 +4866,11 @@ function checkTreeEx2Phase2() {
           )}
         </p>
 
-        <div className="intro-grid intro-grid-one-line intro-grid-4">
+        <HorizontalArrowScroller
+          className="intro-grid intro-grid-one-line intro-grid-4"
+          leftAriaLabel={t("Nach links scrollen", "Scroll left")}
+          rightAriaLabel={t("Nach rechts scrollen", "Scroll right")}
+        >
           <article className="panel nested-panel">
             <h3 className="def-title"><span className="def-badge">1</span><span>{t("Spielermenge", "Player set")}</span></h3>
             <p>{t("Die Spielermenge ist N. In allen Beispielen gibt es genau zwei Spieler: N = {1, 2}.", "The player set is N. In all examples there are exactly two players: N = {1, 2}.")}</p>
@@ -4666,7 +4902,7 @@ function checkTreeEx2Phase2() {
               )}
             </p>
           </article>
-        </div>
+        </HorizontalArrowScroller>
 
         <section className="panel nested-panel">
           <h3>{t("Beispiel-Spiel in Normalform", "Example game in normal-form")}</h3>
@@ -4728,7 +4964,11 @@ function checkTreeEx2Phase2() {
           )}
         </p>
 
-        <div className="intro-grid intro-grid-one-line intro-grid-4">
+        <HorizontalArrowScroller
+          className="intro-grid intro-grid-one-line intro-grid-4"
+          leftAriaLabel={t("Nach links scrollen", "Scroll left")}
+          rightAriaLabel={t("Nach rechts scrollen", "Scroll right")}
+        >
           <article className="panel nested-panel">
             <h3 className="def-title"><span className="def-badge">1</span><span>{t("Spielbaum", "Game tree")}</span></h3>
             <p>
@@ -4765,7 +5005,7 @@ function checkTreeEx2Phase2() {
               )}
             </p>
           </article>
-        </div>
+        </HorizontalArrowScroller>
 
         <div className="intro-grid intro-grid-one-line intro-grid-2">
           <section className="panel nested-panel">
@@ -4967,13 +5207,22 @@ function checkTreeEx2Phase2() {
           <h3>{t("Teil 1: Grundlagen statischer Bayes-Spiele", "Part 1: Foundations of static Bayesian games")}</h3>
           <div className="exercise-link-grid">
             <button type="button" className="exercise-link" onClick={() => setBayesPage("ex1")}>
-              {t("Übung 1 – Bayes-Spiel mit einseitiger privater Information", "Exercise 1 - Bayesian game with one-sided private information")}
+              <span className="exercise-link-title">
+                {t("Übung 1 – Bayes-Spiel mit einseitiger privater Information", "Exercise 1 - Bayesian game with one-sided private information")}
+              </span>
+              <span className="exercise-link-meta">{buildProgressMeta("bayes_ex1")}</span>
             </button>
             <button type="button" className="exercise-link" onClick={() => setBayesPage("ex2a")}>
-              {t("Übung 2a – A-posteriori Wahrscheinlichkeiten in Bayes-Spielen", "Exercise 2a - Posterior probabilities in Bayesian games")}
+              <span className="exercise-link-title">
+                {t("Übung 2a – A-posteriori Wahrscheinlichkeiten in Bayes-Spielen", "Exercise 2a - Posterior probabilities in Bayesian games")}
+              </span>
+              <span className="exercise-link-meta">{buildProgressMeta("bayes_ex2a")}</span>
             </button>
             <button type="button" className="exercise-link" onClick={() => setBayesPage("ex2b")}>
-              {t("Übung 2b – Bayes-Nash-Gleichgewichte bei zweiseitiger privater Information", "Exercise 2b - Bayesian Nash equilibria with two-sided private information")}
+              <span className="exercise-link-title">
+                {t("Übung 2b – Bayes-Nash-Gleichgewichte bei zweiseitiger privater Information", "Exercise 2b - Bayesian Nash equilibria with two-sided private information")}
+              </span>
+              <span className="exercise-link-meta">{buildProgressMeta("bayes_ex2b")}</span>
             </button>
           </div>
         </section>
@@ -5283,26 +5532,40 @@ function checkTreeEx2Phase2() {
             <div className="home-links">
               <button
                 type="button"
-                className="home-link"
+                className="home-link split-link"
                 onClick={() => {
                   setActivePage("solve-normal");
                   setNormalPage("toc");
                 }}
               >
-                {t("Normalformspiele", "Normal-form games")}
+                <span>{t("Normalformspiele", "Normal-form games")}</span>
+                <span className="home-link-count">{solvedCountLabel([
+                    "normal_ex1",
+                    "normal_ex2",
+                    "normal_ex3",
+                    "normal_ex4",
+                    "normal_ex5",
+                    "normal_ex6",
+                    "normal_ex7",
+                    "normal_ex8",
+                    "normal_ex9"
+                  ])}
+                </span>
               </button>
-              <button type="button" className="home-link" onClick={() => setActivePage("solve-tree")}>
-                {t("Spielbäume", "Game trees")}
+              <button type="button" className="home-link split-link" onClick={() => setActivePage("solve-tree")}>
+                <span>{t("Spielbäume", "Game trees")}</span>
+                <span className="home-link-count">{solvedCountLabel(["tree_ex1_easy", "tree_ex1_hard", "tree_ex2_easy", "tree_ex2_hard"])}</span>
               </button>
               <button
                 type="button"
-                className="home-link"
+                className="home-link split-link"
                 onClick={() => {
                   setActivePage("solve-bayesian");
                   setBayesPage("toc");
                 }}
               >
-                {t("Bayes-Spiele", "Bayesian games")}
+                <span>{t("Bayes-Spiele", "Bayesian games")}</span>
+                <span className="home-link-count">{solvedCountLabel(["bayes_ex1", "bayes_ex2a", "bayes_ex2b"])}</span>
               </button>
             </div>
           </article>
