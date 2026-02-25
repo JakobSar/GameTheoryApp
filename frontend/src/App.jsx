@@ -721,7 +721,7 @@ function useMatrixAutoScale(autoScale, dependencies = []) {
       }
 
       const rawScale = naturalWidth > availableWidth ? availableWidth / naturalWidth : 1;
-      const nextScale = Math.min(1, Math.max(0.64, rawScale));
+      const nextScale = Math.min(1, Math.max(0.4, rawScale));
       const nextHeight = nextScale < 0.999 ? Math.ceil(naturalHeight * nextScale) + 10 : null;
 
       setTableScale((prev) => (Math.abs(prev - nextScale) < 0.002 ? prev : nextScale));
