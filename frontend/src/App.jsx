@@ -263,6 +263,54 @@ const SPECIAL_GAMES = [
   }
 ];
 
+const SPECIAL_GAME_TRANSLATIONS = {
+  Gefangenendilemma: {
+    title: "Prisoner's dilemma",
+    intro: "Each player has an incentive to defect regardless of the other player's action.",
+    bullets: [
+      "Defecting is strictly dominant for both players.",
+      "Unique Nash equilibrium: (Defect, Defect).",
+      "Pareto-inefficient equilibrium payoff: (1, 1) is Pareto-dominated by (3, 3)."
+    ]
+  },
+  "Feiglingsspiel (Chicken)": {
+    title: "Chicken game",
+    intro: "Both players prefer not to yield, but a crash is catastrophic.",
+    bullets: [
+      "Two Nash equilibria: (Straight, Swerve) and (Swerve, Straight).",
+      "No player has a strictly dominant strategy.",
+      "This is an anti-coordination problem; commitment and credible threats can matter."
+    ]
+  },
+  "Jagdspiel (Stag Hunt)": {
+    title: "Stag hunt",
+    intro: "A coordination game where the Pareto-efficient outcome requires mutual cooperation.",
+    bullets: [
+      "Two Nash equilibria: (Stag, Stag) and (Hare, Hare).",
+      "Pareto-efficient but risky: (Stag, Stag).",
+      "Typical challenge: trust and coordination."
+    ]
+  },
+  "Kampf der Geschlechter": {
+    title: "Battle of the sexes",
+    intro: "Both players want to coordinate, but they prefer different coordinated outcomes.",
+    bullets: [
+      "Two pure Nash equilibria: (Opera, Opera) and (Football, Football).",
+      "Coordination conflict: who gets the preferred outcome?",
+      "There is also a mixed-strategy Nash equilibrium."
+    ]
+  },
+  "Ultimatumspiel (Variante mit simultaner Entscheidung)": {
+    title: "Ultimatum game (simultaneous variant)",
+    intro: "Simplified version: Player 1 offers fair (50/50) or unfair (90/10), Player 2 accepts or rejects.",
+    bullets: [
+      "Nash equilibrium: (Unfair, Accept).",
+      "Empirically, unfair offers are often rejected due to fairness concerns.",
+      "Important example of model prediction vs observed behavior."
+    ]
+  }
+};
+
 const SPECIAL_QUIZ_TYPES = ["pd", "chicken", "stag", "bos", "ultimatum"];
 
 const NAV = [
@@ -4808,22 +4856,27 @@ function checkTreeEx2Phase2() {
     return (
       <>
         <section className="panel">
-          <h2>Fünf besondere Spiele der Spieltheorie</h2>
-          <p className="hint">Ein Beispielspiel (Strategien, Nutzen (u₁, u₂)), die zentrale Idee und typische Ergebnisse. Unten findest du dazu eine Übung.</p>
+          <h2>{t("Fünf besondere Spiele der Spieltheorie", "Five special games in game theory")}</h2>
+          <p className="hint">
+            {t(
+              "Ein Beispielspiel (Strategien, Nutzen (u₁, u₂)), die zentrale Idee und typische Ergebnisse. Unten findest du dazu eine Übung.",
+              "A sample game (strategies, payoffs (u₁, u₂)), the core idea, and typical outcomes. At the bottom you will find an exercise."
+            )}
+          </p>
         </section>
         {SPECIAL_GAMES.map((g) => (
           <section className="panel special-card" key={g.title}>
-            <h3>{g.title}</h3>
+            <h3>{uiLang === "en" ? (SPECIAL_GAME_TRANSLATIONS[g.title]?.title || g.title) : g.title}</h3>
             <div className="special-row">
               <article className="special-block">
-                <h4>Beispielspiel</h4>
-                <p className="hint">{g.intro}</p>
-                <StaticPayoffTable data={g.table} rowLabel="Spieler 1" colLabel="Spieler 2" autoScale />
+                <h4>{t("Beispielspiel", "Sample game")}</h4>
+                <p className="hint">{uiLang === "en" ? (SPECIAL_GAME_TRANSLATIONS[g.title]?.intro || g.intro) : g.intro}</p>
+                <StaticPayoffTable data={g.table} rowLabel={t("Spieler 1", "Player 1")} colLabel={t("Spieler 2", "Player 2")} autoScale />
               </article>
               <article className="special-block">
-                <h4>Erklärung</h4>
+                <h4>{t("Erklärung", "Explanation")}</h4>
                 <ul className="intro-list">
-                  {g.bullets.map((b) => (
+                  {(uiLang === "en" ? (SPECIAL_GAME_TRANSLATIONS[g.title]?.bullets || g.bullets) : g.bullets).map((b) => (
                     <li key={b}>{b}</li>
                   ))}
                 </ul>

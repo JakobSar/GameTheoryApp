@@ -412,6 +412,10 @@ button:disabled {
   color: #4b5f53;
 }
 
+body.dark-mode .hint {
+  color: #d7e3dd;
+}
+
 .tree-easy-intro {
   margin-top: 0;
   margin-bottom: 0.45rem;
@@ -1376,6 +1380,11 @@ body.dark-mode pre {
 
 body.dark-mode .nested-panel {
   background: rgba(17, 25, 22, 0.78);
+}
+
+body.dark-mode .special-block {
+  background: rgba(17, 25, 22, 0.78);
+  border-color: rgba(232, 238, 234, 0.2);
 }
 
 body.dark-mode .nav-group h3 {
