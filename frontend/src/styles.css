@@ -2222,8 +2222,8 @@ body.dark-mode .impressum-toggle {
 @media (max-width: 640px) {
   .profile-notation-grid {
     display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(88vw, 1fr);
+    grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+    align-items: start;
     overflow-x: auto;
     gap: 0.7rem;
     padding-bottom: 0.2rem;
@@ -2233,6 +2233,10 @@ body.dark-mode .impressum-toggle {
 
   .profile-notation-grid::-webkit-scrollbar {
     display: none;
+  }
+
+  .profile-notation-grid > .panel {
+    min-width: 0;
   }
 
   .profile-step-tabs {
