@@ -1079,6 +1079,87 @@ body.dark-mode .hint {
   min-width: 0;
 }
 
+.special-card-footer {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.8rem;
+  margin-top: 0.65rem;
+}
+
+.special-card-counter {
+  margin: 0;
+  font-weight: 600;
+  font-size: 0.86rem;
+  letter-spacing: 0.02em;
+  color: #4f6158;
+}
+
+.special-card-nav {
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.22rem;
+  border: 1px solid rgba(29, 32, 28, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(3px);
+  justify-self: end;
+}
+
+.special-card-nav .special-card-nav-btn,
+.nav-pill-btn {
+  width: auto;
+  min-width: 84px;
+  padding: 0.38rem 0.72rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: #29463a;
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.special-card-nav .special-card-nav-btn:hover,
+.nav-pill-btn:hover {
+  transform: none;
+  filter: none;
+  background: rgba(15, 118, 110, 0.1);
+  border-color: rgba(15, 118, 110, 0.24);
+}
+
+.special-card-swipe-zone {
+  touch-action: pan-y;
+}
+
+.special-card-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-top: 0;
+}
+
+.special-card-dot {
+  width: 0.52rem;
+  height: 0.52rem;
+  min-width: 0.52rem;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(29, 32, 28, 0.2);
+  background: rgba(129, 145, 136, 0.3);
+  transition: transform 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+}
+
+.special-card-dot.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.2);
+}
+
+.special-card-dot:hover {
+  transform: scale(1.1);
+}
+
 .special-block {
   border: 1px solid rgba(29, 32, 28, 0.14);
   border-radius: 12px;
@@ -1094,6 +1175,10 @@ body.dark-mode .hint {
 }
 
 .special-card h3 {
+  margin-top: 0;
+}
+
+.special-card-title {
   margin-top: 0;
 }
 
@@ -1806,6 +1891,51 @@ body.dark-mode .special-block {
   border-color: rgba(232, 238, 234, 0.2);
 }
 
+body.dark-mode .special-card-counter {
+  color: #d7e3dd;
+}
+
+body.dark-mode .special-card-nav {
+  border-color: rgba(232, 238, 234, 0.2);
+  background: rgba(22, 33, 29, 0.72);
+}
+
+body.dark-mode .special-card-nav .special-card-nav-btn {
+  color: #d7e3dd;
+}
+
+body.dark-mode .special-card-nav .special-card-nav-btn:hover,
+body.dark-mode .nav-pill-btn:hover {
+  background: rgba(159, 230, 221, 0.14);
+  border-color: rgba(159, 230, 221, 0.3);
+}
+
+body.dark-mode .nav-pill-btn {
+  color: #d7e3dd;
+}
+
+.actions:has(.nav-pill-btn) {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.22rem;
+  border: 1px solid rgba(29, 32, 28, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(3px);
+}
+
+body.dark-mode .actions:has(.nav-pill-btn) {
+  border-color: rgba(232, 238, 234, 0.2);
+  background: rgba(22, 33, 29, 0.72);
+}
+
+body.dark-mode .special-card-dot {
+  border-color: rgba(232, 238, 234, 0.28);
+  background: rgba(182, 196, 188, 0.35);
+}
+
 body.dark-mode .nav-group h3 {
   color: #cddad4;
 }
@@ -2066,6 +2196,20 @@ body.dark-mode .impressum-toggle {
 }
 
 @media (max-width: 980px) {
+  .special-card-footer {
+    grid-template-columns: 1fr;
+    justify-items: start;
+    gap: 0.55rem;
+  }
+
+  .special-card-dots {
+    justify-self: center;
+  }
+
+  .special-card-nav {
+    justify-self: start;
+  }
+
   .profile-notation-grid {
     grid-template-columns: 1fr;
   }
@@ -2076,6 +2220,37 @@ body.dark-mode .impressum-toggle {
 }
 
 @media (max-width: 640px) {
+  .profile-notation-grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(88vw, 1fr);
+    overflow-x: auto;
+    gap: 0.7rem;
+    padding-bottom: 0.2rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .profile-notation-grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .profile-step-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .profile-step-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .profile-step-tab {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
   .profile-choice-grid,
   .profile-choice-grid-players {
     grid-template-columns: 1fr;

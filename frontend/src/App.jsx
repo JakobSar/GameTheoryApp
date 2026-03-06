@@ -313,6 +313,7 @@ const SPECIAL_GAME_TRANSLATIONS = {
 };
 
 const SPECIAL_QUIZ_TYPES = ["pd", "chicken", "stag", "bos", "ultimatum"];
+const SPECIAL_CARD_SWIPE_THRESHOLD = 56;
 
 const NAV = [
   {
@@ -1621,6 +1622,8 @@ function App() {
   const [specialQuizSelected, setSpecialQuizSelected] = useState("");
   const [specialQuizFeedback, setSpecialQuizFeedback] = useState("");
   const [specialQuizFeedbackType, setSpecialQuizFeedbackType] = useState("neutral");
+  const [specialCardIndex, setSpecialCardIndex] = useState(0);
+  const specialSwipeStartRef = useRef(null);
   const [eliminatorGame, setEliminatorGame] = useState(() => ELIMINATOR_PRESETS[0]);
   const [eliminatorActiveRows, setEliminatorActiveRows] = useState(() => ELIMINATOR_PRESETS[0].rows);
   const [eliminatorActiveCols, setEliminatorActiveCols] = useState(() => ELIMINATOR_PRESETS[0].cols);
@@ -1974,6 +1977,40 @@ function App() {
       lastState: specialQuizSelected,
       solved: true
     });
+  }
+
+  function goToSpecialCard(index) {
+    const cardCount = SPECIAL_GAMES.length;
+    if (!cardCount) return;
+    setSpecialCardIndex((index + cardCount) % cardCount);
+  }
+
+  function shiftSpecialCard(step) {
+    setSpecialCardIndex((prev) => {
+      const cardCount = SPECIAL_GAMES.length;
+      if (!cardCount) return 0;
+      return (prev + step + cardCount) % cardCount;
+    });
+  }
+
+  function onSpecialCardTouchStart(event) {
+    const touch = event.changedTouches?.[0];
+    if (!touch) return;
+    specialSwipeStartRef.current = { x: touch.clientX, y: touch.clientY };
+  }
+
+  function onSpecialCardTouchEnd(event) {
+    const start = specialSwipeStartRef.current;
+    specialSwipeStartRef.current = null;
+    if (!start) return;
+    const touch = event.changedTouches?.[0];
+    if (!touch) return;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) < SPECIAL_CARD_SWIPE_THRESHOLD || Math.abs(dx) <= Math.abs(dy)) {
+      return;
+    }
+    shiftSpecialCard(dx < 0 ? 1 : -1);
   }
 
   function answerEliminator(answerYes) {
@@ -4347,11 +4384,12 @@ function checkTreeEx2Phase2() {
           <div className="actions">
             {treeEx2ActiveIndex === 0 ? (
               <>
-                <button type="button" onClick={() => setTreePage("ex1")}>
+                <button type="button" className="nav-pill-btn" onClick={() => setTreePage("ex1")}>
                   {t("Zurück", "Back")}
                 </button>
                 <button
                   type="button"
+                  className="nav-pill-btn"
                   onClick={() => {
                     resetTreeEx3();
                     setTreePage("ex3");
@@ -4362,9 +4400,10 @@ function checkTreeEx2Phase2() {
               </>
             ) : (
               <>
-                <button type="button" onClick={() => setTreePage("ex1")}>{t("Zurück", "Back")}</button>
+                <button type="button" className="nav-pill-btn" onClick={() => setTreePage("ex1")}>{t("Zurück", "Back")}</button>
                 <button
                   type="button"
+                  className="nav-pill-btn"
                   onClick={() => {
                     resetTreeEx3();
                     setTreePage("ex3");
@@ -4552,9 +4591,10 @@ function checkTreeEx2Phase2() {
             </article>
           </div>
           <div className="actions">
-            <button type="button" onClick={() => setTreePage("ex2")}>{t("Zurück", "Back")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setTreePage("ex2")}>{t("Zurück", "Back")}</button>
             <button
               type="button"
+              className="nav-pill-btn"
               onClick={() => {
                 resetTreeEx4();
                 setTreePage("ex4");
@@ -4773,8 +4813,7 @@ function checkTreeEx2Phase2() {
             </article>
           </div>
           <div className="actions">
-            <button type="button" onClick={() => setTreePage("ex3")}>{t("Zurück", "Back")}</button>
-            <button type="button" onClick={() => setTreePage("toc")}>{t("Zurück zur Inhaltsseite", "Back to overview")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setTreePage("ex3")}>{t("Zurück", "Back")}</button>
           </div>
         </section>
       );
@@ -4981,9 +5020,10 @@ function checkTreeEx2Phase2() {
         <div className="actions">
           {treeEx1ActiveLevel === 0 ? (
             <>
-              <button type="button" onClick={() => setTreePage("toc")}>{t("Zurück", "Back")}</button>
+              <button type="button" className="nav-pill-btn" onClick={() => setTreePage("toc")}>{t("Zurück", "Back")}</button>
               <button
                 type="button"
+                className="nav-pill-btn"
                 onClick={() => {
                   resetTreeEx2();
                   setTreePage("ex2");
@@ -4994,9 +5034,10 @@ function checkTreeEx2Phase2() {
             </>
           ) : (
             <>
-              <button type="button" onClick={() => setTreePage("toc")}>{t("Zurück", "Back")}</button>
+              <button type="button" className="nav-pill-btn" onClick={() => setTreePage("toc")}>{t("Zurück", "Back")}</button>
               <button
                 type="button"
+                className="nav-pill-btn"
                 onClick={() => {
                   resetTreeEx2();
                   setTreePage("ex2");
@@ -5155,8 +5196,8 @@ function checkTreeEx2Phase2() {
             </article>
           </div>
           <div className="actions">
-            <button type="button" onClick={() => setNormalPage("toc")}>{t("Zurück", "Back")}</button>
-            <button type="button" onClick={() => setNormalPage("ex2")}>{t("Weiter zu Übung 2", "Next to Exercise 2")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setNormalPage("toc")}>{t("Zurück", "Back")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setNormalPage("ex2")}>{t("Weiter zu Übung 2", "Next to Exercise 2")}</button>
           </div>
         </section>
       );
@@ -5230,8 +5271,8 @@ function checkTreeEx2Phase2() {
             </article>
           </div>
           <div className="actions">
-            <button type="button" onClick={() => setNormalPage("ex1")}>{t("Zurück", "Back")}</button>
-            <button type="button" onClick={() => setNormalPage("ex3")}>{t("Weiter zu Übung 3", "Next to Exercise 3")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setNormalPage("ex1")}>{t("Zurück", "Back")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setNormalPage("ex3")}>{t("Weiter zu Übung 3", "Next to Exercise 3")}</button>
           </div>
         </section>
       );
@@ -5305,8 +5346,8 @@ function checkTreeEx2Phase2() {
             </article>
           </div>
           <div className="actions">
-            <button type="button" onClick={() => setNormalPage("ex2")}>{t("Zurück", "Back")}</button>
-            <button type="button" onClick={() => setNormalPage("ex4")}>{t("Weiter zu Übung 4", "Next to Exercise 4")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setNormalPage("ex2")}>{t("Zurück", "Back")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setNormalPage("ex4")}>{t("Weiter zu Übung 4", "Next to Exercise 4")}</button>
           </div>
         </section>
       );
@@ -5385,8 +5426,8 @@ function checkTreeEx2Phase2() {
             </article>
           </div>
           <div className="actions">
-            <button type="button" onClick={() => setNormalPage("ex3")}>{t("Zurück", "Back")}</button>
-            <button type="button" onClick={() => setNormalPage("ex5")}>{t("Weiter zu Übung 5", "Next to Exercise 5")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setNormalPage("ex3")}>{t("Zurück", "Back")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setNormalPage("ex5")}>{t("Weiter zu Übung 5", "Next to Exercise 5")}</button>
           </div>
         </section>
       );
@@ -5453,8 +5494,8 @@ function checkTreeEx2Phase2() {
             </article>
           </div>
           <div className="actions">
-            <button type="button" onClick={() => setNormalPage("ex4")}>{t("Zurück", "Back")}</button>
-            <button type="button" onClick={() => setNormalPage("ex6")}>{t("Weiter zu Übung 6", "Next to Exercise 6")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setNormalPage("ex4")}>{t("Zurück", "Back")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setNormalPage("ex6")}>{t("Weiter zu Übung 6", "Next to Exercise 6")}</button>
           </div>
         </section>
       );
@@ -5529,8 +5570,8 @@ function checkTreeEx2Phase2() {
             </article>
           </div>
           <div className="actions">
-            <button type="button" onClick={() => setNormalPage("ex5")}>{t("Zurück", "Back")}</button>
-            <button type="button" onClick={() => setNormalPage("ex7")}>{t("Weiter zu Teil 2", "Next to Part 2")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setNormalPage("ex5")}>{t("Zurück", "Back")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setNormalPage("ex7")}>{t("Weiter zu Teil 2 · Übung 1", "Next to Part 2 · Exercise 1")}</button>
           </div>
         </section>
       );
@@ -5612,8 +5653,8 @@ function checkTreeEx2Phase2() {
             </article>
           </div>
           <div className="actions">
-            <button type="button" onClick={() => setNormalPage("ex6")}>{t("Zurück", "Back")}</button>
-            <button type="button" onClick={() => setNormalPage("ex8")}>{t("Weiter zu Übung 2", "Next to Exercise 2")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setNormalPage("ex6")}>{t("Zurück", "Back")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setNormalPage("ex8")}>{t("Weiter zu Übung 2", "Next to Exercise 2")}</button>
           </div>
         </section>
       );
@@ -5695,8 +5736,8 @@ function checkTreeEx2Phase2() {
             </article>
           </div>
           <div className="actions">
-            <button type="button" onClick={() => setNormalPage("ex7")}>{t("Zurück", "Back")}</button>
-            <button type="button" onClick={() => setNormalPage("ex9")}>{t("Weiter zu Teil 3", "Next to Part 3")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setNormalPage("ex7")}>{t("Zurück", "Back")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setNormalPage("ex9")}>{t("Weiter zu Teil 3 · Übung 1", "Next to Part 3 · Exercise 1")}</button>
           </div>
         </section>
       );
@@ -5785,8 +5826,7 @@ function checkTreeEx2Phase2() {
             </article>
           </div>
           <div className="actions">
-            <button type="button" onClick={() => setNormalPage("ex8")}>{t("Zurück", "Back")}</button>
-            <button type="button" onClick={() => setNormalPage("toc")}>{t("Zurück zur Inhaltsseite", "Back to table of contents")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setNormalPage("ex8")}>{t("Zurück", "Back")}</button>
           </div>
         </section>
       );
@@ -5975,8 +6015,8 @@ function checkTreeEx2Phase2() {
         </div>
 
         <div className="actions">
-          <button type="button" onClick={prevBackwardStep} disabled={backwardStep <= 0}>{t("Schritt zurück", "Previous step")}</button>
-          <button type="button" onClick={nextBackwardStep} disabled={backwardStep >= 2}>{t("Nächster Schritt", "Next step")}</button>
+          <button type="button" className="nav-pill-btn" onClick={prevBackwardStep} disabled={backwardStep <= 0}>{t("Schritt zurück", "Previous step")}</button>
+          <button type="button" className="nav-pill-btn" onClick={nextBackwardStep} disabled={backwardStep >= 2}>{t("Nächster Schritt", "Next step")}</button>
         </div>
 
         {backwardStep === 0 && (
@@ -6231,7 +6271,11 @@ function checkTreeEx2Phase2() {
           </article>
         </HorizontalArrowScroller>
 
-        <div className="intro-grid intro-grid-one-line intro-grid-2">
+        <HorizontalArrowScroller
+          className="intro-grid intro-grid-one-line intro-grid-2"
+          leftAriaLabel={t("Nach links scrollen", "Scroll left")}
+          rightAriaLabel={t("Nach rechts scrollen", "Scroll right")}
+        >
           <section className="panel nested-panel">
             <h3>{t("Beispielspiel als Baum", "Example game as a tree")}</h3>
             <p className="hint">
@@ -6287,7 +6331,7 @@ function checkTreeEx2Phase2() {
               <li><code>u(L,X)=(2,4)</code>, <code>u(L,Y)=(0,0)</code>, <code>u(R)=(3,1)</code>.</li>
             </ul>
           </section>
-        </div>
+        </HorizontalArrowScroller>
       </section>
 
       {renderBackwardInductionCard()}
@@ -6647,6 +6691,8 @@ function checkTreeEx2Phase2() {
       { key: "bos", label: t("Kampf der Geschlechter", "Battle of the sexes") },
       { key: "ultimatum", label: t("Ultimatumspiel", "Ultimatum game") }
     ];
+    const currentSpecialGame = SPECIAL_GAMES[specialCardIndex];
+    const currentSpecialTranslation = SPECIAL_GAME_TRANSLATIONS[currentSpecialGame?.title] || null;
 
     return (
       <>
@@ -6659,29 +6705,59 @@ function checkTreeEx2Phase2() {
             )}
           </p>
         </section>
-        {SPECIAL_GAMES.map((g) => (
-          <section className="panel special-card" key={g.title}>
-            <h3>{uiLang === "en" ? (SPECIAL_GAME_TRANSLATIONS[g.title]?.title || g.title) : g.title}</h3>
+        <section className="panel special-card">
+          <div
+            className="special-card-swipe-zone"
+            onTouchStart={onSpecialCardTouchStart}
+            onTouchEnd={onSpecialCardTouchEnd}
+          >
+            <h3 className="special-card-title">{uiLang === "en" ? (currentSpecialTranslation?.title || currentSpecialGame.title) : currentSpecialGame.title}</h3>
             <div className="special-row">
               <article className="special-block">
                 <h4>{t("Beispielspiel", "Sample game")}</h4>
-                <p className="hint">{uiLang === "en" ? (SPECIAL_GAME_TRANSLATIONS[g.title]?.intro || g.intro) : g.intro}</p>
-                <StaticPayoffTable data={g.table} rowLabel={t("Spieler 1", "Player 1")} colLabel={t("Spieler 2", "Player 2")} autoScale />
+                <p className="hint">{uiLang === "en" ? (currentSpecialTranslation?.intro || currentSpecialGame.intro) : currentSpecialGame.intro}</p>
+                <StaticPayoffTable data={currentSpecialGame.table} rowLabel={t("Spieler 1", "Player 1")} colLabel={t("Spieler 2", "Player 2")} autoScale />
               </article>
               <article className="special-block">
                 <h4>{t("Erklärung", "Explanation")}</h4>
                 <ul className="intro-list">
-                  {(uiLang === "en" ? (SPECIAL_GAME_TRANSLATIONS[g.title]?.bullets || g.bullets) : g.bullets).map((b) => (
-                    <li key={b}>{b}</li>
+                  {(uiLang === "en" ? (currentSpecialTranslation?.bullets || currentSpecialGame.bullets) : currentSpecialGame.bullets).map((bullet) => (
+                    <li key={bullet}>{bullet}</li>
                   ))}
                 </ul>
               </article>
             </div>
-          </section>
-        ))}
+          </div>
+          <div className="special-card-footer">
+            <p className="special-card-counter">
+              {t("Spiel", "Game")} {specialCardIndex + 1} / {SPECIAL_GAMES.length}
+            </p>
+            <div className="special-card-dots" role="tablist" aria-label={t("Spiele", "Games")}>
+              {SPECIAL_GAMES.map((game, index) => (
+                <button
+                  key={game.title}
+                  type="button"
+                  role="tab"
+                  aria-selected={index === specialCardIndex}
+                  aria-label={`${t("Spiel", "Game")} ${index + 1}`}
+                  className={`special-card-dot ${index === specialCardIndex ? "active" : ""}`}
+                  onClick={() => goToSpecialCard(index)}
+                />
+              ))}
+            </div>
+            <div className="special-card-nav">
+              <button type="button" className="special-card-nav-btn" onClick={() => shiftSpecialCard(-1)}>
+                {t("Zurück", "Previous")}
+              </button>
+              <button type="button" className="special-card-nav-btn" onClick={() => shiftSpecialCard(1)}>
+                {t("Weiter", "Next")}
+              </button>
+            </div>
+          </div>
+        </section>
 
         <section className="panel special-card">
-          <h3>{t("Übung: Spieltyp erkennen", "Exercise: identify the game type")}</h3>
+          <h3 className="special-card-title">{t("Übung: Spieltyp erkennen", "Exercise: identify the game type")}</h3>
           <div className="special-row">
             <article className="special-block">
               <h4>{t("Spiel", "Game")}</h4>
@@ -6863,8 +6939,8 @@ function checkTreeEx2Phase2() {
             </article>
           </div>
           <div className="actions">
-            <button type="button" onClick={() => setBayesPage("toc")}>{t("Zurück zur Inhaltsseite", "Back to table of contents")}</button>
-            <button type="button" onClick={() => setBayesPage("ex2a")}>{t("Weiter zu Übung 2a", "Next to Exercise 2a")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setBayesPage("toc")}>{t("Zurück", "Back")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setBayesPage("ex2a")}>{t("Weiter zu Übung 2a", "Next to Exercise 2a")}</button>
           </div>
         </section>
       );
@@ -6945,8 +7021,8 @@ function checkTreeEx2Phase2() {
             </article>
           </div>
           <div className="actions">
-            <button type="button" onClick={() => setBayesPage("ex1")}>{t("Zurück zu Übung 1", "Back to Exercise 1")}</button>
-            <button type="button" onClick={() => setBayesPage("ex2b")}>{t("Weiter zu Übung 2b", "Next to Exercise 2b")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setBayesPage("ex1")}>{t("Zurück", "Back")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setBayesPage("ex2b")}>{t("Weiter zu Übung 2b", "Next to Exercise 2b")}</button>
           </div>
         </section>
       );
@@ -7037,8 +7113,7 @@ function checkTreeEx2Phase2() {
           </article>
         </div>
         <div className="actions">
-          <button type="button" onClick={() => setBayesPage("ex2a")}>{t("Zurück zu Übung 2a", "Back to Exercise 2a")}</button>
-          <button type="button" onClick={() => setBayesPage("toc")}>{t("Zurück zur Inhaltsseite", "Back to table of contents")}</button>
+          <button type="button" className="nav-pill-btn" onClick={() => setBayesPage("ex2a")}>{t("Zurück", "Back")}</button>
         </div>
       </section>
     );
