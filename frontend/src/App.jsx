@@ -1631,7 +1631,17 @@ function App() {
   const [eliminatorShowWhy, setEliminatorShowWhy] = useState(false);
   const [eliminatorShowNash, setEliminatorShowNash] = useState(false);
   const [backwardStep, setBackwardStep] = useState(0);
+  const [profileNotationStep, setProfileNotationStep] = useState(1);
+  const [profileNotationP1, setProfileNotationP1] = useState("");
+  const [profileNotationP2, setProfileNotationP2] = useState({ g1: "", g2: "" });
+  const [profileNotationP3, setProfileNotationP3] = useState({ h1: "", h2: "" });
+  const [profileNotationQuizAnswer, setProfileNotationQuizAnswer] = useState("");
+  const [profileNotationQuizFeedback, setProfileNotationQuizFeedback] = useState("");
+  const [profileNotationQuizType, setProfileNotationQuizType] = useState("neutral");
   const [exerciseProgress, setExerciseProgress] = useState(() => loadExerciseProgress());
+  const isApplyingHistoryRef = useRef(false);
+  const hasHistoryInitRef = useRef(false);
+  const lastHistoryStateRef = useRef(null);
 
   const endpoint = useMemo(() => {
     if (!apiBase.trim()) {
@@ -1681,6 +1691,52 @@ function App() {
   );
 
   const t = (deText, enText) => (uiLang === "de" ? deText : enText);
+
+  useEffect(() => {
+    const handlePopState = (event) => {
+      const state = event.state;
+      if (!state || state.__gtPageNav !== true) return;
+      isApplyingHistoryRef.current = true;
+      setActivePage(typeof state.activePage === "string" ? state.activePage : "home");
+      setNormalPage(typeof state.normalPage === "string" ? state.normalPage : "toc");
+      setBayesPage(typeof state.bayesPage === "string" ? state.bayesPage : "toc");
+      setTreePage(typeof state.treePage === "string" ? state.treePage : "toc");
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    const navState = {
+      __gtPageNav: true,
+      activePage,
+      normalPage,
+      bayesPage,
+      treePage
+    };
+
+    const lastState = lastHistoryStateRef.current;
+    const isUnchanged =
+      lastState &&
+      lastState.activePage === navState.activePage &&
+      lastState.normalPage === navState.normalPage &&
+      lastState.bayesPage === navState.bayesPage &&
+      lastState.treePage === navState.treePage;
+
+    if (isUnchanged) return;
+
+    if (!hasHistoryInitRef.current) {
+      window.history.replaceState(navState, "", window.location.href);
+      hasHistoryInitRef.current = true;
+    } else if (isApplyingHistoryRef.current) {
+      isApplyingHistoryRef.current = false;
+    } else {
+      window.history.pushState(navState, "", window.location.href);
+    }
+
+    lastHistoryStateRef.current = navState;
+  }, [activePage, normalPage, bayesPage, treePage]);
 
   useEffect(() => {
     document.body.classList.toggle("dark-mode", isDarkMode);
@@ -1972,6 +2028,44 @@ function App() {
 
   function prevBackwardStep() {
     setBackwardStep((prev) => Math.max(0, prev - 1));
+  }
+
+  function setProfileNodeAction(node, action) {
+    setProfileNotationP3((prev) => ({ ...prev, [node]: action }));
+  }
+
+  function setProfileP2Action(node, action) {
+    setProfileNotationP2((prev) => ({ ...prev, [node]: action }));
+  }
+
+  function checkProfileNotationQuiz() {
+    if (!profileNotationQuizAnswer) {
+      setProfileNotationQuizType("warning");
+      setProfileNotationQuizFeedback(
+        t(
+          "Bitte wähle zuerst eine Option.",
+          "Please select an option first."
+        )
+      );
+      return;
+    }
+    if (profileNotationQuizAnswer === "ab") {
+      setProfileNotationQuizType("success");
+      setProfileNotationQuizFeedback(
+        t(
+          "Richtig. (a, b) ist eine vollständige reine Strategie von Spieler 2, weil beide eigenen Knoten (nach L und nach R) belegt sind.",
+          "Correct. (a, b) is a complete pure strategy of Player 2 because both own nodes (after L and after R) are specified."
+        )
+      );
+      return;
+    }
+    setProfileNotationQuizType("error");
+    setProfileNotationQuizFeedback(
+      t(
+        "Nicht korrekt. Für Spieler 2 braucht eine Strategie hier genau zwei Einträge: nach L und nach R.",
+        "Not correct. For Player 2, a strategy here needs exactly two entries: after L and after R."
+      )
+    );
   }
 
   function startConnectFromSelected() {
@@ -6195,43 +6289,124 @@ function checkTreeEx2Phase2() {
       {renderBackwardInductionCard()}
       <section className="panel">
         <h2>{t("Notation von reinen Strategieprofilen in Extensivspielen", "Notation of pure strategy profiles in extensive games")}</h2>
-        <p className="hint">
-          {t(
-            "Ein reines Strategieprofil notiert für jeden Spieler einen vollständigen Handlungsplan und fasst diese Pläne zu einem Tupel zusammen.",
-            "A pure strategy profile writes one complete action plan for each player and combines these plans into a tuple."
-          )}
-        </p>
+        <div className="profile-step-tabs">
+          {[1, 2, 3].map((step) => (
+            <button
+              key={`profile-step-${step}`}
+              type="button"
+              className={profileNotationStep === step ? "profile-step-tab active" : "profile-step-tab"}
+              onClick={() => setProfileNotationStep(step)}
+            >
+              {step}.{" "}
+              {step === 1
+                ? t("Was ist eine Strategie?", "What is a strategy?")
+                : step === 2
+                  ? t("Strategie eines Spielers", "Single-player strategy")
+                  : t("Strategieprofil", "Strategy profile")}
+            </button>
+          ))}
+        </div>
         <div className="profile-notation-grid">
           <section className="panel nested-panel">
             <h3>{t("Beispielbaum", "Example tree")}</h3>
             <p className="hint">
               {t(
-                "Knotenreihenfolge von Spieler 3 in diesem Beispiel: h1 nach (L,a), h2 nach (L,b), h3 nach (R).",
-                "Player 3 node order in this example: h1 after (L,a), h2 after (L,b), h3 after (R)."
+                "Spieler 2 hat zwei Entscheidungsknoten (g1 nach L, g2 nach R). Spieler 3 hat zwei Entscheidungsknoten (h1 nach (L,a), h2 nach (L,b)).",
+                "Player 2 has two decision nodes (g1 after L, g2 after R). Player 3 has two decision nodes (h1 after (L,a), h2 after (L,b))."
               )}
             </p>
             <div className="tree-example-wrap tree-example-wrap-compact profile-notation-tree-wrap">
-              <svg viewBox="0 0 780 290" className="tree-example-svg profile-notation-tree" role="img" aria-label={t("Beispielbaum zur Notation von Strategieprofilen", "Example tree for strategy profile notation")}>
+              <svg viewBox="0 0 560 290" className="tree-example-svg profile-notation-tree" role="img" aria-label={t("Beispielbaum zur Notation von Strategieprofilen", "Example tree for strategy profile notation")}>
                 <defs>
                   <marker id="profile-arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
                     <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
                   </marker>
                 </defs>
 
-                <line x1="74" y1="145" x2="190" y2="95" className="tree-edge" markerEnd="url(#profile-arrow)" />
-                <line x1="74" y1="145" x2="190" y2="210" className="tree-edge" markerEnd="url(#profile-arrow)" />
-                <line x1="210" y1="95" x2="330" y2="52" className="tree-edge" markerEnd="url(#profile-arrow)" />
-                <line x1="210" y1="95" x2="330" y2="130" className="tree-edge" markerEnd="url(#profile-arrow)" />
+                <line
+                  x1="74"
+                  y1="145"
+                  x2="192"
+                  y2="95"
+                  className={`tree-edge ${profileNotationStep >= 3 ? (profileNotationP1 === "L" ? "bi-active" : "bi-muted") : ""}`}
+                  markerEnd="url(#profile-arrow)"
+                />
+                <line
+                  x1="74"
+                  y1="145"
+                  x2="192"
+                  y2="210"
+                  className={`tree-edge ${profileNotationStep >= 3 ? (profileNotationP1 ? (profileNotationP1 === "R" ? "bi-active" : "bi-muted") : "") : ""}`}
+                  markerEnd="url(#profile-arrow)"
+                />
+                <line
+                  x1="210"
+                  y1="95"
+                  x2="332"
+                  y2="52"
+                  className={`tree-edge ${profileNotationStep >= 2 ? (profileNotationP2.g1 ? (profileNotationP2.g1 === "a" ? "bi-active" : "bi-muted") : "") : ""}`}
+                  markerEnd="url(#profile-arrow)"
+                />
+                <line
+                  x1="210"
+                  y1="95"
+                  x2="332"
+                  y2="130"
+                  className={`tree-edge ${profileNotationStep >= 2 ? (profileNotationP2.g1 ? (profileNotationP2.g1 === "b" ? "bi-active" : "bi-muted") : "") : ""}`}
+                  markerEnd="url(#profile-arrow)"
+                />
 
-                <line x1="350" y1="52" x2="500" y2="30" className="tree-edge" markerEnd="url(#profile-arrow)" />
-                <line x1="350" y1="52" x2="500" y2="72" className="tree-edge" markerEnd="url(#profile-arrow)" />
-                <line x1="350" y1="130" x2="500" y2="112" className="tree-edge" markerEnd="url(#profile-arrow)" />
-                <line x1="350" y1="130" x2="500" y2="150" className="tree-edge" markerEnd="url(#profile-arrow)" />
-                <line x1="210" y1="210" x2="500" y2="205" className="tree-edge" markerEnd="url(#profile-arrow)" />
-                <line x1="210" y1="210" x2="500" y2="250" className="tree-edge" markerEnd="url(#profile-arrow)" />
+                <line
+                  x1="350"
+                  y1="52"
+                  x2="504"
+                  y2="30"
+                  className={`tree-edge ${profileNotationStep >= 2 ? (profileNotationP3.h1 ? (profileNotationP3.h1 === "l" ? "bi-active" : "bi-muted") : "") : ""}`}
+                  markerEnd="url(#profile-arrow)"
+                />
+                <line
+                  x1="350"
+                  y1="52"
+                  x2="504"
+                  y2="72"
+                  className={`tree-edge ${profileNotationStep >= 2 ? (profileNotationP3.h1 ? (profileNotationP3.h1 === "r" ? "bi-active" : "bi-muted") : "") : ""}`}
+                  markerEnd="url(#profile-arrow)"
+                />
+                <line
+                  x1="350"
+                  y1="130"
+                  x2="504"
+                  y2="112"
+                  className={`tree-edge ${profileNotationStep >= 2 ? (profileNotationP3.h2 ? (profileNotationP3.h2 === "l" ? "bi-active" : "bi-muted") : "") : ""}`}
+                  markerEnd="url(#profile-arrow)"
+                />
+                <line
+                  x1="350"
+                  y1="130"
+                  x2="504"
+                  y2="150"
+                  className={`tree-edge ${profileNotationStep >= 2 ? (profileNotationP3.h2 ? (profileNotationP3.h2 === "r" ? "bi-active" : "bi-muted") : "") : ""}`}
+                  markerEnd="url(#profile-arrow)"
+                />
+                <line
+                  x1="210"
+                  y1="210"
+                  x2="504"
+                  y2="205"
+                  className={`tree-edge ${profileNotationStep >= 2 ? (profileNotationP2.g2 ? (profileNotationP2.g2 === "a" ? "bi-active" : "bi-muted") : "") : ""}`}
+                  markerEnd="url(#profile-arrow)"
+                />
+                <line
+                  x1="210"
+                  y1="210"
+                  x2="504"
+                  y2="250"
+                  className={`tree-edge ${profileNotationStep >= 2 ? (profileNotationP2.g2 ? (profileNotationP2.g2 === "b" ? "bi-active" : "bi-muted") : "") : ""}`}
+                  markerEnd="url(#profile-arrow)"
+                />
 
-                <text x="132" y="109" className="tree-action" textAnchor="middle" dominantBaseline="middle">L</text>
-                <text x="132" y="190" className="tree-action" textAnchor="middle" dominantBaseline="middle">R</text>
+                <text x="133" y="120" className="tree-action" textAnchor="middle" dominantBaseline="middle">L</text>
+                <text x="133" y="178" className="tree-action" textAnchor="middle" dominantBaseline="middle">R</text>
                 <text x="270" y="68" className="tree-action" textAnchor="middle" dominantBaseline="middle">a</text>
                 <text x="270" y="121" className="tree-action" textAnchor="middle" dominantBaseline="middle">b</text>
 
@@ -6239,24 +6414,25 @@ function checkTreeEx2Phase2() {
                 <text x="425" y="68" className="tree-action" textAnchor="middle" dominantBaseline="middle">r</text>
                 <text x="425" y="115" className="tree-action" textAnchor="middle" dominantBaseline="middle">l</text>
                 <text x="425" y="148" className="tree-action" textAnchor="middle" dominantBaseline="middle">r</text>
-                <text x="425" y="208" className="tree-action" textAnchor="middle" dominantBaseline="middle">l</text>
-                <text x="425" y="246" className="tree-action" textAnchor="middle" dominantBaseline="middle">r</text>
+                <text x="425" y="208" className="tree-action" textAnchor="middle" dominantBaseline="middle">a</text>
+                <text x="425" y="246" className="tree-action" textAnchor="middle" dominantBaseline="middle">b</text>
 
                 <circle cx="54" cy="145" r="18" className="tree-node decision" />
-                <circle cx="210" cy="95" r="18" className="tree-node decision" />
-                <circle cx="350" cy="52" r="18" className="tree-node decision" />
-                <circle cx="350" cy="130" r="18" className="tree-node decision" />
-                <circle cx="210" cy="210" r="18" className="tree-node decision" />
+                <circle cx="210" cy="95" r="18" className={`tree-node decision ${profileNotationStep >= 1 ? "profile-node-highlight-secondary" : ""}`} />
+                <circle cx="350" cy="52" r="18" className={`tree-node decision ${profileNotationStep >= 1 ? "profile-node-highlight" : ""}`} />
+                <circle cx="350" cy="130" r="18" className={`tree-node decision ${profileNotationStep >= 1 ? "profile-node-highlight" : ""}`} />
+                <circle cx="210" cy="210" r="18" className={`tree-node decision ${profileNotationStep >= 1 ? "profile-node-highlight-secondary" : ""}`} />
 
                 <text x="54" y="145" className="tree-label" textAnchor="middle" dominantBaseline="middle">P1</text>
                 <text x="210" y="95" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
                 <text x="350" y="52" className="tree-label" textAnchor="middle" dominantBaseline="middle">P3</text>
                 <text x="350" y="130" className="tree-label" textAnchor="middle" dominantBaseline="middle">P3</text>
-                <text x="210" y="210" className="tree-label" textAnchor="middle" dominantBaseline="middle">P3</text>
+                <text x="210" y="210" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
 
+                <text x="245" y="63" className="profile-node-tag profile-node-tag-p2" textAnchor="middle">g1</text>
+                <text x="245" y="178" className="profile-node-tag profile-node-tag-p2" textAnchor="middle">g2</text>
                 <text x="380" y="22" className="profile-node-tag" textAnchor="middle">h1</text>
                 <text x="380" y="100" className="profile-node-tag" textAnchor="middle">h2</text>
-                <text x="240" y="179" className="profile-node-tag" textAnchor="middle">h3</text>
 
                 <circle cx="512" cy="30" r="8" className="tree-node terminal" />
                 <circle cx="512" cy="72" r="8" className="tree-node terminal" />
@@ -6266,22 +6442,181 @@ function checkTreeEx2Phase2() {
                 <circle cx="512" cy="250" r="8" className="tree-node terminal" />
               </svg>
             </div>
+            <div className="profile-order-columns">
+              <ul className="profile-order-list">
+                <li><strong>{t("P2-Reihenfolge", "P2 order")}</strong></li>
+                <li><span>1</span><code>g1</code> {t("nach", "after")} <code>(L)</code></li>
+                <li><span>2</span><code>g2</code> {t("nach", "after")} <code>(R)</code></li>
+              </ul>
+              <ul className="profile-order-list">
+                <li><strong>{t("P3-Reihenfolge", "P3 order")}</strong></li>
+                <li><span>1</span><code>h1</code> {t("nach", "after")} <code>(L,a)</code></li>
+                <li><span>2</span><code>h2</code> {t("nach", "after")} <code>(L,b)</code></li>
+              </ul>
+            </div>
           </section>
 
           <section className="panel nested-panel">
-            <h3>{t("Schritt für Schritt", "Step by step")}</h3>
-            <ol className="profile-notation-steps">
-              <li>{t("Liste pro Spieler alle eigenen Entscheidungsknoten in der festgelegten Reihenfolge.", "For each player, list all own decision nodes in the predefined order.")}</li>
-              <li>{t("Notiere für jeden Knoten die gewählte Aktion. Das ergibt die reine Strategie des Spielers.", "Write the chosen action for each node. This yields that player's pure strategy.")}</li>
-              <li>{t("Bei genau einem Knoten ist die Strategie nur ein Symbol (z.B. s₁=R).", "With exactly one node, a strategy is a single symbol (e.g., s1=R).")}</li>
-              <li>{t("Bei mehreren Knoten ist die Strategie ein Tupel in dieser Reihenfolge (z.B. s₃=(r,r,l)).", "With multiple nodes, a strategy is a tuple in that order (e.g., s3=(r,r,l)).")}</li>
-              <li>{t("Setze alle Einzelstrategien zum Profil zusammen: s=(s₁,s₂,s₃).", "Combine individual strategies into the profile: s=(s1,s2,s3).")}</li>
-            </ol>
-            <p className="hint">
-              {t("Für den Beispielbaum ist ein mögliches reines Strategieprofil:", "For the example tree, one possible pure strategy profile is:")}
-              {" "}
-              <code>(R, a, (r, r, l))</code>.
-            </p>
+            {profileNotationStep === 1 && (
+              <>
+                <h3>{t("Was ist eine Strategie?", "What is a strategy?")}</h3>
+                <p>
+                  {t(
+                    "Eine Strategie sagt einem Spieler, was er in jeder möglichen Situation tun würde, auch wenn diese Situation im konkreten Spielverlauf gar nicht eintritt.",
+                    "A strategy tells a player what to do in every possible situation, even if that situation does not occur in the realized play."
+                  )}
+                </p>
+                <p className="hint">
+                  {t(
+                    "Im Beispiel hat Spieler 2 zwei Knoten (g1, g2) und Spieler 3 zwei Knoten (h1, h2). Eine gültige Strategie muss jeweils alle eigenen Knoten abdecken.",
+                    "In this example, Player 2 has two nodes (g1, g2) and Player 3 has two nodes (h1, h2). A valid strategy must cover all own nodes."
+                  )}
+                </p>
+                <div className="feedback-box feedback-card info">
+                  <strong>{t("Wichtig", "Important")}</strong>
+                  <p>
+                    {t(
+                      "Auch wenn z.B. R gespielt wird, muss Spieler 3 weiterhin festlegen, was er nach (L,a) und (L,b) tun würde. Genau deshalb ist eine Strategie ein vollständiger Plan.",
+                      "Even if, for example, R is played, Player 3 must still specify what they would do after (L,a) and (L,b). That is exactly why a strategy is a complete plan."
+                    )}
+                  </p>
+                </div>
+              </>
+            )}
+
+            {profileNotationStep === 2 && (
+              <>
+                <h3 className="profile-step2-title">{t("Strategie eines einzelnen Spielers", "Single-player strategy")}</h3>
+                <div className="profile-step2-layout">
+                  <p className="hint profile-step2-intro">
+                    {t(
+                      "Baue die Strategien von Spieler 2 und Spieler 3 jeweils separat auf.",
+                      "Build Player-2 and Player-3 strategies separately."
+                    )}
+                  </p>
+
+                  <div className="profile-step2-player-block">
+                    <h4 className="profile-step2-player-title">{t("Spieler 2", "Player 2")}</h4>
+                    <div className="profile-choice-grid profile-choice-grid-2">
+                      <label>
+                        <span><code>g1</code> {t("nach L", "after L")}</span>
+                        <select value={profileNotationP2.g1} onChange={(e) => setProfileP2Action("g1", e.target.value)}>
+                          <option value="">-</option>
+                          <option value="a">a</option>
+                          <option value="b">b</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span><code>g2</code> {t("nach R", "after R")}</span>
+                        <select value={profileNotationP2.g2} onChange={(e) => setProfileP2Action("g2", e.target.value)}>
+                          <option value="">-</option>
+                          <option value="a">a</option>
+                          <option value="b">b</option>
+                        </select>
+                      </label>
+                    </div>
+                    <p className="profile-live-formula">
+                      {t("Strategie von Spieler 2:", "Player-2 strategy:")}{" "}
+                      <code>({profileNotationP2.g1 || "-"}, {profileNotationP2.g2 || "-"})</code>
+                    </p>
+                  </div>
+
+                  <div className="profile-step2-player-block">
+                    <h4 className="profile-step2-player-title">{t("Spieler 3", "Player 3")}</h4>
+                    <div className="profile-choice-grid profile-choice-grid-2">
+                      <label>
+                        <span><code>h1</code></span>
+                        <select value={profileNotationP3.h1} onChange={(e) => setProfileNodeAction("h1", e.target.value)}>
+                          <option value="">-</option>
+                          <option value="l">l</option>
+                          <option value="r">r</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span><code>h2</code></span>
+                        <select value={profileNotationP3.h2} onChange={(e) => setProfileNodeAction("h2", e.target.value)}>
+                          <option value="">-</option>
+                          <option value="l">l</option>
+                          <option value="r">r</option>
+                        </select>
+                      </label>
+                    </div>
+                    <p className="profile-live-formula">
+                      {t("Strategie von Spieler 3:", "Player-3 strategy:")}{" "}
+                      <code>({profileNotationP3.h1 || "-"}, {profileNotationP3.h2 || "-"})</code>
+                    </p>
+                  </div>
+
+                  <p className="hint profile-step2-outro">
+                    {t(
+                      "Die Reihenfolge folgt jeweils der Knotenreihenfolge: P2 (g1, g2) und P3 (h1, h2).",
+                      "The order always follows node order: P2 (g1, g2) and P3 (h1, h2)."
+                    )}
+                  </p>
+                </div>
+              </>
+            )}
+
+            {profileNotationStep === 3 && (
+              <>
+                <h3>{t("Strategieprofil aller Spieler", "Strategy profile of all players")}</h3>
+                <p className="hint profile-step3-intro">
+                  {t(
+                    "Jetzt werden die Strategien aller Spieler kombiniert.",
+                    "Now combine the strategies of all players."
+                  )}
+                </p>
+                <div className="profile-choice-grid profile-choice-grid-players">
+                  <label>
+                    <span>{t("Spieler 1", "Player 1")}</span>
+                    <select value={profileNotationP1} onChange={(e) => setProfileNotationP1(e.target.value)}>
+                      <option value="">-</option>
+                      <option value="L">L</option>
+                      <option value="R">R</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>{t("Spieler 2", "Player 2")}</span>
+                    <code>({profileNotationP2.g1 || "-"}, {profileNotationP2.g2 || "-"})</code>
+                  </label>
+                  <label>
+                    <span>{t("Spieler 3", "Player 3")}</span>
+                    <code>({profileNotationP3.h1 || "-"}, {profileNotationP3.h2 || "-"})</code>
+                  </label>
+                </div>
+                <p className="profile-live-formula">
+                  {t("Strategieprofil:", "Strategy profile:")}{" "}
+                  <code>({profileNotationP1 || "-"}, ({profileNotationP2.g1 || "-"}, {profileNotationP2.g2 || "-"}), ({profileNotationP3.h1 || "-"}, {profileNotationP3.h2 || "-"}))</code>
+                </p>
+                <section className="panel nested-panel profile-quiz">
+                  <h4>{t("Kurzer Check", "Quick check")}</h4>
+                  <p className="hint">{t("Welche der folgenden Strategien könnte Spieler 2 haben?", "Which of the following strategies could Player 2 have?")}</p>
+                  <div className="choice-list">
+                    <label className="choice-item">
+                      <input type="radio" name="profile-quiz" value="ab" checked={profileNotationQuizAnswer === "ab"} onChange={(e) => setProfileNotationQuizAnswer(e.target.value)} />
+                      <span><code>(a, b)</code></span>
+                    </label>
+                    <label className="choice-item">
+                      <input type="radio" name="profile-quiz" value="a" checked={profileNotationQuizAnswer === "a"} onChange={(e) => setProfileNotationQuizAnswer(e.target.value)} />
+                      <span><code>(a)</code></span>
+                    </label>
+                    <label className="choice-item">
+                      <input type="radio" name="profile-quiz" value="lr" checked={profileNotationQuizAnswer === "lr"} onChange={(e) => setProfileNotationQuizAnswer(e.target.value)} />
+                      <span><code>(l, r)</code></span>
+                    </label>
+                  </div>
+                  <div className="actions">
+                    <button type="button" onClick={checkProfileNotationQuiz}>{t("Antwort prüfen", "Check answer")}</button>
+                  </div>
+                  {profileNotationQuizFeedback && (
+                    <div className={`feedback-box feedback-card ${profileNotationQuizType}`}>
+                      <strong>{profileNotationQuizType === "success" ? t("Richtig", "Correct") : t("Hinweis", "Hint")}</strong>
+                      <p>{profileNotationQuizFeedback}</p>
+                    </div>
+                  )}
+                </section>
+              </>
+            )}
           </section>
         </div>
       </section>
