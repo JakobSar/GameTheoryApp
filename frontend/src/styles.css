@@ -1341,6 +1341,13 @@ body.dark-mode .hint {
   font-size: 1rem;
 }
 
+.profile-live-formula-highlight {
+  background: #fff7cc;
+  border: 1px solid #f3d26a;
+  border-radius: 10px;
+  padding: 0.45rem 0.6rem;
+}
+
 .profile-step2-layout {
   margin-top: 0.15rem;
   display: flex;
@@ -1365,7 +1372,7 @@ body.dark-mode .hint {
 }
 
 .profile-step2-layout > .profile-step2-player-block:first-of-type {
-  margin-top: 0.18rem;
+  margin-top: 0.45rem;
 }
 
 .profile-step2-player-title {
@@ -1900,6 +1907,11 @@ body.dark-mode .profile-step-tab.active {
   background: #1d8a7f;
   border-color: #1d8a7f;
   color: #f6fdfb;
+}
+
+body.dark-mode .profile-live-formula-highlight {
+  background: #3b2f0a;
+  border-color: #d6b347;
 }
 
 body.dark-mode .profile-order-list li span {

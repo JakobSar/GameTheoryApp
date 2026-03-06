@@ -6070,7 +6070,7 @@ function checkTreeEx2Phase2() {
               setNormalPage("toc");
             }}
           >
-            {t("Zu Normalformspielen", "Go to normal-form games")}
+            {t("Trainiere Normalformspiele", "Train normal-form games")}
           </button>
         </div>
       </>
@@ -6079,6 +6079,7 @@ function checkTreeEx2Phase2() {
 
   function renderBayesianIntro() {
     return (
+      <>
       <section className="panel">
         <h2>{t("Einführung in Bayes-Spiele", "Introduction to Bayesian games")}</h2>
         <p className="hint">
@@ -6159,18 +6160,19 @@ function checkTreeEx2Phase2() {
           </ul>
         </section>
 
-        <div className="actions">
-          <button
-            type="button"
-            onClick={() => {
-              setActivePage("solve-bayesian");
-              setBayesPage("toc");
-            }}
-          >
-            {t("Zu Bayes-Spielen", "Go to Bayesian games")}
-          </button>
-        </div>
       </section>
+      <div className="actions">
+        <button
+          type="button"
+          onClick={() => {
+            setActivePage("solve-bayesian");
+            setBayesPage("toc");
+          }}
+        >
+          {t("Trainiere Bayes-Spiele", "Train Bayesian games")}
+        </button>
+      </div>
+      </>
     );
   }
 
@@ -6276,11 +6278,13 @@ function checkTreeEx2Phase2() {
           <section className="panel nested-panel">
             <h3>{t("Notation", "Notation")}</h3>
             <ul className="intro-list">
-              <li><code>N</code>: {t("Menge der Spieler.", "set of players.")}</li>
-              <li><code>H</code>: {t("Menge der Knoten (Entscheidungsknoten und Endknoten).", "set of nodes (decision and terminal nodes).")}</li>
-              <li><code>A(h)</code>: {t("verfügbare Aktionen am Knoten", "available actions at node")} <code>h</code>.</li>
-              <li><code>P(h)</code>: {t("Spieler, der am Knoten", "player moving at node")} <code>h</code> {t("entscheidet.", ".")}</li>
-              <li><code>u = (u₁, u₂, ...)</code>: {t("Auszahlungen in Endknoten.", "payoffs at terminal nodes.")}</li>
+              <li><code>N = {"{1, 2}"}</code>: {t("Zwei Spieler (P1 und P2).", "Two players (P1 and P2).")}</li>
+              <li><code>A₁ = {"{L, R}"}</code>: {t("Aktionen von P1 am Startknoten.", "actions of P1 at the root node.")}</li>
+              <li><code>A₂(L) = {"{X, Y}"}</code>: {t("Aktionen von P2 nach L.", "actions of P2 after L.")}</li>
+              <li><code>S₁ = {"{L, R}"}</code>: {t("Strategiemenge von P1.", "strategy set of P1.")}</li>
+              <li><code>S₂ = {"{X, Y}"}</code>: {t("Strategiemenge von P2.", "strategy set of P2.")}</li>
+              <li><code>s = (s₁, s₂)</code>: {t("Strategieprofil, z.B.", "strategy profile, e.g.")} <code>(L, X)</code>.</li>
+              <li><code>u(L,X)=(2,4)</code>, <code>u(L,Y)=(0,0)</code>, <code>u(R)=(3,1)</code>.</li>
             </ul>
           </section>
         </div>
@@ -6328,7 +6332,7 @@ function checkTreeEx2Phase2() {
                   y1="145"
                   x2="192"
                   y2="95"
-                  className={`tree-edge ${profileNotationStep >= 3 ? (profileNotationP1 === "L" ? "bi-active" : "bi-muted") : ""}`}
+                  className={`tree-edge ${profileNotationStep >= 3 ? (profileNotationP1 ? (profileNotationP1 === "L" ? "bi-active" : "bi-muted") : "") : ""}`}
                   markerEnd="url(#profile-arrow)"
                 />
                 <line
@@ -6584,7 +6588,7 @@ function checkTreeEx2Phase2() {
                     <code>({profileNotationP3.h1 || "-"}, {profileNotationP3.h2 || "-"})</code>
                   </label>
                 </div>
-                <p className="profile-live-formula">
+                <p className="profile-live-formula profile-live-formula-highlight">
                   {t("Strategieprofil:", "Strategy profile:")}{" "}
                   <code>({profileNotationP1 || "-"}, ({profileNotationP2.g1 || "-"}, {profileNotationP2.g2 || "-"}), ({profileNotationP3.h1 || "-"}, {profileNotationP3.h2 || "-"}))</code>
                 </p>
@@ -6628,7 +6632,7 @@ function checkTreeEx2Phase2() {
             setTreePage("toc");
           }}
         >
-          {t("Zu Spielbäumen", "Go to game trees")}
+          {t("Trainiere Spielbäume", "Train game trees")}
         </button>
       </div>
       </>
