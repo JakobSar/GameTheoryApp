@@ -99,6 +99,8 @@ function buildEliminatorPresets() {
 
 const ELIMINATOR_PRESETS = buildEliminatorPresets();
 const EXERCISE_PROGRESS_KEY = "gt-exercise-progress-v1";
+const THEME_MODE_KEY = "gt-theme-mode-v1";
+const THEME_MODES = ["light", "dark", "jlu"];
 
 const INTRO_BAYES_T1 = {
   rows: ["A", "B"],
@@ -1468,11 +1470,15 @@ function App() {
     const systemLang = (window.navigator?.language || "").toLowerCase();
     return systemLang.startsWith("de") ? "de" : "en";
   });
-  const [isDarkMode, setIsDarkMode] = useState(() => {
+  const [themeMode, setThemeMode] = useState(() => {
     if (typeof window === "undefined") {
-      return false;
+      return "light";
     }
-    return Boolean(window.matchMedia?.("(prefers-color-scheme: dark)").matches);
+    const storedThemeMode = window.localStorage.getItem(THEME_MODE_KEY);
+    if (THEME_MODES.includes(storedThemeMode)) {
+      return storedThemeMode;
+    }
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   });
   const [activePage, setActivePage] = useState("home");
   const [isNavOpen, setIsNavOpen] = useState(() => {
@@ -1741,14 +1747,26 @@ function App() {
     lastHistoryStateRef.current = navState;
   }, [activePage, normalPage, bayesPage, treePage]);
 
+  const isDarkMode = themeMode === "dark";
+  const isJluMode = themeMode === "jlu";
+
   useEffect(() => {
     document.body.classList.toggle("dark-mode", isDarkMode);
     document.documentElement.classList.toggle("dark-mode", isDarkMode);
+    document.body.classList.toggle("jlu-mode", isJluMode);
+    document.documentElement.classList.toggle("jlu-mode", isJluMode);
+    try {
+      window.localStorage.setItem(THEME_MODE_KEY, themeMode);
+    } catch {
+      // Ignore storage failures in private mode / restricted environments.
+    }
     return () => {
       document.body.classList.remove("dark-mode");
       document.documentElement.classList.remove("dark-mode");
+      document.body.classList.remove("jlu-mode");
+      document.documentElement.classList.remove("jlu-mode");
     };
-  }, [isDarkMode]);
+  }, [isDarkMode, isJluMode, themeMode]);
 
   useEffect(() => {
     setLegacyLang(uiLang);
@@ -7381,9 +7399,18 @@ function checkTreeEx2Phase2() {
           <button
             type="button"
             className="theme-toggle"
-            onClick={() => setIsDarkMode((prev) => !prev)}
+            onClick={() =>
+              setThemeMode((prev) => {
+                const currentIndex = THEME_MODES.indexOf(prev);
+                return THEME_MODES[(currentIndex + 1) % THEME_MODES.length];
+              })
+            }
           >
-            {isDarkMode ? t("Hellmodus", "Light mode") : t("Darkmode", "Dark mode")}
+            {themeMode === "light"
+              ? t("Hellmodus", "Light mode")
+              : themeMode === "dark"
+                ? t("Darkmode", "Dark mode")
+                : t("JLU Modus", "JLU mode")}
           </button>
           <button
             type="button"

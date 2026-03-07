@@ -2156,6 +2156,348 @@ body.dark-mode .impressum-toggle {
   color: #9fe6dd;
 }
 
+body.jlu-mode,
+html.jlu-mode {
+  --bg: #dce6eb;
+  --card: #ffffff;
+  --text: #000000;
+  --muted: #000000;
+  --accent: #0069b3;
+  --accent-2: #ff9000;
+  --line: #8aaedc;
+  --line-active: #ff9000;
+  --shadow: 0 14px 30px rgba(83, 96, 107, 0.2);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(0, 105, 179, 0.19), transparent 36%),
+    radial-gradient(circle at 86% 0%, rgba(59, 136, 200, 0.18), transparent 32%),
+    var(--bg);
+}
+
+html.jlu-mode::before {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(0, 105, 179, 0.19), transparent 36%),
+    radial-gradient(circle at 86% 0%, rgba(59, 136, 200, 0.18), transparent 32%),
+    var(--bg);
+}
+
+body.jlu-mode .kicker,
+body.jlu-mode .menu-toggle,
+body.jlu-mode .theme-toggle {
+  color: #0069b3;
+  border-color: rgba(0, 105, 179, 0.35);
+}
+
+body.jlu-mode .brand-link {
+  color: #004f8a;
+}
+
+body.jlu-mode a {
+  color: #0069b3;
+}
+
+body.jlu-mode input,
+body.jlu-mode textarea,
+body.jlu-mode select,
+body.jlu-mode pre {
+  background: #ffffff;
+  color: var(--text);
+  border-color: rgba(83, 96, 107, 0.24);
+}
+
+body.jlu-mode .nested-panel {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+body.jlu-mode .special-block {
+  background: rgba(255, 255, 255, 0.86);
+  border-color: rgba(83, 96, 107, 0.2);
+}
+
+body.jlu-mode .special-card-counter {
+  color: #000000;
+}
+
+body.jlu-mode .special-card-nav {
+  border-color: rgba(83, 96, 107, 0.2);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+body.jlu-mode .special-card-nav .special-card-nav-btn {
+  color: #000000;
+}
+
+body.jlu-mode .special-card-nav .special-card-nav-btn:hover,
+body.jlu-mode .nav-pill-btn:hover {
+  background: rgba(0, 105, 179, 0.11);
+  border-color: rgba(0, 105, 179, 0.3);
+}
+
+body.jlu-mode .nav-pill-btn {
+  color: #000000;
+}
+
+body.jlu-mode .actions:has(.nav-pill-btn) {
+  border-color: rgba(83, 96, 107, 0.2);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+body.jlu-mode .special-card-dot {
+  border-color: rgba(83, 96, 107, 0.3);
+  background: rgba(138, 174, 220, 0.35);
+}
+
+body.jlu-mode .nav-group h3 {
+  color: #000000;
+}
+
+body.jlu-mode .nav-item,
+body.jlu-mode .exercise-link {
+  background: #f7fbff;
+  color: #000000;
+  border-color: rgba(0, 105, 179, 0.2);
+}
+
+body.jlu-mode .exercise-link-meta {
+  color: #000000;
+}
+
+body.jlu-mode .nav-item.active {
+  background: #0069b3;
+  color: #ffffff;
+}
+
+body.jlu-mode .matrix-table {
+  background: #ffffff;
+  border-color: rgba(83, 96, 107, 0.2);
+}
+
+body.jlu-mode .matrix-table th {
+  background: #e8f1f8;
+}
+
+body.jlu-mode .matrix-table th,
+body.jlu-mode .matrix-table td {
+  border-right-color: rgba(83, 96, 107, 0.2);
+  border-bottom-color: rgba(83, 96, 107, 0.2);
+}
+
+body.jlu-mode .choice-item {
+  background: #ffffff;
+  border-color: rgba(83, 96, 107, 0.2);
+}
+
+body.jlu-mode .notation-box {
+  background: #f7fbff;
+  border-color: rgba(83, 96, 107, 0.2);
+}
+
+body.jlu-mode .tree-result-box code {
+  color: #000000;
+}
+
+body.jlu-mode .bayes-prior-card {
+  background: linear-gradient(180deg, #f7fbff, #eef4f9);
+  border-color: rgba(83, 96, 107, 0.2);
+}
+
+body.jlu-mode .bayes-prior-grid {
+  border-color: rgba(83, 96, 107, 0.2);
+}
+
+body.jlu-mode .prior-col-head,
+body.jlu-mode .prior-row-head,
+body.jlu-mode .prior-corner {
+  background: #e8f1f8;
+}
+
+body.jlu-mode .prior-cell {
+  background: #ffffff;
+}
+
+body.jlu-mode .prior-corner,
+body.jlu-mode .prior-col-head,
+body.jlu-mode .prior-row-head,
+body.jlu-mode .prior-cell {
+  border-right-color: rgba(83, 96, 107, 0.2);
+  border-bottom-color: rgba(83, 96, 107, 0.2);
+}
+
+body.jlu-mode .tree-example-wrap {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(138, 174, 220, 0.3), transparent 40%),
+    #f2f7fb;
+  border-color: rgba(83, 96, 107, 0.2);
+}
+
+body.jlu-mode .profile-node-tag {
+  fill: #3b88c8;
+}
+
+body.jlu-mode .profile-node-tag-p2 {
+  fill: #0069b3;
+}
+
+body.jlu-mode .profile-step-tab {
+  background: #ffffff;
+  border-color: rgba(83, 96, 107, 0.22);
+  color: #000000;
+}
+
+body.jlu-mode .profile-step-tab.active {
+  background: #0069b3;
+  border-color: #0069b3;
+  color: #ffffff;
+}
+
+body.jlu-mode .profile-live-formula-highlight {
+  background: #e8f1f8;
+  border-color: #8aaedc;
+}
+
+body.jlu-mode .profile-order-list li span {
+  background: #0069b3;
+}
+
+body.jlu-mode .tree-node.decision {
+  fill: #dce6eb;
+  stroke: #0069b3;
+}
+
+body.jlu-mode .tree-action {
+  stroke: #ffffff;
+}
+
+body.jlu-mode .tree-payoff-bg {
+  fill: #ffffff;
+  stroke: rgba(83, 96, 107, 0.28);
+}
+
+body.jlu-mode .tree-payoff,
+body.jlu-mode .tree-label,
+body.jlu-mode .tree-action {
+  fill: #000000;
+}
+
+body.jlu-mode .tree-edge.bi-active {
+  stroke: #0069b3;
+}
+
+body.jlu-mode .tree-edge.bi-fight {
+  stroke: #ff9000;
+}
+
+body.jlu-mode .tree-node.decision.bi-current {
+  fill: #c9d5ef;
+}
+
+body.jlu-mode .tree-node.terminal.bi-selected-terminal {
+  fill: #ffefbf;
+}
+
+body.jlu-mode .feedback-card.success {
+  background: #e9f9f2;
+  color: #0a6a43;
+}
+
+body.jlu-mode .feedback-card.error {
+  background: #fde8ef;
+  color: #a0043d;
+}
+
+body.jlu-mode .feedback-card.warning {
+  background: #fff5de;
+  color: #9c5b00;
+}
+
+body.jlu-mode .feedback-card.info {
+  background: #e8f1f8;
+  color: #004f8a;
+}
+
+body.jlu-mode .eliminator-compare-item {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(83, 96, 107, 0.2);
+}
+
+body.jlu-mode .eliminator-compare-item.strict {
+  background: rgba(0, 189, 103, 0.12);
+  border-color: rgba(0, 189, 103, 0.35);
+}
+
+body.jlu-mode .eliminator-compare-item.weak {
+  background: rgba(255, 144, 0, 0.12);
+  border-color: rgba(255, 144, 0, 0.35);
+}
+
+body.jlu-mode .impressum-card {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(83, 96, 107, 0.2);
+}
+
+body.jlu-mode .impressum-wrap {
+  background:
+    radial-gradient(circle at 90% 0%, rgba(59, 136, 200, 0.2), transparent 36%),
+    radial-gradient(circle at 10% 100%, rgba(0, 105, 179, 0.16), transparent 30%),
+    var(--card);
+}
+
+body.jlu-mode .impressum-project-blurb {
+  background: rgba(255, 255, 255, 0.86);
+  border-color: rgba(0, 105, 179, 0.24);
+  color: #000000;
+}
+
+body.jlu-mode .impressum-toggle {
+  border-color: rgba(0, 105, 179, 0.38);
+  color: #0069b3;
+}
+
+body.jlu-mode .home-hero {
+  background:
+    radial-gradient(circle at 12% 20%, rgba(0, 105, 179, 0.22), transparent 40%),
+    radial-gradient(circle at 88% 0%, rgba(59, 136, 200, 0.24), transparent 34%),
+    var(--card);
+}
+
+body.jlu-mode .home-hero::after {
+  background: linear-gradient(
+    108deg,
+    rgba(0, 105, 179, 0) 0%,
+    rgba(59, 136, 200, 0.4) 42%,
+    rgba(138, 174, 220, 0.38) 56%,
+    rgba(0, 105, 179, 0) 100%
+  );
+}
+
+body.jlu-mode .home-eyebrow {
+  color: #0069b3;
+}
+
+body.jlu-mode .ghost-btn {
+  color: #0069b3;
+  border-color: rgba(0, 105, 179, 0.42);
+}
+
+body.jlu-mode .home-link {
+  background: #eef4fa;
+  color: #000000;
+  border-color: rgba(0, 105, 179, 0.24);
+}
+
+body.jlu-mode .home-link-count {
+  color: #000000;
+}
+
+body.jlu-mode .def-badge {
+  background: linear-gradient(135deg, #0069b3, #3b88c8);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 105, 179, 0.3);
+}
+
+body.jlu-mode .intro-list li::marker {
+  color: #0069b3;
+}
+
 @media (min-width: 900px) {
   .grid {
     grid-template-columns: 1fr 1fr;
