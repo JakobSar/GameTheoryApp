@@ -94,16 +94,16 @@ html::before {
   }
 
   .app-shell {
-    gap: 0.55rem;
+    gap: 0.4rem;
   }
 
   .content-area > .panel:first-child,
   .content-area > .home-wrap {
-    margin-top: 0.35rem;
+    margin-top: 0.2rem;
   }
 
   .app-shell.nav-collapsed .content-area > .home-wrap {
-    margin-top: 0.35rem;
+    margin-top: 0.2rem;
   }
 }
 
@@ -2233,6 +2233,18 @@ body.dark-mode .impressum-toggle {
 }
 
 @media (max-width: 640px) {
+  .hero .hero-meta {
+    margin-bottom: 0.7rem;
+  }
+
+  .hero .brand-link {
+    font-size: clamp(1.84rem, 8.4vw, 2.48rem) !important;
+    line-height: 1.03;
+    display: block;
+    width: 100%;
+    text-align: left;
+  }
+
   .special-card-footer {
     gap: 0.3rem;
   }
@@ -2296,9 +2308,6 @@ body.dark-mode .impressum-toggle {
 
   .profile-notation-grid > .panel {
     min-width: 0;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
   }
 
   .profile-step-tabs {

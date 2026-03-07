@@ -6637,7 +6637,8 @@ function checkTreeEx2Phase2() {
                   </label>
                 </div>
                 <p className="profile-live-formula profile-live-formula-highlight">
-                  {t("Strategieprofil:", "Strategy profile:")}{" "}
+                  {t("Strategieprofil:", "Strategy profile:")}
+                  <br />
                   <code>({profileNotationP1 || "-"}, ({profileNotationP2.g1 || "-"}, {profileNotationP2.g2 || "-"}), ({profileNotationP3.h1 || "-"}, {profileNotationP3.h2 || "-"}))</code>
                 </p>
                 <section className="panel nested-panel profile-quiz">
