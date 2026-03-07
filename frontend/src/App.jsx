@@ -4710,7 +4710,7 @@ function checkTreeEx2Phase2() {
                 <h4>{t("1) Geben Sie alle teilspielperfekten GG an.", "1) Provide all subgame-perfect equilibria.")}</h4>
                 <div className="choice-list">
                   {treeEx4SpeEntries.map((entry, index) => (
-                    <div key={`spe-entry-${index}`} className="strategy-entry-row">
+                    <div key={`spe-entry-${index}`} className="strategy-entry-row tree-ex4-entry-row">
                       <code>(</code>
                       <select value={entry.p1} onChange={(e) => updateTreeEx4SpeEntry(index, "p1", e.target.value)}>
                         <option value="">{t("-", "-")}</option>
@@ -4759,7 +4759,7 @@ function checkTreeEx2Phase2() {
                 <h4>{t("2) Geben Sie alle Nash-GG an.", "2) Provide all Nash equilibria.")}</h4>
                 <div className="choice-list">
                   {treeEx4NashEntries.map((entry, index) => (
-                    <div key={`nash-entry-${index}`} className="strategy-entry-row">
+                    <div key={`nash-entry-${index}`} className="strategy-entry-row tree-ex4-entry-row">
                       <code>(</code>
                       <select value={entry.p1} onChange={(e) => updateTreeEx4NashEntry(index, "p1", e.target.value)}>
                         <option value="">{t("-", "-")}</option>
@@ -5854,7 +5854,7 @@ function checkTreeEx2Phase2() {
 
     return (
       <section className="panel">
-        <h2>{t("Strategy Eliminator", "Strategy Eliminator")}</h2>
+        <h2>{t("Strategie-Eliminator", "Strategy Eliminator")}</h2>
         <p className="hint">
           {t(
             "Trainiere schrittweise Eliminierung strikt dominierter Strategien. Erst wenn keine Eliminierung mehr möglich ist, wird Nash berechnet.",
@@ -6081,7 +6081,11 @@ function checkTreeEx2Phase2() {
             </article>
           </HorizontalArrowScroller>
 
-          <div className="intro-grid intro-grid-one-line intro-grid-2">
+          <HorizontalArrowScroller
+            className="intro-grid intro-grid-one-line intro-grid-2"
+            leftAriaLabel={t("Nach links scrollen", "Scroll left")}
+            rightAriaLabel={t("Nach rechts scrollen", "Scroll right")}
+          >
             <section className="panel nested-panel">
               <h3>{t("Beispiel-Spiel in Normalform", "Example game in Normal-form")}</h3>
               <p className="hint">{t("Spieler 1 wählt A oder B, Spieler 2 wählt X, Y oder Z. In jeder Zelle steht (u₁, u₂).", "Player 1 chooses A or B, Player 2 chooses X, Y or Z. Each cell shows (u₁, u₂).")}</p>
@@ -6098,7 +6102,7 @@ function checkTreeEx2Phase2() {
                 <li><code>u = (u₁, u₂)</code>: {t("Nutzen (Spieler 1, Spieler 2).", "Payoff (Player 1, Player 2).")}</li>
               </ul>
             </section>
-          </div>
+          </HorizontalArrowScroller>
         </section>
 
         {renderStrategyEliminatorCard()}
@@ -6746,11 +6750,23 @@ function checkTreeEx2Phase2() {
               ))}
             </div>
             <div className="special-card-nav">
-              <button type="button" className="special-card-nav-btn" onClick={() => shiftSpecialCard(-1)}>
-                {t("Zurück", "Previous")}
+              <button
+                type="button"
+                className="special-card-nav-btn"
+                aria-label={t("Zurück", "Previous")}
+                onClick={() => shiftSpecialCard(-1)}
+              >
+                <span className="nav-label-full">{t("Zurück", "Previous")}</span>
+                <span className="nav-label-short" aria-hidden="true">&lt;</span>
               </button>
-              <button type="button" className="special-card-nav-btn" onClick={() => shiftSpecialCard(1)}>
-                {t("Weiter", "Next")}
+              <button
+                type="button"
+                className="special-card-nav-btn"
+                aria-label={t("Weiter", "Next")}
+                onClick={() => shiftSpecialCard(1)}
+              >
+                <span className="nav-label-full">{t("Weiter", "Next")}</span>
+                <span className="nav-label-short" aria-hidden="true">&gt;</span>
               </button>
             </div>
           </div>

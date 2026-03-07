@@ -88,8 +88,22 @@ html::before {
 }
 
 @media (max-width: 899px) {
+  .brand-link {
+    font-size: clamp(2rem, 8vw, 2.75rem);
+    line-height: 1.05;
+  }
+
+  .app-shell {
+    gap: 0.55rem;
+  }
+
+  .content-area > .panel:first-child,
+  .content-area > .home-wrap {
+    margin-top: 0.35rem;
+  }
+
   .app-shell.nav-collapsed .content-area > .home-wrap {
-    margin-top: 1rem;
+    margin-top: 0.35rem;
   }
 }
 
@@ -1093,6 +1107,8 @@ body.dark-mode .hint {
   font-size: 0.86rem;
   letter-spacing: 0.02em;
   color: #4f6158;
+  justify-self: start;
+  white-space: nowrap;
 }
 
 .special-card-nav {
@@ -1137,6 +1153,7 @@ body.dark-mode .hint {
   justify-content: center;
   gap: 0.35rem;
   margin-top: 0;
+  justify-self: center;
 }
 
 .special-card-dot {
@@ -1158,6 +1175,10 @@ body.dark-mode .hint {
 
 .special-card-dot:hover {
   transform: scale(1.1);
+}
+
+.nav-label-short {
+  display: none;
 }
 
 .special-block {
@@ -2197,17 +2218,9 @@ body.dark-mode .impressum-toggle {
 
 @media (max-width: 980px) {
   .special-card-footer {
-    grid-template-columns: 1fr;
-    justify-items: start;
-    gap: 0.55rem;
-  }
-
-  .special-card-dots {
-    justify-self: center;
-  }
-
-  .special-card-nav {
-    justify-self: start;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.45rem;
   }
 
   .profile-notation-grid {
@@ -2220,10 +2233,56 @@ body.dark-mode .impressum-toggle {
 }
 
 @media (max-width: 640px) {
+  .special-card-footer {
+    gap: 0.3rem;
+  }
+
+  .special-card-counter {
+    font-size: 0.8rem;
+  }
+
+  .special-card-nav {
+    gap: 0.22rem;
+    padding: 0.16rem;
+  }
+
+  .special-card-nav .special-card-nav-btn {
+    min-width: 1.9rem;
+    padding: 0.24rem 0.42rem;
+  }
+
+  .special-card-nav .nav-label-full {
+    display: none;
+  }
+
+  .special-card-nav .nav-label-short {
+    display: inline;
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .tree-ex4-entry-row {
+    gap: 0.14rem;
+    padding: 0.3rem 0.34rem;
+  }
+
+  .tree-ex4-entry-row code {
+    font-size: 0.94rem;
+    line-height: 1;
+    flex: 0 0 auto;
+  }
+
+  .tree-ex4-entry-row select {
+    width: 42px;
+    min-width: 42px;
+    padding: 0.16rem 0.18rem;
+  }
+
   .profile-notation-grid {
     display: grid;
     grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
-    align-items: start;
+    align-items: stretch;
     overflow-x: auto;
     gap: 0.7rem;
     padding-bottom: 0.2rem;
@@ -2237,6 +2296,9 @@ body.dark-mode .impressum-toggle {
 
   .profile-notation-grid > .panel {
     min-width: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
   }
 
   .profile-step-tabs {
