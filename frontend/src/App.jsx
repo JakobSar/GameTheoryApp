@@ -317,6 +317,10 @@ const SPECIAL_GAME_TRANSLATIONS = {
 const SPECIAL_QUIZ_TYPES = ["pd", "chicken", "stag", "bos", "ultimatum"];
 const SPECIAL_CARD_SWIPE_THRESHOLD = 56;
 const PRISONERS_DILEMMA_TITLE = "Gefangenendilemma";
+const CHICKEN_GAME_TITLE = "Feiglingsspiel (Chicken)";
+const STAG_HUNT_TITLE = "Jagdspiel (Stag Hunt)";
+const BATTLE_OF_SEXES_TITLE = "Kampf der Geschlechter";
+const ULTIMATUM_TITLE = "Ultimatumspiel (Variante mit simultaner Entscheidung)";
 
 function buildPrisonersDilemmaCellClasses({ focusPlayer, showNash, showInefficiency }) {
   const classes = {};
@@ -342,6 +346,128 @@ function buildPrisonersDilemmaCellClasses({ focusPlayer, showNash, showInefficie
 
   if (showInefficiency) {
     addClass("Kooperieren|Kooperieren", "pd-cell-efficient");
+  }
+
+  return classes;
+}
+
+function buildChickenCellClasses({ focusPlayer, showNash, showCoordinationRisk }) {
+  const classes = {};
+  const addClass = (key, className) => {
+    classes[key] = classes[key] ? `${classes[key]} ${className}` : className;
+  };
+
+  if (focusPlayer === "p1") {
+    addClass("Ausweichen|Ausweichen", "pd-cell-compare");
+    addClass("Geradeaus|Ausweichen", "pd-cell-best");
+    addClass("Geradeaus|Geradeaus", "pd-cell-compare");
+    addClass("Ausweichen|Geradeaus", "pd-cell-best");
+  } else if (focusPlayer === "p2") {
+    addClass("Ausweichen|Ausweichen", "pd-cell-compare");
+    addClass("Ausweichen|Geradeaus", "pd-cell-best");
+    addClass("Geradeaus|Geradeaus", "pd-cell-compare");
+    addClass("Geradeaus|Ausweichen", "pd-cell-best");
+  }
+
+  if (showNash) {
+    addClass("Geradeaus|Ausweichen", "pd-cell-nash");
+    addClass("Ausweichen|Geradeaus", "pd-cell-nash");
+  }
+
+  if (showCoordinationRisk) {
+    addClass("Geradeaus|Geradeaus", "pd-cell-risk");
+  }
+
+  return classes;
+}
+
+function buildStagCellClasses({ focusPlayer, showNash, showCoordinationRisk }) {
+  const classes = {};
+  const addClass = (key, className) => {
+    classes[key] = classes[key] ? `${classes[key]} ${className}` : className;
+  };
+
+  if (focusPlayer === "p1") {
+    addClass("Hirsch|Hirsch", "pd-cell-best");
+    addClass("Hase|Hirsch", "pd-cell-compare");
+    addClass("Hirsch|Hase", "pd-cell-compare");
+    addClass("Hase|Hase", "pd-cell-best");
+  } else if (focusPlayer === "p2") {
+    addClass("Hirsch|Hirsch", "pd-cell-best");
+    addClass("Hirsch|Hase", "pd-cell-compare");
+    addClass("Hase|Hirsch", "pd-cell-compare");
+    addClass("Hase|Hase", "pd-cell-best");
+  }
+
+  if (showNash) {
+    addClass("Hirsch|Hirsch", "pd-cell-nash");
+    addClass("Hase|Hase", "pd-cell-nash");
+  }
+
+  if (showCoordinationRisk) {
+    addClass("Hirsch|Hase", "pd-cell-risk");
+    addClass("Hase|Hirsch", "pd-cell-risk");
+  }
+
+  return classes;
+}
+
+function buildBosCellClasses({ focusPlayer, showNash, showCoordinationRisk }) {
+  const classes = {};
+  const addClass = (key, className) => {
+    classes[key] = classes[key] ? `${classes[key]} ${className}` : className;
+  };
+
+  if (focusPlayer === "p1") {
+    addClass("Oper|Oper", "pd-cell-best");
+    addClass("Fußball|Oper", "pd-cell-compare");
+    addClass("Oper|Fußball", "pd-cell-compare");
+    addClass("Fußball|Fußball", "pd-cell-best");
+  } else if (focusPlayer === "p2") {
+    addClass("Oper|Oper", "pd-cell-best");
+    addClass("Oper|Fußball", "pd-cell-compare");
+    addClass("Fußball|Oper", "pd-cell-compare");
+    addClass("Fußball|Fußball", "pd-cell-best");
+  }
+
+  if (showNash) {
+    addClass("Oper|Oper", "pd-cell-nash");
+    addClass("Fußball|Fußball", "pd-cell-nash");
+  }
+
+  if (showCoordinationRisk) {
+    addClass("Oper|Fußball", "pd-cell-risk");
+    addClass("Fußball|Oper", "pd-cell-risk");
+  }
+
+  return classes;
+}
+
+function buildUltimatumCellClasses({ focusPlayer, showNash, showFairnessGap }) {
+  const classes = {};
+  const addClass = (key, className) => {
+    classes[key] = classes[key] ? `${classes[key]} ${className}` : className;
+  };
+
+  if (focusPlayer === "p1") {
+    addClass("Fair|Annehmen", "pd-cell-compare");
+    addClass("Unfair|Annehmen", "pd-cell-best");
+    addClass("Fair|Ablehnen", "pd-cell-best");
+    addClass("Unfair|Ablehnen", "pd-cell-best");
+  } else if (focusPlayer === "p2") {
+    addClass("Fair|Annehmen", "pd-cell-best");
+    addClass("Fair|Ablehnen", "pd-cell-compare");
+    addClass("Unfair|Annehmen", "pd-cell-best");
+    addClass("Unfair|Ablehnen", "pd-cell-compare");
+  }
+
+  if (showNash) {
+    addClass("Unfair|Annehmen", "pd-cell-nash");
+  }
+
+  if (showFairnessGap) {
+    addClass("Fair|Annehmen", "pd-cell-efficient");
+    addClass("Unfair|Annehmen", "pd-cell-risk");
   }
 
   return classes;
@@ -1702,6 +1828,22 @@ function App() {
   const [prisonersFocusPlayer, setPrisonersFocusPlayer] = useState("");
   const [showPrisonersNash, setShowPrisonersNash] = useState(false);
   const [showPrisonersInefficiency, setShowPrisonersInefficiency] = useState(false);
+  const [showChickenAnalysis, setShowChickenAnalysis] = useState(false);
+  const [chickenFocusPlayer, setChickenFocusPlayer] = useState("");
+  const [showChickenNash, setShowChickenNash] = useState(false);
+  const [showChickenCoordinationRisk, setShowChickenCoordinationRisk] = useState(false);
+  const [showStagAnalysis, setShowStagAnalysis] = useState(false);
+  const [stagFocusPlayer, setStagFocusPlayer] = useState("");
+  const [showStagNash, setShowStagNash] = useState(false);
+  const [showStagCoordinationRisk, setShowStagCoordinationRisk] = useState(false);
+  const [showBosAnalysis, setShowBosAnalysis] = useState(false);
+  const [bosFocusPlayer, setBosFocusPlayer] = useState("");
+  const [showBosNash, setShowBosNash] = useState(false);
+  const [showBosCoordinationRisk, setShowBosCoordinationRisk] = useState(false);
+  const [showUltimatumAnalysis, setShowUltimatumAnalysis] = useState(false);
+  const [ultimatumFocusPlayer, setUltimatumFocusPlayer] = useState("");
+  const [showUltimatumNash, setShowUltimatumNash] = useState(false);
+  const [showUltimatumFairnessGap, setShowUltimatumFairnessGap] = useState(false);
   const specialSwipeStartRef = useRef(null);
   const [eliminatorGame, setEliminatorGame] = useState(() => ELIMINATOR_PRESETS[0]);
   const [eliminatorActiveRows, setEliminatorActiveRows] = useState(() => ELIMINATOR_PRESETS[0].rows);
@@ -1898,6 +2040,30 @@ function App() {
       setPrisonersFocusPlayer("");
       setShowPrisonersNash(false);
       setShowPrisonersInefficiency(false);
+    }
+    if (!currentCard || currentCard.title !== CHICKEN_GAME_TITLE) {
+      setShowChickenAnalysis(false);
+      setChickenFocusPlayer("");
+      setShowChickenNash(false);
+      setShowChickenCoordinationRisk(false);
+    }
+    if (!currentCard || currentCard.title !== STAG_HUNT_TITLE) {
+      setShowStagAnalysis(false);
+      setStagFocusPlayer("");
+      setShowStagNash(false);
+      setShowStagCoordinationRisk(false);
+    }
+    if (!currentCard || currentCard.title !== BATTLE_OF_SEXES_TITLE) {
+      setShowBosAnalysis(false);
+      setBosFocusPlayer("");
+      setShowBosNash(false);
+      setShowBosCoordinationRisk(false);
+    }
+    if (!currentCard || currentCard.title !== ULTIMATUM_TITLE) {
+      setShowUltimatumAnalysis(false);
+      setUltimatumFocusPlayer("");
+      setShowUltimatumNash(false);
+      setShowUltimatumFairnessGap(false);
     }
   }, [specialCardIndex]);
 
@@ -2142,6 +2308,130 @@ function App() {
       setPrisonersFocusPlayer("");
       setShowPrisonersNash(false);
       setShowPrisonersInefficiency(!sameIneff);
+    }
+  }
+
+  function toggleChickenAnalysisMode(mode) {
+    const sameP1 = mode === "p1" && chickenFocusPlayer === "p1";
+    const sameP2 = mode === "p2" && chickenFocusPlayer === "p2";
+    const sameNash = mode === "nash" && showChickenNash;
+    const sameRisk = mode === "risk" && showChickenCoordinationRisk;
+
+    if (mode === "p1") {
+      setChickenFocusPlayer(sameP1 ? "" : "p1");
+      setShowChickenNash(false);
+      setShowChickenCoordinationRisk(false);
+      return;
+    }
+    if (mode === "p2") {
+      setChickenFocusPlayer(sameP2 ? "" : "p2");
+      setShowChickenNash(false);
+      setShowChickenCoordinationRisk(false);
+      return;
+    }
+    if (mode === "nash") {
+      setChickenFocusPlayer("");
+      setShowChickenNash(!sameNash);
+      setShowChickenCoordinationRisk(false);
+      return;
+    }
+    if (mode === "risk") {
+      setChickenFocusPlayer("");
+      setShowChickenNash(false);
+      setShowChickenCoordinationRisk(!sameRisk);
+    }
+  }
+
+  function toggleStagAnalysisMode(mode) {
+    const sameP1 = mode === "p1" && stagFocusPlayer === "p1";
+    const sameP2 = mode === "p2" && stagFocusPlayer === "p2";
+    const sameNash = mode === "nash" && showStagNash;
+    const sameRisk = mode === "risk" && showStagCoordinationRisk;
+
+    if (mode === "p1") {
+      setStagFocusPlayer(sameP1 ? "" : "p1");
+      setShowStagNash(false);
+      setShowStagCoordinationRisk(false);
+      return;
+    }
+    if (mode === "p2") {
+      setStagFocusPlayer(sameP2 ? "" : "p2");
+      setShowStagNash(false);
+      setShowStagCoordinationRisk(false);
+      return;
+    }
+    if (mode === "nash") {
+      setStagFocusPlayer("");
+      setShowStagNash(!sameNash);
+      setShowStagCoordinationRisk(false);
+      return;
+    }
+    if (mode === "risk") {
+      setStagFocusPlayer("");
+      setShowStagNash(false);
+      setShowStagCoordinationRisk(!sameRisk);
+    }
+  }
+
+  function toggleBosAnalysisMode(mode) {
+    const sameP1 = mode === "p1" && bosFocusPlayer === "p1";
+    const sameP2 = mode === "p2" && bosFocusPlayer === "p2";
+    const sameNash = mode === "nash" && showBosNash;
+    const sameRisk = mode === "risk" && showBosCoordinationRisk;
+
+    if (mode === "p1") {
+      setBosFocusPlayer(sameP1 ? "" : "p1");
+      setShowBosNash(false);
+      setShowBosCoordinationRisk(false);
+      return;
+    }
+    if (mode === "p2") {
+      setBosFocusPlayer(sameP2 ? "" : "p2");
+      setShowBosNash(false);
+      setShowBosCoordinationRisk(false);
+      return;
+    }
+    if (mode === "nash") {
+      setBosFocusPlayer("");
+      setShowBosNash(!sameNash);
+      setShowBosCoordinationRisk(false);
+      return;
+    }
+    if (mode === "risk") {
+      setBosFocusPlayer("");
+      setShowBosNash(false);
+      setShowBosCoordinationRisk(!sameRisk);
+    }
+  }
+
+  function toggleUltimatumAnalysisMode(mode) {
+    const sameP1 = mode === "p1" && ultimatumFocusPlayer === "p1";
+    const sameP2 = mode === "p2" && ultimatumFocusPlayer === "p2";
+    const sameNash = mode === "nash" && showUltimatumNash;
+    const sameFair = mode === "fair" && showUltimatumFairnessGap;
+
+    if (mode === "p1") {
+      setUltimatumFocusPlayer(sameP1 ? "" : "p1");
+      setShowUltimatumNash(false);
+      setShowUltimatumFairnessGap(false);
+      return;
+    }
+    if (mode === "p2") {
+      setUltimatumFocusPlayer(sameP2 ? "" : "p2");
+      setShowUltimatumNash(false);
+      setShowUltimatumFairnessGap(false);
+      return;
+    }
+    if (mode === "nash") {
+      setUltimatumFocusPlayer("");
+      setShowUltimatumNash(!sameNash);
+      setShowUltimatumFairnessGap(false);
+      return;
+    }
+    if (mode === "fair") {
+      setUltimatumFocusPlayer("");
+      setShowUltimatumNash(false);
+      setShowUltimatumFairnessGap(!sameFair);
     }
   }
 
@@ -7215,10 +7505,34 @@ function App() {
     const currentSpecialGame = SPECIAL_GAMES[specialCardIndex];
     const currentSpecialTranslation = SPECIAL_GAME_TRANSLATIONS[currentSpecialGame?.title] || null;
     const isPrisonersDilemmaCard = currentSpecialGame?.title === PRISONERS_DILEMMA_TITLE;
+    const isChickenCard = currentSpecialGame?.title === CHICKEN_GAME_TITLE;
+    const isStagCard = currentSpecialGame?.title === STAG_HUNT_TITLE;
+    const isBosCard = currentSpecialGame?.title === BATTLE_OF_SEXES_TITLE;
+    const isUltimatumCard = currentSpecialGame?.title === ULTIMATUM_TITLE;
     const prisonerCellClasses = buildPrisonersDilemmaCellClasses({
       focusPlayer: prisonersFocusPlayer,
       showNash: showPrisonersNash,
       showInefficiency: showPrisonersInefficiency
+    });
+    const chickenCellClasses = buildChickenCellClasses({
+      focusPlayer: chickenFocusPlayer,
+      showNash: showChickenNash,
+      showCoordinationRisk: showChickenCoordinationRisk
+    });
+    const stagCellClasses = buildStagCellClasses({
+      focusPlayer: stagFocusPlayer,
+      showNash: showStagNash,
+      showCoordinationRisk: showStagCoordinationRisk
+    });
+    const bosCellClasses = buildBosCellClasses({
+      focusPlayer: bosFocusPlayer,
+      showNash: showBosNash,
+      showCoordinationRisk: showBosCoordinationRisk
+    });
+    const ultimatumCellClasses = buildUltimatumCellClasses({
+      focusPlayer: ultimatumFocusPlayer,
+      showNash: showUltimatumNash,
+      showFairnessGap: showUltimatumFairnessGap
     });
 
     return (
@@ -7272,7 +7586,7 @@ function App() {
                     </div>
                   </article>
                   <article className="special-block">
-                    <h4 className="pd-card-title">{t("Auszahlungsmatrix", "Payoff matrix")}</h4>
+                    <h4 className="pd-card-title">{t("Nutzenmatrix", "Payoff matrix")}</h4>
                     <div className="pd-card-body">
                       <StaticPayoffTable
                         data={currentSpecialGame.table}
@@ -7379,6 +7693,588 @@ function App() {
                         {t(
                           "Obwohl (Defektieren, Defektieren) ein Nash-Gleichgewicht ist, wäre (Kooperieren, Kooperieren) für beide Spieler besser. Das Gefangenendilemma zeigt also den Konflikt zwischen individueller Rationalität und kollektivem Wohl.",
                           "Although (Defect, Defect) is a Nash equilibrium, (Cooperate, Cooperate) would be better for both players. The prisoner's dilemma shows the conflict between individual rationality and collective welfare."
+                        )}
+                      </p>
+                    )}
+                  </article>
+                )}
+              </>
+            ) : isChickenCard ? (
+              <>
+                <h3 className="special-card-title">{t("Feiglingsspiel (Chicken)", "Chicken game")}</h3>
+                <p className="hint pd-overview-lead">
+                  {t(
+                    "Zwei Spieler entscheiden gleichzeitig zwischen Ausweichen und Geradeaus. Jeder will nicht nachgeben, aber der Zusammenstoß ist für beide am schlechtesten.",
+                    "Two players simultaneously choose between swerving and going straight. Each prefers not to yield, but a crash is worst for both."
+                  )}
+                </p>
+                <div className="special-row pd-layout">
+                  <article className="special-block pd-facts-box">
+                    <h4 className="pd-card-title">{t("Schnelle Übersicht", "Quick overview")}</h4>
+                    <div className="pd-card-body">
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Spieltyp", "Game type")}:</span>
+                        <strong className="pd-fact-value">{t("Anti-Koordinationsspiel", "Anti-coordination game")}</strong>
+                      </div>
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Dominante Strategie", "Dominant strategy")}:</span>
+                        <strong className="pd-fact-value">{t("Keine strikt dominante Strategie", "No strictly dominant strategy")}</strong>
+                      </div>
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Nash-Gleichgewicht", "Nash equilibrium")}:</span>
+                        <strong className="pd-fact-value">
+                          {t("(Geradeaus, Ausweichen) und (Ausweichen, Geradeaus)", "(Straight, Swerve) and (Swerve, Straight)")}
+                        </strong>
+                      </div>
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Problem", "Problem")}:</span>
+                        <strong className="pd-fact-value">{t("Fehlkoordination kann zum Zusammenstoß führen", "Miscoordination can lead to a crash")}</strong>
+                      </div>
+                    </div>
+                  </article>
+                  <article className="special-block">
+                    <h4 className="pd-card-title">{t("Nutzenmatrix", "Payoff matrix")}</h4>
+                    <div className="pd-card-body">
+                      <StaticPayoffTable
+                        data={currentSpecialGame.table}
+                        rowLabel={t("Spieler 1", "Player 1")}
+                        colLabel={t("Spieler 2", "Player 2")}
+                        autoScale
+                        getCellClassName={(row, col) => chickenCellClasses[`${row}|${col}`] || ""}
+                      />
+                    </div>
+                  </article>
+                  <article className="special-block">
+                    <h4 className="pd-card-title">{t("Erklärung", "Explanation")}</h4>
+                    <div className="pd-card-body">
+                      <div className="pd-explainer-section">
+                        <h5>{t("Situation", "Situation")}</h5>
+                        <p>{t("Jeder Spieler kann ausweichen oder geradeaus fahren.", "Each player can swerve or go straight.")}</p>
+                      </div>
+                      <div className="pd-explainer-section">
+                        <h5>{t("Strategische Struktur", "Strategic structure")}</h5>
+                        <p>{t("Die beste Antwort hängt von der Entscheidung des anderen ab. Es gibt keine strikt dominante Strategie.", "The best response depends on the other's choice. There is no strictly dominant strategy.")}</p>
+                      </div>
+                      <div className="pd-explainer-section">
+                        <h5>{t("Ergebnis", "Outcome")}</h5>
+                        <p>
+                          {t(
+                            "Es gibt zwei Nash-Gleichgewichte: Einer fährt geradeaus, der andere weicht aus. Das gegenseitige Geradeausfahren ist für beide am schlechtesten.",
+                            "There are two Nash equilibria: one goes straight, the other swerves. Mutual straight driving is worst for both."
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+
+                <div className="actions pd-analysis-toggle">
+                  <button type="button" onClick={() => setShowChickenAnalysis((prev) => !prev)}>
+                    {showChickenAnalysis ? t("Analyse ausblenden", "Hide analysis") : t("Analyse anzeigen", "Show analysis")}
+                  </button>
+                </div>
+
+                {showChickenAnalysis && (
+                  <article className="special-block pd-analysis-block">
+                    <h4>{t("Interaktive Vertiefung", "Interactive deep dive")}</h4>
+                    <p className="hint">
+                      {t(
+                        "Prüfe für jede mögliche Entscheidung des anderen Spielers, welche eigene Strategie die beste Antwort ist.",
+                        "For each possible choice of the other player, check which own strategy is the best response."
+                      )}
+                    </p>
+                    <div className="pd-action-grid pd-action-grid-4">
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${chickenFocusPlayer === "p1" ? "active" : ""}`}
+                        onClick={() => toggleChickenAnalysisMode("p1")}
+                      >
+                        {t("Beste Antworten von Spieler 1", "Best responses of player 1")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${chickenFocusPlayer === "p2" ? "active" : ""}`}
+                        onClick={() => toggleChickenAnalysisMode("p2")}
+                      >
+                        {t("Beste Antworten von Spieler 2", "Best responses of player 2")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${showChickenNash ? "active" : ""}`}
+                        onClick={() => toggleChickenAnalysisMode("nash")}
+                      >
+                        {t("Nash-Gleichgewichte zeigen", "Show Nash equilibria")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${showChickenCoordinationRisk ? "active" : ""}`}
+                        onClick={() => toggleChickenAnalysisMode("risk")}
+                      >
+                        {t("Warum ist das riskant?", "Why is this risky?")}
+                      </button>
+                    </div>
+
+                    {chickenFocusPlayer === "p1" && (
+                      <div className="pd-analysis-note">
+                        <p>{t("Wenn Spieler 2 ausweicht: Spieler 1 vergleicht 2 mit 3. Geradeaus ist besser.", "If player 2 swerves: player 1 compares 2 with 3. Going straight is better.")}</p>
+                        <p>{t("Wenn Spieler 2 geradeaus fährt: Spieler 1 vergleicht 1 mit 0. Ausweichen ist besser.", "If player 2 goes straight: player 1 compares 1 with 0. Swerving is better.")}</p>
+                      </div>
+                    )}
+                    {chickenFocusPlayer === "p2" && (
+                      <div className="pd-analysis-note">
+                        <p>{t("Wenn Spieler 1 ausweicht: Spieler 2 vergleicht 2 mit 3. Geradeaus ist besser.", "If player 1 swerves: player 2 compares 2 with 3. Going straight is better.")}</p>
+                        <p>{t("Wenn Spieler 1 geradeaus fährt: Spieler 2 vergleicht 1 mit 0. Ausweichen ist besser.", "If player 1 goes straight: player 2 compares 1 with 0. Swerving is better.")}</p>
+                      </div>
+                    )}
+
+                    {showChickenNash && (
+                      <p className="pd-analysis-note">
+                        {t(
+                          "In den beiden markierten Feldern spielt jeder eine beste Antwort auf den anderen: (Geradeaus, Ausweichen) und (Ausweichen, Geradeaus).",
+                          "In the two highlighted cells, each plays a best response to the other: (Straight, Swerve) and (Swerve, Straight)."
+                        )}
+                      </p>
+                    )}
+                    {showChickenCoordinationRisk && (
+                      <p className="pd-analysis-note">
+                        {t(
+                          "Wenn beide gleichzeitig geradeaus fahren, entsteht der Zusammenstoß mit den schlechtesten Auszahlungen (0,0). Genau dieses Risiko macht das Spiel problematisch.",
+                          "If both go straight, a crash occurs with the worst payoffs (0,0). This risk is what makes the game problematic."
+                        )}
+                      </p>
+                    )}
+                  </article>
+                )}
+              </>
+            ) : isStagCard ? (
+              <>
+                <h3 className="special-card-title">{t("Jagdspiel (Stag Hunt)", "Stag hunt")}</h3>
+                <p className="hint pd-overview-lead">
+                  {t(
+                    "Zwei Spieler profitieren gemeinsam von der koordinierten Hirschjagd. Ohne Vertrauen kann jeder aus Sicherheitsgründen auf Hase ausweichen.",
+                    "Two players benefit most from coordinating on stag. Without trust, each may switch to hare for safety."
+                  )}
+                </p>
+                <div className="special-row pd-layout">
+                  <article className="special-block pd-facts-box">
+                    <h4 className="pd-card-title">{t("Schnelle Übersicht", "Quick overview")}</h4>
+                    <div className="pd-card-body">
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Spieltyp", "Game type")}:</span>
+                        <strong className="pd-fact-value">{t("Koordinationsspiel", "Coordination game")}</strong>
+                      </div>
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Dominante Strategie", "Dominant strategy")}:</span>
+                        <strong className="pd-fact-value">{t("Keine strikt dominante Strategie", "No strictly dominant strategy")}</strong>
+                      </div>
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Nash-Gleichgewicht", "Nash equilibrium")}:</span>
+                        <strong className="pd-fact-value">{t("(Hirsch, Hirsch) und (Hase, Hase)", "(Stag, Stag) and (Hare, Hare)")}</strong>
+                      </div>
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Problem", "Problem")}:</span>
+                        <strong className="pd-fact-value">{t("Das effiziente Ergebnis ist riskant bei fehlendem Vertrauen", "The efficient outcome is risky without trust")}</strong>
+                      </div>
+                    </div>
+                  </article>
+                  <article className="special-block">
+                    <h4 className="pd-card-title">{t("Nutzenmatrix", "Payoff matrix")}</h4>
+                    <div className="pd-card-body">
+                      <StaticPayoffTable
+                        data={currentSpecialGame.table}
+                        rowLabel={t("Spieler 1", "Player 1")}
+                        colLabel={t("Spieler 2", "Player 2")}
+                        autoScale
+                        getCellClassName={(row, col) => stagCellClasses[`${row}|${col}`] || ""}
+                      />
+                    </div>
+                  </article>
+                  <article className="special-block">
+                    <h4 className="pd-card-title">{t("Erklärung", "Explanation")}</h4>
+                    <div className="pd-card-body">
+                      <div className="pd-explainer-section">
+                        <h5>{t("Situation", "Situation")}</h5>
+                        <p>{t("Jeder Spieler kann Hirsch oder Hase wählen.", "Each player can choose stag or hare.")}</p>
+                      </div>
+                      <div className="pd-explainer-section">
+                        <h5>{t("Strategische Struktur", "Strategic structure")}</h5>
+                        <p>{t("Die beste Antwort hängt von der Entscheidung des anderen ab. Es gibt keine strikt dominante Strategie.", "The best response depends on the other's decision. There is no strictly dominant strategy.")}</p>
+                      </div>
+                      <div className="pd-explainer-section">
+                        <h5>{t("Ergebnis", "Outcome")}</h5>
+                        <p>
+                          {t(
+                            "Es gibt zwei Nash-Gleichgewichte: (Hirsch, Hirsch) und (Hase, Hase). (Hirsch, Hirsch) ist effizienter, aber riskanter.",
+                            "There are two Nash equilibria: (Stag, Stag) and (Hare, Hare). (Stag, Stag) is more efficient but riskier."
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+
+                <div className="actions pd-analysis-toggle">
+                  <button type="button" onClick={() => setShowStagAnalysis((prev) => !prev)}>
+                    {showStagAnalysis ? t("Analyse ausblenden", "Hide analysis") : t("Analyse anzeigen", "Show analysis")}
+                  </button>
+                </div>
+
+                {showStagAnalysis && (
+                  <article className="special-block pd-analysis-block">
+                    <h4>{t("Interaktive Vertiefung", "Interactive deep dive")}</h4>
+                    <p className="hint">
+                      {t(
+                        "Prüfe für jede mögliche Entscheidung des anderen Spielers, welche eigene Strategie die beste Antwort ist.",
+                        "For each possible choice of the other player, check which own strategy is the best response."
+                      )}
+                    </p>
+                    <div className="pd-action-grid pd-action-grid-4">
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${stagFocusPlayer === "p1" ? "active" : ""}`}
+                        onClick={() => toggleStagAnalysisMode("p1")}
+                      >
+                        {t("Beste Antworten von Spieler 1", "Best responses of player 1")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${stagFocusPlayer === "p2" ? "active" : ""}`}
+                        onClick={() => toggleStagAnalysisMode("p2")}
+                      >
+                        {t("Beste Antworten von Spieler 2", "Best responses of player 2")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${showStagNash ? "active" : ""}`}
+                        onClick={() => toggleStagAnalysisMode("nash")}
+                      >
+                        {t("Nash-Gleichgewichte zeigen", "Show Nash equilibria")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${showStagCoordinationRisk ? "active" : ""}`}
+                        onClick={() => toggleStagAnalysisMode("risk")}
+                      >
+                        {t("Warum ist das riskant?", "Why is this risky?")}
+                      </button>
+                    </div>
+
+                    {stagFocusPlayer === "p1" && (
+                      <div className="pd-analysis-note">
+                        <p>{t("Wenn Spieler 2 Hirsch wählt: Spieler 1 vergleicht 4 mit 3. Hirsch ist besser.", "If player 2 chooses stag: player 1 compares 4 with 3. Stag is better.")}</p>
+                        <p>{t("Wenn Spieler 2 Hase wählt: Spieler 1 vergleicht 0 mit 2. Hase ist besser.", "If player 2 chooses hare: player 1 compares 0 with 2. Hare is better.")}</p>
+                      </div>
+                    )}
+                    {stagFocusPlayer === "p2" && (
+                      <div className="pd-analysis-note">
+                        <p>{t("Wenn Spieler 1 Hirsch wählt: Spieler 2 vergleicht 4 mit 3. Hirsch ist besser.", "If player 1 chooses stag: player 2 compares 4 with 3. Stag is better.")}</p>
+                        <p>{t("Wenn Spieler 1 Hase wählt: Spieler 2 vergleicht 0 mit 2. Hase ist besser.", "If player 1 chooses hare: player 2 compares 0 with 2. Hare is better.")}</p>
+                      </div>
+                    )}
+
+                    {showStagNash && (
+                      <p className="pd-analysis-note">
+                        {t(
+                          "Die markierten Felder (Hirsch, Hirsch) und (Hase, Hase) sind Nash-Gleichgewichte, weil dort beide jeweils eine beste Antwort spielen.",
+                          "The highlighted cells (Stag, Stag) and (Hare, Hare) are Nash equilibria because both players are playing best responses."
+                        )}
+                      </p>
+                    )}
+                    {showStagCoordinationRisk && (
+                      <p className="pd-analysis-note">
+                        {t(
+                          "Bei Fehlkoordination (Hirsch, Hase) oder (Hase, Hirsch) erhält der Hirschjäger 0. Dieses Risiko kann Spieler zur sicheren, aber weniger effizienten Lösung (Hase, Hase) treiben.",
+                          "Under miscoordination (Stag, Hare) or (Hare, Stag), the stag hunter gets 0. This risk can push players to the safer but less efficient outcome (Hare, Hare)."
+                        )}
+                      </p>
+                    )}
+                  </article>
+                )}
+              </>
+            ) : isBosCard ? (
+              <>
+                <h3 className="special-card-title">{t("Kampf der Geschlechter", "Battle of the sexes")}</h3>
+                <p className="hint pd-overview-lead">
+                  {t(
+                    "Beide Spieler wollen zusammen etwas unternehmen, bevorzugen aber unterschiedliche gemeinsame Ergebnisse.",
+                    "Both players want to do something together, but they prefer different coordinated outcomes."
+                  )}
+                </p>
+                <div className="special-row pd-layout">
+                  <article className="special-block pd-facts-box">
+                    <h4 className="pd-card-title">{t("Schnelle Übersicht", "Quick overview")}</h4>
+                    <div className="pd-card-body">
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Spieltyp", "Game type")}:</span>
+                        <strong className="pd-fact-value">{t("Koordinationsspiel mit Präferenzkonflikt", "Coordination game with preference conflict")}</strong>
+                      </div>
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Dominante Strategie", "Dominant strategy")}:</span>
+                        <strong className="pd-fact-value">{t("Keine strikt dominante Strategie", "No strictly dominant strategy")}</strong>
+                      </div>
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Nash-Gleichgewicht", "Nash equilibrium")}:</span>
+                        <strong className="pd-fact-value">{t("(Oper, Oper) und (Fußball, Fußball)", "(Opera, Opera) and (Football, Football)")}</strong>
+                      </div>
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Problem", "Problem")}:</span>
+                        <strong className="pd-fact-value">{t("Koordination gelingt, aber Verteilung ist umstritten", "Coordination works, but distribution is contested")}</strong>
+                      </div>
+                    </div>
+                  </article>
+                  <article className="special-block">
+                    <h4 className="pd-card-title">{t("Nutzenmatrix", "Payoff matrix")}</h4>
+                    <div className="pd-card-body">
+                      <StaticPayoffTable
+                        data={currentSpecialGame.table}
+                        rowLabel={t("Spieler 1", "Player 1")}
+                        colLabel={t("Spieler 2", "Player 2")}
+                        autoScale
+                        getCellClassName={(row, col) => bosCellClasses[`${row}|${col}`] || ""}
+                      />
+                    </div>
+                  </article>
+                  <article className="special-block">
+                    <h4 className="pd-card-title">{t("Erklärung", "Explanation")}</h4>
+                    <div className="pd-card-body">
+                      <div className="pd-explainer-section">
+                        <h5>{t("Situation", "Situation")}</h5>
+                        <p>{t("Beide Spieler wollen gemeinsam ausgehen, aber Spieler 1 bevorzugt Oper und Spieler 2 Fußball.", "Both players want to go out together, but player 1 prefers opera and player 2 prefers football.")}</p>
+                      </div>
+                      <div className="pd-explainer-section">
+                        <h5>{t("Strategische Struktur", "Strategic structure")}</h5>
+                        <p>{t("Die beste Antwort hängt davon ab, was der andere tut. Es gibt keine strikt dominante Strategie.", "The best response depends on what the other does. There is no strictly dominant strategy.")}</p>
+                      </div>
+                      <div className="pd-explainer-section">
+                        <h5>{t("Ergebnis", "Outcome")}</h5>
+                        <p>
+                          {t(
+                            "Die beiden koordinierten Felder sind Nash-Gleichgewichte. Das Kernproblem ist, welches Gleichgewicht ausgewählt wird.",
+                            "The two coordinated cells are Nash equilibria. The core problem is equilibrium selection."
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+
+                <div className="actions pd-analysis-toggle">
+                  <button type="button" onClick={() => setShowBosAnalysis((prev) => !prev)}>
+                    {showBosAnalysis ? t("Analyse ausblenden", "Hide analysis") : t("Analyse anzeigen", "Show analysis")}
+                  </button>
+                </div>
+
+                {showBosAnalysis && (
+                  <article className="special-block pd-analysis-block">
+                    <h4>{t("Interaktive Vertiefung", "Interactive deep dive")}</h4>
+                    <p className="hint">
+                      {t(
+                        "Prüfe für jede mögliche Entscheidung des anderen Spielers, welche eigene Strategie die beste Antwort ist.",
+                        "For each possible choice of the other player, check which own strategy is the best response."
+                      )}
+                    </p>
+                    <div className="pd-action-grid pd-action-grid-4">
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${bosFocusPlayer === "p1" ? "active" : ""}`}
+                        onClick={() => toggleBosAnalysisMode("p1")}
+                      >
+                        {t("Beste Antworten von Spieler 1", "Best responses of player 1")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${bosFocusPlayer === "p2" ? "active" : ""}`}
+                        onClick={() => toggleBosAnalysisMode("p2")}
+                      >
+                        {t("Beste Antworten von Spieler 2", "Best responses of player 2")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${showBosNash ? "active" : ""}`}
+                        onClick={() => toggleBosAnalysisMode("nash")}
+                      >
+                        {t("Nash-Gleichgewichte zeigen", "Show Nash equilibria")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${showBosCoordinationRisk ? "active" : ""}`}
+                        onClick={() => toggleBosAnalysisMode("risk")}
+                      >
+                        {t("Wo scheitert Koordination?", "Where does coordination fail?")}
+                      </button>
+                    </div>
+
+                    {bosFocusPlayer === "p1" && (
+                      <div className="pd-analysis-note">
+                        <p>{t("Wenn Spieler 2 Oper wählt: Spieler 1 vergleicht 3 mit 0. Oper ist besser.", "If player 2 chooses opera: player 1 compares 3 with 0. Opera is better.")}</p>
+                        <p>{t("Wenn Spieler 2 Fußball wählt: Spieler 1 vergleicht 0 mit 2. Fußball ist besser.", "If player 2 chooses football: player 1 compares 0 with 2. Football is better.")}</p>
+                      </div>
+                    )}
+                    {bosFocusPlayer === "p2" && (
+                      <div className="pd-analysis-note">
+                        <p>{t("Wenn Spieler 1 Oper wählt: Spieler 2 vergleicht 2 mit 0. Oper ist besser.", "If player 1 chooses opera: player 2 compares 2 with 0. Opera is better.")}</p>
+                        <p>{t("Wenn Spieler 1 Fußball wählt: Spieler 2 vergleicht 0 mit 3. Fußball ist besser.", "If player 1 chooses football: player 2 compares 0 with 3. Football is better.")}</p>
+                      </div>
+                    )}
+
+                    {showBosNash && (
+                      <p className="pd-analysis-note">
+                        {t(
+                          "Die markierten Felder (Oper, Oper) und (Fußball, Fußball) sind Nash-Gleichgewichte. Beide sind stabil, aber verteilen Vorteile unterschiedlich.",
+                          "The highlighted cells (Opera, Opera) and (Football, Football) are Nash equilibria. Both are stable but distribute benefits differently."
+                        )}
+                      </p>
+                    )}
+                    {showBosCoordinationRisk && (
+                      <p className="pd-analysis-note">
+                        {t(
+                          "In den off-diagonalen Feldern verpassen die Spieler die Koordination und erhalten (0,0). Das Spiel illustriert damit ein reines Koordinationsproblem mit Verteilungskonflikt.",
+                          "In the off-diagonal cells, players fail to coordinate and get (0,0). This illustrates a coordination problem with distributional conflict."
+                        )}
+                      </p>
+                    )}
+                  </article>
+                )}
+              </>
+            ) : isUltimatumCard ? (
+              <>
+                <h3 className="special-card-title">{t("Ultimatumspiel", "Ultimatum game")}</h3>
+                <p className="hint pd-overview-lead">
+                  {t(
+                    "Spieler 1 wählt ein faires oder unfaires Angebot. Spieler 2 entscheidet über Annahme oder Ablehnung.",
+                    "Player 1 chooses a fair or unfair offer. Player 2 decides whether to accept or reject."
+                  )}
+                </p>
+                <div className="special-row pd-layout">
+                  <article className="special-block pd-facts-box">
+                    <h4 className="pd-card-title">{t("Schnelle Übersicht", "Quick overview")}</h4>
+                    <div className="pd-card-body">
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Spieltyp", "Game type")}:</span>
+                        <strong className="pd-fact-value">{t("Verhandlungs- / Verteilungsspiel", "Bargaining / distribution game")}</strong>
+                      </div>
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Dominante Strategie", "Dominant strategy")}:</span>
+                        <strong className="pd-fact-value">{t("Für Spieler 2: Annehmen", "For player 2: Accept")}</strong>
+                      </div>
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Nash-Gleichgewicht", "Nash equilibrium")}:</span>
+                        <strong className="pd-fact-value">{t("(Unfair, Annehmen)", "(Unfair, Accept)")}</strong>
+                      </div>
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Problem", "Problem")}:</span>
+                        <strong className="pd-fact-value">{t("Effizienz und Fairness können auseinanderfallen", "Efficiency and fairness may diverge")}</strong>
+                      </div>
+                    </div>
+                  </article>
+                  <article className="special-block">
+                    <h4 className="pd-card-title">{t("Nutzenmatrix", "Payoff matrix")}</h4>
+                    <div className="pd-card-body">
+                      <StaticPayoffTable
+                        data={currentSpecialGame.table}
+                        rowLabel={t("Spieler 1", "Player 1")}
+                        colLabel={t("Spieler 2", "Player 2")}
+                        autoScale
+                        getCellClassName={(row, col) => ultimatumCellClasses[`${row}|${col}`] || ""}
+                      />
+                    </div>
+                  </article>
+                  <article className="special-block">
+                    <h4 className="pd-card-title">{t("Erklärung", "Explanation")}</h4>
+                    <div className="pd-card-body">
+                      <div className="pd-explainer-section">
+                        <h5>{t("Situation", "Situation")}</h5>
+                        <p>{t("Spieler 1 wählt ein faires oder unfaires Angebot, Spieler 2 nimmt an oder lehnt ab.", "Player 1 chooses a fair or unfair offer, player 2 accepts or rejects.")}</p>
+                      </div>
+                      <div className="pd-explainer-section">
+                        <h5>{t("Strategische Struktur", "Strategic structure")}</h5>
+                        <p>{t("Für Spieler 2 ist Annehmen in beiden Zeilen besser. Antizipiert Spieler 1 das, ist Unfair sein bestes Angebot.", "For player 2, accepting is better in both rows. Anticipating this, unfair is player 1's best offer.")}</p>
+                      </div>
+                      <div className="pd-explainer-section">
+                        <h5>{t("Ergebnis", "Outcome")}</h5>
+                        <p>
+                          {t(
+                            "Das modelltheoretische Nash-Gleichgewicht ist (Unfair, Annehmen). Empirisch werden unfaire Angebote jedoch oft abgelehnt.",
+                            "The game-theoretic Nash equilibrium is (Unfair, Accept). Empirically, unfair offers are often rejected."
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+
+                <div className="actions pd-analysis-toggle">
+                  <button type="button" onClick={() => setShowUltimatumAnalysis((prev) => !prev)}>
+                    {showUltimatumAnalysis ? t("Analyse ausblenden", "Hide analysis") : t("Analyse anzeigen", "Show analysis")}
+                  </button>
+                </div>
+
+                {showUltimatumAnalysis && (
+                  <article className="special-block pd-analysis-block">
+                    <h4>{t("Interaktive Vertiefung", "Interactive deep dive")}</h4>
+                    <p className="hint">
+                      {t(
+                        "Prüfe für jede mögliche Entscheidung des anderen Spielers, welche eigene Strategie den höheren Nutzen bringt.",
+                        "For each possible choice of the other player, check which own strategy yields a higher payoff."
+                      )}
+                    </p>
+                    <div className="pd-action-grid pd-action-grid-4">
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${ultimatumFocusPlayer === "p1" ? "active" : ""}`}
+                        onClick={() => toggleUltimatumAnalysisMode("p1")}
+                      >
+                        {t("Beste Antworten von Spieler 1", "Best responses of player 1")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${ultimatumFocusPlayer === "p2" ? "active" : ""}`}
+                        onClick={() => toggleUltimatumAnalysisMode("p2")}
+                      >
+                        {t("Beste Antworten von Spieler 2", "Best responses of player 2")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${showUltimatumNash ? "active" : ""}`}
+                        onClick={() => toggleUltimatumAnalysisMode("nash")}
+                      >
+                        {t("Nash-Gleichgewicht zeigen", "Show Nash equilibrium")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${showUltimatumFairnessGap ? "active" : ""}`}
+                        onClick={() => toggleUltimatumAnalysisMode("fair")}
+                      >
+                        {t("Fairness vs. Vorhersage", "Fairness vs prediction")}
+                      </button>
+                    </div>
+
+                    {ultimatumFocusPlayer === "p1" && (
+                      <div className="pd-analysis-note">
+                        <p>{t("Wenn Spieler 2 annimmt: Spieler 1 vergleicht 5 mit 9. Unfair ist besser.", "If player 2 accepts: player 1 compares 5 with 9. Unfair is better.")}</p>
+                        <p>{t("Wenn Spieler 2 ablehnt: Spieler 1 vergleicht 0 mit 0. Beide Strategien sind gleich gut.", "If player 2 rejects: player 1 compares 0 with 0. Both strategies are equally good.")}</p>
+                      </div>
+                    )}
+                    {ultimatumFocusPlayer === "p2" && (
+                      <div className="pd-analysis-note">
+                        <p>{t("Wenn Spieler 1 fair anbietet: Spieler 2 vergleicht 5 mit 0. Annehmen ist besser.", "If player 1 offers fair: player 2 compares 5 with 0. Accept is better.")}</p>
+                        <p>{t("Wenn Spieler 1 unfair anbietet: Spieler 2 vergleicht 1 mit 0. Annehmen ist besser.", "If player 1 offers unfair: player 2 compares 1 with 0. Accept is better.")}</p>
+                      </div>
+                    )}
+
+                    {showUltimatumNash && (
+                      <p className="pd-analysis-note">
+                        {t(
+                          "Im markierten Feld (Unfair, Annehmen) spielen beide eine beste Antwort aufeinander. Daher ist es ein Nash-Gleichgewicht.",
+                          "In the highlighted cell (Unfair, Accept), both players play best responses. Therefore it is a Nash equilibrium."
+                        )}
+                      </p>
+                    )}
+                    {showUltimatumFairnessGap && (
+                      <p className="pd-analysis-note">
+                        {t(
+                          "Das Modell prognostiziert (Unfair, Annehmen). Gleichzeitig erscheint (Fair, Annehmen) vielen als gerechter. Das illustriert den Spannungsbogen zwischen reiner Nutzenmaximierung und Fairnessnormen.",
+                          "The model predicts (Unfair, Accept). At the same time, many perceive (Fair, Accept) as fairer. This illustrates the tension between pure payoff maximization and fairness norms."
                         )}
                       </p>
                     )}
