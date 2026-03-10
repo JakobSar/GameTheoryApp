@@ -40,6 +40,20 @@ from ..exercise_models import (
     Ex9CheckRequest,
     Ex9CheckResponse,
     Ex9NewResponse,
+    TreeEx1EasyCheckFinalRequest,
+    TreeEx1EasyCheckFinalResponse,
+    TreeEx1EasyCheckStepRequest,
+    TreeEx1EasyCheckStepResponse,
+    TreeEx1HardCheckRequest,
+    TreeEx1HardCheckResponse,
+    TreeEx1EasyNewResponse,
+    TreeEx2EasyCheckFinalRequest,
+    TreeEx2EasyCheckFinalResponse,
+    TreeEx2EasyCheckStepRequest,
+    TreeEx2EasyCheckStepResponse,
+    TreeEx2HardCheckRequest,
+    TreeEx2HardCheckResponse,
+    TreeEx2EasyNewResponse,
 )
 from ..exercises import (
     P1_STRATS_EX1,
@@ -85,7 +99,15 @@ from ..exercises import (
     generate_random_game_ex7,
     generate_random_game_ex8,
     generate_random_game_ex9,
+    generate_tree_ex1_easy_instance,
+    generate_tree_ex2_easy_instance,
     subset_choice_defs,
+    tree_ex1_easy_check_final,
+    tree_ex1_easy_check_step,
+    tree_ex1_hard_check,
+    tree_ex2_easy_check_final,
+    tree_ex2_easy_check_step,
+    tree_ex2_hard_check,
     tr,
 )
 
@@ -379,6 +401,126 @@ def ex9_check(payload: Ex9CheckRequest) -> Ex9CheckResponse:
         correct=is_correct,
         correct_choice_id=correct_choice_id,
         correct_text=correct_text,
+        feedback=feedback,
+    )
+
+
+@router.post("/tree/ex1/easy/new", response_model=TreeEx1EasyNewResponse)
+def tree_ex1_easy_new(lang: str = "de") -> TreeEx1EasyNewResponse:
+    safe_lang = lang if lang in ("de", "en") else "de"
+    instance_id, prompt, game, steps = generate_tree_ex1_easy_instance(safe_lang)
+    return TreeEx1EasyNewResponse(
+        exercise_key="tree_ex1_easy",
+        instance_id=instance_id,
+        prompt=prompt,
+        game=game,
+        steps=steps,
+    )
+
+
+@router.post("/tree/ex1/easy/check-step", response_model=TreeEx1EasyCheckStepResponse)
+def tree_ex1_easy_check_step_route(payload: TreeEx1EasyCheckStepRequest) -> TreeEx1EasyCheckStepResponse:
+    correct, feedback, expected, next_step = tree_ex1_easy_check_step(
+        payload.instance_id,
+        payload.step,
+        payload.answer,
+        payload.lang,
+    )
+    return TreeEx1EasyCheckStepResponse(
+        correct=correct,
+        feedback=feedback,
+        expected=expected,
+        next_step=next_step,
+    )
+
+
+@router.post("/tree/ex1/easy/check-final", response_model=TreeEx1EasyCheckFinalResponse)
+def tree_ex1_easy_check_final_route(payload: TreeEx1EasyCheckFinalRequest) -> TreeEx1EasyCheckFinalResponse:
+    correct, score, max_score, feedback, expected = tree_ex1_easy_check_final(
+        payload.instance_id,
+        payload.answers,
+        payload.lang,
+    )
+    return TreeEx1EasyCheckFinalResponse(
+        correct=correct,
+        score=score,
+        max_score=max_score,
+        feedback=feedback,
+        expected=expected,
+    )
+
+
+@router.post("/tree/ex1/hard/check", response_model=TreeEx1HardCheckResponse)
+def tree_ex1_hard_check_route(payload: TreeEx1HardCheckRequest) -> TreeEx1HardCheckResponse:
+    correct, correct_profile_ids, feedback = tree_ex1_hard_check(
+        payload.instance_id,
+        payload.selected_profile_ids,
+        payload.lang,
+    )
+    return TreeEx1HardCheckResponse(
+        correct=correct,
+        correct_profile_ids=correct_profile_ids,
+        feedback=feedback,
+    )
+
+
+@router.post("/tree/ex2/easy/new", response_model=TreeEx2EasyNewResponse)
+def tree_ex2_easy_new() -> TreeEx2EasyNewResponse:
+    instance_id, game = generate_tree_ex2_easy_instance()
+    return TreeEx2EasyNewResponse(
+        exercise_key="tree_ex2_easy",
+        instance_id=instance_id,
+        game=game,
+    )
+
+
+@router.post("/tree/ex2/easy/check-step", response_model=TreeEx2EasyCheckStepResponse)
+def tree_ex2_easy_check_step_route(payload: TreeEx2EasyCheckStepRequest) -> TreeEx2EasyCheckStepResponse:
+    correct, feedback, feedback_type, next_step, root_best = tree_ex2_easy_check_step(
+        payload.instance_id,
+        payload.step,
+        payload.answers,
+        payload.phase2_answers,
+        payload.selected_choices,
+        payload.lang,
+    )
+    return TreeEx2EasyCheckStepResponse(
+        correct=correct,
+        feedback=feedback,
+        feedback_type=feedback_type,
+        next_step=next_step,
+        root_best=root_best,
+    )
+
+
+@router.post("/tree/ex2/easy/check-final", response_model=TreeEx2EasyCheckFinalResponse)
+def tree_ex2_easy_check_final_route(payload: TreeEx2EasyCheckFinalRequest) -> TreeEx2EasyCheckFinalResponse:
+    correct, score, max_score, feedback, root_best = tree_ex2_easy_check_final(
+        payload.instance_id,
+        payload.phase1_answers,
+        payload.phase2_answers,
+        payload.phase3_choices,
+        payload.lang,
+    )
+    return TreeEx2EasyCheckFinalResponse(
+        correct=correct,
+        score=score,
+        max_score=max_score,
+        feedback=feedback,
+        root_best=root_best,
+    )
+
+
+@router.post("/tree/ex2/hard/check", response_model=TreeEx2HardCheckResponse)
+def tree_ex2_hard_check_route(payload: TreeEx2HardCheckRequest) -> TreeEx2HardCheckResponse:
+    correct, correct_profile_ids, feedback = tree_ex2_hard_check(
+        payload.instance_id,
+        payload.selected_profile_ids,
+        payload.lang,
+    )
+    return TreeEx2HardCheckResponse(
+        correct=correct,
+        correct_profile_ids=correct_profile_ids,
         feedback=feedback,
     )
 

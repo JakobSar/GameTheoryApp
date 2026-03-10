@@ -203,6 +203,105 @@ class Ex9CheckResponse(BaseModel):
     feedback: str
 
 
+class TreeEx1EasyNewResponse(BaseModel):
+    exercise_key: Literal["tree_ex1_easy"]
+    instance_id: str
+    prompt: str
+    game: dict[str, object]
+    steps: list[str]
+
+
+class TreeEx1EasyCheckStepRequest(BaseModel):
+    instance_id: str
+    step: Literal["phase1", "phase2"]
+    answer: dict[str, str] = Field(default_factory=dict)
+    lang: Lang = "de"
+
+
+class TreeEx1EasyCheckStepResponse(BaseModel):
+    correct: bool
+    feedback: str
+    expected: dict[str, str]
+    next_step: Literal["phase2", "done"]
+
+
+class TreeEx1EasyCheckFinalRequest(BaseModel):
+    instance_id: str
+    answers: dict[str, str] = Field(default_factory=dict)
+    lang: Lang = "de"
+
+
+class TreeEx1EasyCheckFinalResponse(BaseModel):
+    correct: bool
+    score: int
+    max_score: int
+    feedback: str
+    expected: dict[str, str]
+
+
+class TreeEx1HardCheckRequest(BaseModel):
+    instance_id: str
+    selected_profile_ids: list[str] = Field(default_factory=list)
+    lang: Lang = "de"
+
+
+class TreeEx1HardCheckResponse(BaseModel):
+    correct: bool
+    correct_profile_ids: list[str]
+    feedback: str
+
+
+class TreeEx2EasyNewResponse(BaseModel):
+    exercise_key: Literal["tree_ex2_easy"]
+    instance_id: str
+    game: dict[str, object]
+
+
+class TreeEx2EasyCheckStepRequest(BaseModel):
+    instance_id: str
+    step: Literal["phase1", "phase2", "phase3"]
+    answers: dict[str, str] = Field(default_factory=dict)
+    phase2_answers: dict[str, str] = Field(default_factory=dict)
+    selected_choices: list[str] = Field(default_factory=list)
+    lang: Lang = "de"
+
+
+class TreeEx2EasyCheckStepResponse(BaseModel):
+    correct: bool
+    feedback: str
+    feedback_type: Literal["success", "error", "warning"]
+    next_step: int
+    root_best: list[str] = Field(default_factory=list)
+
+
+class TreeEx2EasyCheckFinalRequest(BaseModel):
+    instance_id: str
+    phase1_answers: dict[str, str] = Field(default_factory=dict)
+    phase2_answers: dict[str, str] = Field(default_factory=dict)
+    phase3_choices: list[str] = Field(default_factory=list)
+    lang: Lang = "de"
+
+
+class TreeEx2EasyCheckFinalResponse(BaseModel):
+    correct: bool
+    score: int
+    max_score: int
+    feedback: str
+    root_best: list[str] = Field(default_factory=list)
+
+
+class TreeEx2HardCheckRequest(BaseModel):
+    instance_id: str
+    selected_profile_ids: list[str] = Field(default_factory=list)
+    lang: Lang = "de"
+
+
+class TreeEx2HardCheckResponse(BaseModel):
+    correct: bool
+    correct_profile_ids: list[str]
+    feedback: str
+
+
 class BayesEx1NewResponse(BaseModel):
     game_t1: NormalFormGame
     game_t2: NormalFormGame

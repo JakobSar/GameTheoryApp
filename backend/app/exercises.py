@@ -1,6 +1,8 @@
 import random
 from fractions import Fraction
 from math import gcd
+from typing import Literal
+from uuid import uuid4
 
 from .exercise_models import Choice, Ex1Question, Lang, NormalFormGame, PayoffCell
 
@@ -1113,3 +1115,478 @@ def bayes_ex2b_details(params: dict[str, int], alt_key: str, lang: Lang) -> str:
             f"3·Prob(a,d) ≥ 5·Prob(b,d) ({frac_str(3*x)} ≥ {frac_str(5*z)}) {'✓' if d4 else '✗'}",
         )
     return tr(lang, f"Begründung: {line1} {line2}", f"Reasoning: {line1} {line2}")
+
+
+TREE_EX1_EASY_STORE: dict[str, dict[str, object]] = {}
+
+
+def generate_tree_ex1_easy_instance(lang: Lang) -> tuple[str, str, dict[str, object], list[str]]:
+    """Create a simple 2-step backward-induction instance for tree_ex1_easy."""
+    instance_id = str(uuid4())
+
+    while True:
+        payoff_lx = {"u1": random.randint(0, 9), "u2": random.randint(0, 9)}
+        payoff_ly = {"u1": random.randint(0, 9), "u2": random.randint(0, 9)}
+        payoff_r = {"u1": random.randint(0, 9), "u2": random.randint(0, 9)}
+
+        # Keep unique choices for the 2-step easy flow.
+        if payoff_lx["u2"] == payoff_ly["u2"]:
+            continue
+        phase1_action = "X" if payoff_lx["u2"] > payoff_ly["u2"] else "Y"
+        payoff_after_l_u1 = payoff_lx["u1"] if phase1_action == "X" else payoff_ly["u1"]
+        if payoff_after_l_u1 == payoff_r["u1"]:
+            continue
+
+        phase2_root = "L" if payoff_after_l_u1 > payoff_r["u1"] else "R"
+        game = {
+            "payoffLX": payoff_lx,
+            "payoffLY": payoff_ly,
+            "payoffR": payoff_r,
+        }
+        break
+
+    solution: dict[str, object] = {
+        "phase1_action": phase1_action,
+        "phase2_root": phase2_root,
+        "hard_profile_ids": [f"{phase2_root}-{phase1_action}"],
+    }
+
+    TREE_EX1_EASY_STORE[instance_id] = solution
+
+    prompt = tr(
+        lang,
+        "Löse den Spielbaum per Rückwärtsinduktion: erst optimale Antworten von Spieler 2, dann die Wurzelentscheidung von Spieler 1.",
+        "Solve the game tree by backward induction: first Player 2's optimal continuation actions, then Player 1's root action.",
+    )
+    steps = [
+        tr(lang, "Phase 1: Beste Antwort von Spieler 2 nach L", "Phase 1: Player 2 best response after L"),
+        tr(lang, "Phase 2: Wurzelentscheidung von Spieler 1", "Phase 2: Player 1 root decision"),
+    ]
+    return instance_id, prompt, game, steps
+
+
+def tree_ex1_easy_check_step(
+    instance_id: str, step: Literal["phase1", "phase2"], answer: dict[str, str], lang: Lang
+) -> tuple[bool, str, dict[str, str], Literal["phase2", "done"]]:
+    solution = TREE_EX1_EASY_STORE.get(instance_id)
+    if solution is None:
+        return (
+            False,
+            tr(lang, "Unbekannte Instanz-ID.", "Unknown instance id."),
+            {},
+            "done",
+        )
+
+    if step == "phase1":
+        expected = {"action": solution["phase1_action"]}
+        is_correct = answer.get("action") == expected["action"]
+        feedback = (
+            tr(lang, "Richtig. Weiter mit Phase 2.", "Correct. Continue with phase 2.")
+            if is_correct
+            else tr(lang, "Noch nicht korrekt. Prüfe die Auszahlungen von Spieler 2 nach L erneut.", "Not correct yet. Recheck Player 2 payoffs after L.")
+        )
+        return is_correct, feedback, expected, "phase2"
+
+    expected = {"root": solution["phase2_root"]}
+    is_correct = answer.get("root") == expected["root"]
+    feedback = (
+        tr(lang, "Richtig. Alle Schritte abgeschlossen.", "Correct. All steps completed.")
+        if is_correct
+        else tr(lang, "Noch nicht korrekt. Vergleiche die induzierten Auszahlungen an der Wurzel.", "Not correct yet. Compare induced payoffs at the root.")
+    )
+    return is_correct, feedback, expected, "done"
+
+
+def tree_ex1_easy_check_final(
+    instance_id: str, answers: dict[str, str], lang: Lang
+) -> tuple[bool, int, int, str, dict[str, str]]:
+    solution = TREE_EX1_EASY_STORE.get(instance_id)
+    if solution is None:
+        return (
+            False,
+            0,
+            2,
+            tr(lang, "Unbekannte Instanz-ID.", "Unknown instance id."),
+            {},
+        )
+
+    expected = {
+        "phase1_action": solution["phase1_action"],
+        "phase2_root": solution["phase2_root"],
+    }
+    score = 0
+    for key, value in expected.items():
+        if answers.get(key) == value:
+            score += 1
+
+    is_correct = score == 2
+    feedback = (
+        tr(lang, "Richtig. Vollständig gelöst.", "Correct. Fully solved.")
+        if is_correct
+        else tr(
+            lang,
+            f"Teilweise korrekt ({score}/2).",
+            f"Partially correct ({score}/2).",
+        )
+    )
+    return is_correct, score, 2, feedback, expected
+
+
+def tree_ex1_hard_check(
+    instance_id: str, selected_profile_ids: list[str], lang: Lang
+) -> tuple[bool, list[str], str]:
+    solution = TREE_EX1_EASY_STORE.get(instance_id)
+    if solution is None:
+        return (
+            False,
+            [],
+            tr(lang, "Unbekannte Instanz-ID.", "Unknown instance id."),
+        )
+
+    correct_profile_ids = sorted(
+        str(profile_id) for profile_id in (solution.get("hard_profile_ids") or [])
+    )
+    chosen = sorted(selected_profile_ids or [])
+    is_correct = chosen == correct_profile_ids
+    if is_correct:
+        feedback = tr(
+            lang,
+            "Richtig. Die SPE-Profile wurden korrekt identifiziert.",
+            "Correct. The SPE profiles were identified correctly.",
+        )
+    else:
+        feedback = tr(
+            lang,
+            f"Nicht korrekt. Richtig sind: {', '.join(correct_profile_ids) or '-'}",
+            f"Not correct. Correct profiles are: {', '.join(correct_profile_ids) or '-'}",
+        )
+    return is_correct, correct_profile_ids, feedback
+
+
+TREE_EX2_ROOT_ACTIONS = ["L", "M", "R"]
+TREE_EX2_P2_ACTIONS = ["U", "D"]
+TREE_EX2_P1_ACTIONS = ["x", "y"]
+TREE_EX2_P1_NODES = [f"{root}|{p2}" for root in TREE_EX2_ROOT_ACTIONS for p2 in TREE_EX2_P2_ACTIONS]
+TREE_EX2_EASY_STORE: dict[str, dict[str, object]] = {}
+
+
+def _tree_ex2_profile_signature(profile: dict[str, object]) -> str:
+    p2_choices = profile.get("p2Choices", {})
+    p1_choices = profile.get("p1Choices", {})
+    p2_part = "".join(str(p2_choices[root]) for root in TREE_EX2_ROOT_ACTIONS)
+    p1_part = "".join(str(p1_choices[node]) for node in TREE_EX2_P1_NODES)
+    return f"{profile.get('rootAction')}|{p2_part}|{p1_part}"
+
+
+def _tree_ex2_root_best_for_p2_choices(
+    continuation_payoffs: dict[str, list[int]], p2_choices: dict[str, str]
+) -> list[str]:
+    max_u1 = -10**9
+    for root in TREE_EX2_ROOT_ACTIONS:
+        p2_action = p2_choices[root]
+        payoff = continuation_payoffs.get(f"{root}|{p2_action}")
+        if payoff and payoff[0] > max_u1:
+            max_u1 = payoff[0]
+    return [
+        root
+        for root in TREE_EX2_ROOT_ACTIONS
+        if continuation_payoffs.get(f"{root}|{p2_choices[root]}", [-10**9, 0])[0] == max_u1
+    ]
+
+
+def _tree_ex2_root_best_with_indifference(
+    continuation_payoffs: dict[str, list[int]], p2_answers: dict[str, str]
+) -> list[str]:
+    combinations: list[dict[str, str]] = [{}]
+    for root in TREE_EX2_ROOT_ACTIONS:
+        selected = p2_answers.get(root, "")
+        options = ["U", "D"] if selected == "indifferent" else [selected]
+        next_combinations: list[dict[str, str]] = []
+        for combo in combinations:
+            for option in options:
+                merged = dict(combo)
+                merged[root] = option
+                next_combinations.append(merged)
+        combinations = next_combinations
+
+    root_best_set: set[str] = set()
+    for combo in combinations:
+        for root in _tree_ex2_root_best_for_p2_choices(continuation_payoffs, combo):
+            root_best_set.add(root)
+    return [root for root in TREE_EX2_ROOT_ACTIONS if root in root_best_set]
+
+
+def _build_tree_ex2_game() -> dict[str, object]:
+    payoffs: dict[str, list[int]] = {}
+
+    for node_key in TREE_EX2_P1_NODES:
+        payoff_x = [random.randint(0, 12), random.randint(0, 12)]
+        payoff_y = [random.randint(0, 12), random.randint(0, 12)]
+        while payoff_x[0] == payoff_y[0]:
+            payoff_x = [random.randint(0, 12), random.randint(0, 12)]
+            payoff_y = [random.randint(0, 12), random.randint(0, 12)]
+        payoffs[f"{node_key}|x"] = payoff_x
+        payoffs[f"{node_key}|y"] = payoff_y
+
+    p1_best_by_node: dict[str, str] = {}
+    for node_key in TREE_EX2_P1_NODES:
+        payoff_x = payoffs[f"{node_key}|x"]
+        payoff_y = payoffs[f"{node_key}|y"]
+        p1_best_by_node[node_key] = "x" if payoff_x[0] > payoff_y[0] else "y"
+
+    continuation_payoffs: dict[str, list[int]] = {}
+    for root in TREE_EX2_ROOT_ACTIONS:
+        for p2_action in TREE_EX2_P2_ACTIONS:
+            node_key = f"{root}|{p2_action}"
+            p1_action = p1_best_by_node[node_key]
+            continuation_payoffs[f"{root}|{p2_action}"] = payoffs[f"{node_key}|{p1_action}"]
+
+    p2_best_by_root: dict[str, list[str]] = {}
+    for root in TREE_EX2_ROOT_ACTIONS:
+        payoff_u = continuation_payoffs[f"{root}|U"]
+        payoff_d = continuation_payoffs[f"{root}|D"]
+        if payoff_u[1] > payoff_d[1]:
+            p2_best_by_root[root] = ["U"]
+        elif payoff_d[1] > payoff_u[1]:
+            p2_best_by_root[root] = ["D"]
+        else:
+            p2_best_by_root[root] = ["U", "D"]
+
+    p2_combinations: list[dict[str, str]] = [{}]
+    for root in TREE_EX2_ROOT_ACTIONS:
+        next_combinations: list[dict[str, str]] = []
+        for combo in p2_combinations:
+            for p2_action in p2_best_by_root[root]:
+                merged = dict(combo)
+                merged[root] = p2_action
+                next_combinations.append(merged)
+        p2_combinations = next_combinations
+
+    profile_map: dict[str, dict[str, object]] = {}
+    for p2_choices in p2_combinations:
+        best_roots = _tree_ex2_root_best_for_p2_choices(continuation_payoffs, p2_choices)
+        for root in best_roots:
+            profile = {
+                "rootAction": root,
+                "p2Choices": dict(p2_choices),
+                "p1Choices": dict(p1_best_by_node),
+            }
+            signature = f"{root}|{''.join(p2_choices[r] for r in TREE_EX2_ROOT_ACTIONS)}"
+            if signature not in profile_map:
+                profile_map[signature] = profile
+
+    spe_profiles = list(profile_map.values())
+    return {
+        "payoffs": payoffs,
+        "p1BestByNode": p1_best_by_node,
+        "p2BestByRoot": p2_best_by_root,
+        "continuationPayoffs": continuation_payoffs,
+        "speProfiles": spe_profiles,
+    }
+
+
+def generate_tree_ex2_easy_instance() -> tuple[str, dict[str, object]]:
+    game = _build_tree_ex2_game()
+    attempts = 0
+    while len(game["speProfiles"]) <= 1 and attempts < 60:
+        game = _build_tree_ex2_game()
+        attempts += 1
+    instance_id = str(uuid4())
+    TREE_EX2_EASY_STORE[instance_id] = {"game": game}
+    return instance_id, game
+
+
+def tree_ex2_easy_check_step(
+    instance_id: str,
+    step: Literal["phase1", "phase2", "phase3"],
+    answers: dict[str, str],
+    phase2_answers: dict[str, str],
+    selected_choices: list[str],
+    lang: Lang,
+) -> tuple[bool, str, Literal["success", "error", "warning"], int, list[str]]:
+    instance = TREE_EX2_EASY_STORE.get(instance_id)
+    if not instance:
+        return False, tr(lang, "Unbekannte Instanz-ID.", "Unknown instance id."), "error", 1, []
+
+    game = instance["game"]
+    p1_best_by_node = game["p1BestByNode"]
+    p2_best_by_root = game["p2BestByRoot"]
+    continuation_payoffs = game["continuationPayoffs"]
+
+    if step == "phase1":
+        missing = [node for node in TREE_EX2_P1_NODES if not answers.get(node)]
+        if missing:
+            return (
+                False,
+                tr(
+                    lang,
+                    "Bitte beantworte in Phase 1 alle sechs Teilspiele.",
+                    "Please answer all six subgames in phase 1.",
+                ),
+                "warning",
+                1,
+                [],
+            )
+        wrong = [node for node in TREE_EX2_P1_NODES if answers.get(node) != p1_best_by_node[node]]
+        if wrong:
+            return (
+                False,
+                tr(
+                    lang,
+                    f"Noch nicht korrekt. {len(wrong)} von 6 Entscheidungen sind falsch.",
+                    f"Not correct yet. {len(wrong)} out of 6 decisions are incorrect.",
+                ),
+                "error",
+                1,
+                [],
+            )
+        return (
+            True,
+            tr(
+                lang,
+                "Richtig. Alle letzten Teilspiele sind korrekt gelöst.",
+                "Correct. All terminal subgames are solved correctly.",
+            ),
+            "success",
+            2,
+            [],
+        )
+
+    if step == "phase2":
+        missing = [root for root in TREE_EX2_ROOT_ACTIONS if not answers.get(root)]
+        if missing:
+            return (
+                False,
+                tr(
+                    lang,
+                    "Bitte beantworte in Phase 2 alle drei Entscheidungen von Spieler 2.",
+                    "Please answer all three Player-2 decisions in phase 2.",
+                ),
+                "warning",
+                2,
+                [],
+            )
+        wrong: list[str] = []
+        for root in TREE_EX2_ROOT_ACTIONS:
+            selected = answers.get(root, "")
+            best = p2_best_by_root[root]
+            if selected == "indifferent":
+                if not ("U" in best and "D" in best):
+                    wrong.append(root)
+            elif selected not in best:
+                wrong.append(root)
+        if wrong:
+            return (
+                False,
+                tr(
+                    lang,
+                    f"Noch nicht korrekt. {len(wrong)} von 3 Entscheidungen sind falsch.",
+                    f"Not correct yet. {len(wrong)} out of 3 decisions are incorrect.",
+                ),
+                "error",
+                2,
+                [],
+            )
+        return (
+            True,
+            tr(
+                lang,
+                "Richtig. Die Entscheidungen von Spieler 2 sind konsistent mit Rückwärtsinduktion.",
+                "Correct. Player 2's decisions are consistent with backward induction.",
+            ),
+            "success",
+            3,
+            [],
+        )
+
+    if not selected_choices:
+        return (
+            False,
+            tr(
+                lang,
+                "Bitte wähle in Phase 3 mindestens eine Aktion am Startknoten.",
+                "Please select at least one action at the root in phase 3.",
+            ),
+            "warning",
+            3,
+            [],
+        )
+
+    root_best = _tree_ex2_root_best_with_indifference(continuation_payoffs, phase2_answers)
+    selected_sorted = sorted(selected_choices)
+    root_best_sorted = sorted(root_best)
+    is_correct = selected_sorted == root_best_sorted
+    if not is_correct:
+        return (
+            False,
+            tr(
+                lang,
+                f"Nicht korrekt. Wähle exakt alle optimalen Aktionen: {', '.join(root_best_sorted)}.",
+                f"Not correct. Select exactly all optimal actions: {', '.join(root_best_sorted)}.",
+            ),
+            "error",
+            3,
+            root_best_sorted,
+        )
+    return (
+        True,
+        tr(lang, "Richtig. Dieses Spiel ist gelöst.", "Correct. This game is solved."),
+        "success",
+        4,
+        root_best_sorted,
+    )
+
+
+def tree_ex2_easy_check_final(
+    instance_id: str,
+    phase1_answers: dict[str, str],
+    phase2_answers: dict[str, str],
+    phase3_choices: list[str],
+    lang: Lang,
+) -> tuple[bool, int, int, str, list[str]]:
+    phase1_ok, _, _, _, _ = tree_ex2_easy_check_step(
+        instance_id, "phase1", phase1_answers, {}, [], lang
+    )
+    phase2_ok, _, _, _, _ = tree_ex2_easy_check_step(
+        instance_id, "phase2", phase2_answers, {}, [], lang
+    )
+    phase3_ok, _, _, _, root_best = tree_ex2_easy_check_step(
+        instance_id, "phase3", {}, phase2_answers, phase3_choices, lang
+    )
+    score = int(phase1_ok) + int(phase2_ok) + int(phase3_ok)
+    is_correct = score == 3
+    feedback = (
+        tr(lang, "Richtig. Vollständig gelöst.", "Correct. Fully solved.")
+        if is_correct
+        else tr(lang, f"Teilweise korrekt ({score}/3).", f"Partially correct ({score}/3).")
+    )
+    return is_correct, score, 3, feedback, root_best
+
+
+def tree_ex2_hard_check(
+    instance_id: str, selected_profile_ids: list[str], lang: Lang
+) -> tuple[bool, list[str], str]:
+    instance = TREE_EX2_EASY_STORE.get(instance_id)
+    if not instance:
+        return False, [], tr(lang, "Unbekannte Instanz-ID.", "Unknown instance id.")
+
+    game = instance["game"]
+    spe_profiles = game.get("speProfiles", [])
+    correct_profile_ids = sorted(
+        _tree_ex2_profile_signature(profile) for profile in spe_profiles
+    )
+    chosen = sorted(selected_profile_ids or [])
+    is_correct = chosen == correct_profile_ids
+    if is_correct:
+        feedback = tr(
+            lang,
+            "Richtig. Die SPE-Profile wurden korrekt identifiziert.",
+            "Correct. The SPE profiles were identified correctly.",
+        )
+    else:
+        feedback = tr(
+            lang,
+            "Nicht korrekt. Wähle exakt alle SPE-Profile aus.",
+            "Not correct. Select exactly all SPE profiles.",
+        )
+    return is_correct, correct_profile_ids, feedback

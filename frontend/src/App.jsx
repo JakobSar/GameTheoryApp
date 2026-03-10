@@ -473,6 +473,28 @@ function buildTreeEx1Game() {
   }
 }
 
+function normalizeTreeEx1ApiGame(game) {
+  if (!game || !game.payoffLX || !game.payoffLY || !game.payoffR) {
+    return buildTreeEx1Game();
+  }
+  return {
+    payoffLX: {
+      u1: Number(game.payoffLX.u1) || 0,
+      u2: Number(game.payoffLX.u2) || 0
+    },
+    payoffLY: {
+      u1: Number(game.payoffLY.u1) || 0,
+      u2: Number(game.payoffLY.u2) || 0
+    },
+    payoffR: {
+      u1: Number(game.payoffR.u1) || 0,
+      u2: Number(game.payoffR.u2) || 0
+    },
+    p2Action: "",
+    p1Action: ""
+  };
+}
+
 function buildTreeEx3Game() {
   while (true) {
     const payoffNo = { e: randomInt(0, 4), a: randomInt(1, 6) };
@@ -877,6 +899,13 @@ function buildTreeEx2Set() {
   }
   const sameGameCopy = JSON.parse(JSON.stringify(baseGame));
   return [baseGame, sameGameCopy];
+}
+
+function normalizeTreeEx2ApiGame(game) {
+  if (!game || !game.payoffs || !game.p1BestByNode || !game.p2BestByRoot || !game.continuationPayoffs || !game.speProfiles) {
+    return buildTreeEx2Game();
+  }
+  return game;
 }
 
 function payoffFromMap(game, row, col) {
@@ -1581,6 +1610,9 @@ function App() {
   const [treeEx1Phase2Choice, setTreeEx1Phase2Choice] = useState("");
   const [treeEx1Phase2Feedback, setTreeEx1Phase2Feedback] = useState("");
   const [treeEx1Phase2FeedbackType, setTreeEx1Phase2FeedbackType] = useState("neutral");
+  const [treeEx1InstanceId, setTreeEx1InstanceId] = useState("");
+  const [treeEx1ExpectedPhase1Action, setTreeEx1ExpectedPhase1Action] = useState("");
+  const [treeEx1ExpectedRootAction, setTreeEx1ExpectedRootAction] = useState("");
   const [treeEx1ActiveLevel, setTreeEx1ActiveLevel] = useState(0);
   const [treeEx1HardEntries, setTreeEx1HardEntries] = useState(() => [createEmptyTreeEx1Entry()]);
   const [treeEx1HardFeedback, setTreeEx1HardFeedback] = useState("");
@@ -1588,6 +1620,7 @@ function App() {
   const [treeEx2Games, setTreeEx2Games] = useState(() => buildTreeEx2Set());
   const [treeEx2Progress, setTreeEx2Progress] = useState(() => buildTreeEx2ProgressSet());
   const [treeEx2ActiveIndex, setTreeEx2ActiveIndex] = useState(0);
+  const [treeEx2InstanceId, setTreeEx2InstanceId] = useState("");
   const [treeEx3Game, setTreeEx3Game] = useState(() => buildTreeEx3Game());
   const [treeEx4Game, setTreeEx4Game] = useState(() => ({ ...TREE_EX4_INITIAL_GAME }));
   const [treeEx3SpeChoices, setTreeEx3SpeChoices] = useState([]);
@@ -3107,8 +3140,34 @@ function App() {
     );
   }
 
+  async function loadTreeEx1Easy() {
+    setError("");
+    setLegacyLoading(true);
+    try {
+      const response = await fetch(apiUrl(`/api/v1/exercises/tree/ex1/easy/new?lang=${legacyLang}`), {
+        method: "POST"
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
+      }
+      setTreeEx1Game(normalizeTreeEx1ApiGame(body.game));
+      setTreeEx1InstanceId(body.instance_id || "");
+      setTreeEx1ExpectedPhase1Action("");
+      setTreeEx1ExpectedRootAction("");
+    } catch (err) {
+      setTreeEx1Game(buildTreeEx1Game());
+      setTreeEx1InstanceId("");
+      setTreeEx1ExpectedPhase1Action("");
+      setTreeEx1ExpectedRootAction("");
+      setError(err.message || "exercise request failed");
+    } finally {
+      setLegacyLoading(false);
+    }
+  }
+
   function resetTreeEx1() {
-    setTreeEx1Game(buildTreeEx1Game());
+    void loadTreeEx1Easy();
     setTreeEx1Step(1);
     setTreeEx1Phase1Choice("");
     setTreeEx1Phase1Feedback("");
@@ -3441,7 +3500,7 @@ function App() {
     setTreeEx1HardFeedbackType("neutral");
   }
 
-  function checkTreeEx1Hard() {
+  function evaluateTreeEx1HardLocal(selected) {
     const p2BestActions = [];
     if (treeEx1Game.payoffLX.u2 >= treeEx1Game.payoffLY.u2) p2BestActions.push("X");
     if (treeEx1Game.payoffLY.u2 >= treeEx1Game.payoffLX.u2) p2BestActions.push("Y");
@@ -3453,7 +3512,12 @@ function App() {
       if (p1AfterL >= p1AfterR) correctIds.push(`L-${p2Action}`);
       if (p1AfterR >= p1AfterL) correctIds.push(`R-${p2Action}`);
     });
+    const correct = [...new Set(correctIds)].sort();
+    const selectedSorted = [...selected].sort();
+    return selectedSorted.length === correct.length && selectedSorted.every((entry, index) => entry === correct[index]);
+  }
 
+  async function checkTreeEx1Hard() {
     const selected = treeEx1HardEntries.map(treeEx1EntryToId).filter(Boolean);
     if (!selected.length || selected.length !== treeEx1HardEntries.length) {
       setTreeEx1HardFeedbackType("warning");
@@ -3475,48 +3539,92 @@ function App() {
       );
       return;
     }
-    const selectedSorted = [...selected].sort();
-    const correct = [...new Set(correctIds)].sort();
-    const sameSet = selectedSorted.length === correct.length && selectedSorted.every((entry, index) => entry === correct[index]);
-
-    if (!sameSet) {
-      setTreeEx1HardFeedbackType("error");
+    if (!treeEx1InstanceId) {
+      const sameSet = evaluateTreeEx1HardLocal(selected);
+      if (!sameSet) {
+        setTreeEx1HardFeedbackType("error");
+        setTreeEx1HardFeedback(
+          t(
+            "Nicht korrekt. Wähle exakt alle SPE-Profile aus.",
+            "Not correct. Select exactly all SPE profiles."
+          )
+        );
+        recordExerciseAttempt("tree_ex1_hard", {
+          correct: false,
+          lastState: selected.join(",") || "-",
+          solved: false
+        });
+        return;
+      }
+      setTreeEx1HardFeedbackType("success");
       setTreeEx1HardFeedback(
         t(
-          "Nicht korrekt. Wähle exakt alle SPE-Profile aus.",
-          "Not correct. Select exactly all SPE profiles."
+          "Richtig. Die SPE-Profile wurden korrekt identifiziert.",
+          "Correct. The SPE profiles were identified correctly."
         )
       );
       recordExerciseAttempt("tree_ex1_hard", {
-        correct: false,
+        correct: true,
         lastState: selected.join(",") || "-",
-        solved: false
+        solved: true
       });
       return;
     }
 
-    setTreeEx1HardFeedbackType("success");
-    setTreeEx1HardFeedback(
-      t(
-        "Richtig. Die SPE-Profile wurden korrekt identifiziert.",
-        "Correct. The SPE profiles were identified correctly."
-      )
-    );
-    recordExerciseAttempt("tree_ex1_hard", {
-      correct: true,
-      lastState: selected.join(",") || "-",
-      solved: true
-    });
+    setError("");
+    setLegacyLoading(true);
+    try {
+      const response = await fetch(apiUrl("/api/v1/exercises/tree/ex1/hard/check"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instance_id: treeEx1InstanceId,
+          selected_profile_ids: selected,
+          lang: legacyLang
+        })
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
+      }
+      const isCorrect = !!body.correct;
+      setTreeEx1HardFeedbackType(isCorrect ? "success" : "error");
+      setTreeEx1HardFeedback(body.feedback || "");
+      recordExerciseAttempt("tree_ex1_hard", {
+        correct: isCorrect,
+        lastState: selected.join(",") || "-",
+        solved: isCorrect
+      });
+    } catch (err) {
+      const sameSet = evaluateTreeEx1HardLocal(selected);
+      setTreeEx1HardFeedbackType(sameSet ? "success" : "error");
+      setTreeEx1HardFeedback(
+        sameSet
+          ? t(
+              "Richtig. Die SPE-Profile wurden korrekt identifiziert.",
+              "Correct. The SPE profiles were identified correctly."
+            )
+          : t(
+              "Nicht korrekt. Wähle exakt alle SPE-Profile aus.",
+              "Not correct. Select exactly all SPE profiles."
+            )
+      );
+      recordExerciseAttempt("tree_ex1_hard", {
+        correct: sameSet,
+        lastState: selected.join(",") || "-",
+        solved: sameSet
+      });
+      setError(err.message || "exercise check failed");
+    } finally {
+      setLegacyLoading(false);
+    }
   }
 
-  function answerTreeEx1Phase1(action) {
-    if (treeEx1Step !== 1) {
-      return;
-    }
-    const bestAction = treeEx1Game.p2Action;
+  function evaluateTreeEx1Phase1Local(action) {
+    const bestAction = treeEx1Game.payoffLX.u2 > treeEx1Game.payoffLY.u2 ? "X" : "Y";
     const bestPayoff = bestAction === "X" ? treeEx1Game.payoffLX.u2 : treeEx1Game.payoffLY.u2;
     const otherPayoff = bestAction === "X" ? treeEx1Game.payoffLY.u2 : treeEx1Game.payoffLX.u2;
-    setTreeEx1Phase1Choice(action);
+    setTreeEx1ExpectedPhase1Action(bestAction);
     if (action === bestAction) {
       setTreeEx1Phase1FeedbackType("success");
       setTreeEx1Phase1Feedback(
@@ -3537,14 +3645,12 @@ function App() {
     setTreeEx1Step(2);
   }
 
-  function answerTreeEx1Phase2(action) {
-    if (treeEx1Step !== 2) {
-      return;
-    }
-    const payoffAfterLForP1 = treeEx1Game.p2Action === "X" ? treeEx1Game.payoffLX.u1 : treeEx1Game.payoffLY.u1;
+  function evaluateTreeEx1Phase2Local(action) {
+    const bestPhase1Action = treeEx1ExpectedPhase1Action || (treeEx1Game.payoffLX.u2 > treeEx1Game.payoffLY.u2 ? "X" : "Y");
+    const payoffAfterLForP1 = bestPhase1Action === "X" ? treeEx1Game.payoffLX.u1 : treeEx1Game.payoffLY.u1;
     const payoffAfterRForP1 = treeEx1Game.payoffR.u1;
-    const bestAction = treeEx1Game.p1Action;
-    setTreeEx1Phase2Choice(action);
+    const bestAction = payoffAfterLForP1 > payoffAfterRForP1 ? "L" : "R";
+    setTreeEx1ExpectedRootAction(bestAction);
     if (action === bestAction) {
       setTreeEx1Phase2FeedbackType("success");
       setTreeEx1Phase2Feedback(
@@ -3562,7 +3668,7 @@ function App() {
         )
       );
     }
-    const easySolved = treeEx1Phase1Choice === treeEx1Game.p2Action && action === bestAction;
+    const easySolved = treeEx1Phase1Choice === bestPhase1Action && action === bestAction;
     recordExerciseAttempt("tree_ex1_easy", {
       correct: easySolved,
       solved: easySolved,
@@ -3571,14 +3677,144 @@ function App() {
     setTreeEx1Step(3);
   }
 
+  async function answerTreeEx1Phase1(action) {
+    if (treeEx1Step !== 1) {
+      return;
+    }
+    setTreeEx1Phase1Choice(action);
+    if (!treeEx1InstanceId) {
+      evaluateTreeEx1Phase1Local(action);
+      return;
+    }
+    setError("");
+    setLegacyLoading(true);
+    try {
+      const response = await fetch(apiUrl("/api/v1/exercises/tree/ex1/easy/check-step"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instance_id: treeEx1InstanceId,
+          step: "phase1",
+          answer: { action },
+          lang: legacyLang
+        })
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
+      }
+      setTreeEx1ExpectedPhase1Action(body.expected?.action || "");
+      setTreeEx1Phase1FeedbackType(body.correct ? "success" : "error");
+      setTreeEx1Phase1Feedback(body.feedback || "");
+      setTreeEx1Step(2);
+    } catch (err) {
+      evaluateTreeEx1Phase1Local(action);
+      setError(err.message || "exercise check failed");
+    } finally {
+      setLegacyLoading(false);
+    }
+  }
+
+  async function answerTreeEx1Phase2(action) {
+    if (treeEx1Step !== 2) {
+      return;
+    }
+    setTreeEx1Phase2Choice(action);
+    if (!treeEx1InstanceId) {
+      evaluateTreeEx1Phase2Local(action);
+      return;
+    }
+    setError("");
+    setLegacyLoading(true);
+    try {
+      const stepResponse = await fetch(apiUrl("/api/v1/exercises/tree/ex1/easy/check-step"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instance_id: treeEx1InstanceId,
+          step: "phase2",
+          answer: { root: action },
+          lang: legacyLang
+        })
+      });
+      const stepBody = await stepResponse.json();
+      if (!stepResponse.ok) {
+        throw new Error(stepBody.detail ? JSON.stringify(stepBody.detail) : `request failed: ${stepResponse.status}`);
+      }
+      const expectedRoot = stepBody.expected?.root || "";
+      setTreeEx1ExpectedRootAction(expectedRoot);
+      setTreeEx1Phase2FeedbackType(stepBody.correct ? "success" : "error");
+      setTreeEx1Phase2Feedback(stepBody.feedback || "");
+
+      const finalResponse = await fetch(apiUrl("/api/v1/exercises/tree/ex1/easy/check-final"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instance_id: treeEx1InstanceId,
+          answers: {
+            phase1_action: treeEx1Phase1Choice,
+            phase2_root: action
+          },
+          lang: legacyLang
+        })
+      });
+      const finalBody = await finalResponse.json();
+      if (!finalResponse.ok) {
+        throw new Error(finalBody.detail ? JSON.stringify(finalBody.detail) : `request failed: ${finalResponse.status}`);
+      }
+      if (finalBody.expected?.phase1_action) {
+        setTreeEx1ExpectedPhase1Action(finalBody.expected.phase1_action);
+      }
+      if (finalBody.expected?.phase2_root) {
+        setTreeEx1ExpectedRootAction(finalBody.expected.phase2_root);
+      }
+      recordExerciseAttempt("tree_ex1_easy", {
+        correct: !!finalBody.correct,
+        solved: !!finalBody.correct,
+        lastState: `${treeEx1Phase1Choice || "-"} / ${action}`
+      });
+      setTreeEx1Step(3);
+    } catch (err) {
+      evaluateTreeEx1Phase2Local(action);
+      setError(err.message || "exercise check failed");
+    } finally {
+      setLegacyLoading(false);
+    }
+  }
+
   function updateTreeEx2ProgressAt(index, updater) {
     setTreeEx2Progress((prev) => prev.map((entry, i) => (i === index ? updater(entry) : entry)));
   }
 
+  async function loadTreeEx2Easy() {
+    setError("");
+    setLegacyLoading(true);
+    try {
+      const response = await fetch(apiUrl("/api/v1/exercises/tree/ex2/easy/new"), {
+        method: "POST"
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
+      }
+      const normalized = normalizeTreeEx2ApiGame(body.game);
+      const sameGameCopy = JSON.parse(JSON.stringify(normalized));
+      setTreeEx2Games([normalized, sameGameCopy]);
+      setTreeEx2Progress(buildTreeEx2ProgressSet());
+      setTreeEx2InstanceId(body.instance_id || "");
+    } catch (err) {
+      setTreeEx2Games(buildTreeEx2Set());
+      setTreeEx2Progress(buildTreeEx2ProgressSet());
+      setTreeEx2InstanceId("");
+      setError(err.message || "exercise request failed");
+    } finally {
+      setLegacyLoading(false);
+    }
+  }
+
   function resetTreeEx2() {
     const currentIndex = treeEx2ActiveIndex;
-    setTreeEx2Games(buildTreeEx2Set());
-    setTreeEx2Progress(buildTreeEx2ProgressSet());
+    void loadTreeEx2Easy();
     setTreeEx2ActiveIndex(currentIndex);
   }
 
@@ -3594,7 +3830,7 @@ function App() {
     }));
   }
 
-  function checkTreeEx2Phase1() {
+  function checkTreeEx2Phase1Local() {
     const game = treeEx2Games[treeEx2ActiveIndex];
     const state = treeEx2Progress[treeEx2ActiveIndex];
     if (!game || !state || state.step !== 1) {
@@ -3647,7 +3883,7 @@ function App() {
     }));
   }
 
-function checkTreeEx2Phase2() {
+  function checkTreeEx2Phase2Local() {
     const game = treeEx2Games[treeEx2ActiveIndex];
     const state = treeEx2Progress[treeEx2ActiveIndex];
     if (!game || !state || state.step !== 2) {
@@ -3733,7 +3969,13 @@ function checkTreeEx2Phase2() {
     }));
   }
 
-  function checkTreeEx2SpeOnly() {
+  function evaluateTreeEx2SpeOnlyLocal(selectedIds, game) {
+    const correctIds = game.speProfiles.map(treeEx2ProfileSignature).sort();
+    const selectedSorted = [...selectedIds].sort();
+    return selectedSorted.length === correctIds.length && selectedSorted.every((entry, index) => entry === correctIds[index]);
+  }
+
+  async function checkTreeEx2SpeOnly() {
     const game = treeEx2Games[treeEx2ActiveIndex];
     const state = treeEx2Progress[treeEx2ActiveIndex];
     if (!game || !state) {
@@ -3767,42 +4009,97 @@ function checkTreeEx2Phase2() {
       });
       return;
     }
-    const correctIds = game.speProfiles.map(treeEx2ProfileSignature).sort();
-    const selectedSorted = [...selectedIds].sort();
-    const sameSet = selectedSorted.length === correctIds.length && selectedSorted.every((entry, index) => entry === correctIds[index]);
-    if (!sameSet) {
+    if (treeEx2ActiveIndex !== 1 || !treeEx2InstanceId) {
+      const sameSet = evaluateTreeEx2SpeOnlyLocal(selectedIds, game);
+      if (!sameSet) {
+        updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+          ...prev,
+          speFeedbackType: "error",
+          speFeedback: t(
+            "Nicht korrekt. Wähle exakt alle SPE-Profile aus.",
+            "Not correct. Select exactly all SPE profiles."
+          )
+        }));
+        recordExerciseAttempt("tree_ex2_hard", {
+          correct: false,
+          solved: false,
+          lastState: selectedIds.join(",") || "-"
+        });
+        return;
+      }
       updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
         ...prev,
-        speFeedbackType: "error",
+        solved: true,
+        speFeedbackType: "success",
         speFeedback: t(
-          "Nicht korrekt. Wähle exakt alle SPE-Profile aus.",
-          "Not correct. Select exactly all SPE profiles."
+          "Richtig. Die SPE-Profile wurden korrekt identifiziert.",
+          "Correct. The SPE profiles were identified correctly."
         )
       }));
       recordExerciseAttempt("tree_ex2_hard", {
-        correct: false,
-        solved: false,
+        correct: true,
+        solved: true,
         lastState: selectedIds.join(",") || "-"
       });
       return;
     }
-    updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
-      ...prev,
-      solved: true,
-      speFeedbackType: "success",
-      speFeedback: t(
-        "Richtig. Die SPE-Profile wurden korrekt identifiziert.",
-        "Correct. The SPE profiles were identified correctly."
-      )
-    }));
-    recordExerciseAttempt("tree_ex2_hard", {
-      correct: true,
-      solved: true,
-      lastState: selectedIds.join(",") || "-"
-    });
+
+    setError("");
+    setLegacyLoading(true);
+    try {
+      const response = await fetch(apiUrl("/api/v1/exercises/tree/ex2/hard/check"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instance_id: treeEx2InstanceId,
+          selected_profile_ids: selectedIds,
+          lang: legacyLang
+        })
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
+      }
+      const isCorrect = !!body.correct;
+      updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+        ...prev,
+        solved: isCorrect,
+        speFeedbackType: isCorrect ? "success" : "error",
+        speFeedback: body.feedback || ""
+      }));
+      recordExerciseAttempt("tree_ex2_hard", {
+        correct: isCorrect,
+        solved: isCorrect,
+        lastState: selectedIds.join(",") || "-"
+      });
+    } catch (err) {
+      const sameSet = evaluateTreeEx2SpeOnlyLocal(selectedIds, game);
+      updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+        ...prev,
+        solved: sameSet,
+        speFeedbackType: sameSet ? "success" : "error",
+        speFeedback: sameSet
+          ? t(
+              "Richtig. Die SPE-Profile wurden korrekt identifiziert.",
+              "Correct. The SPE profiles were identified correctly."
+            )
+          : t(
+              "Nicht korrekt. Wähle exakt alle SPE-Profile aus.",
+              "Not correct. Select exactly all SPE profiles."
+            )
+      }));
+      recordExerciseAttempt("tree_ex2_hard", {
+        correct: sameSet,
+        solved: sameSet,
+        lastState: selectedIds.join(",") || "-"
+      });
+      setError(err.message || "exercise check failed");
+    } finally {
+      setLegacyLoading(false);
+    }
   }
 
-  function checkTreeEx2Phase3() {
+  function checkTreeEx2Phase3Local() {
     const game = treeEx2Games[treeEx2ActiveIndex];
     const state = treeEx2Progress[treeEx2ActiveIndex];
     if (!game || !state || state.step !== 3) {
@@ -3856,19 +4153,139 @@ function checkTreeEx2Phase2() {
     });
   }
 
+  async function checkTreeEx2Phase1() {
+    const state = treeEx2Progress[treeEx2ActiveIndex];
+    if (treeEx2ActiveIndex !== 0 || !treeEx2InstanceId || !state || state.step !== 1) {
+      checkTreeEx2Phase1Local();
+      return;
+    }
+    setError("");
+    setLegacyLoading(true);
+    try {
+      const response = await fetch(apiUrl("/api/v1/exercises/tree/ex2/easy/check-step"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instance_id: treeEx2InstanceId,
+          step: "phase1",
+          answers: state.phase1Answers,
+          lang: legacyLang
+        })
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
+      }
+      updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+        ...prev,
+        step: body.correct ? body.next_step : prev.step,
+        phase1FeedbackType: body.feedback_type || (body.correct ? "success" : "error"),
+        phase1Feedback: body.feedback || ""
+      }));
+    } catch (err) {
+      checkTreeEx2Phase1Local();
+      setError(err.message || "exercise check failed");
+    } finally {
+      setLegacyLoading(false);
+    }
+  }
+
+  async function checkTreeEx2Phase2() {
+    const state = treeEx2Progress[treeEx2ActiveIndex];
+    if (treeEx2ActiveIndex !== 0 || !treeEx2InstanceId || !state || state.step !== 2) {
+      checkTreeEx2Phase2Local();
+      return;
+    }
+    setError("");
+    setLegacyLoading(true);
+    try {
+      const response = await fetch(apiUrl("/api/v1/exercises/tree/ex2/easy/check-step"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instance_id: treeEx2InstanceId,
+          step: "phase2",
+          answers: state.phase2Answers,
+          lang: legacyLang
+        })
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
+      }
+      updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+        ...prev,
+        step: body.correct ? body.next_step : prev.step,
+        phase2FeedbackType: body.feedback_type || (body.correct ? "success" : "error"),
+        phase2Feedback: body.feedback || ""
+      }));
+    } catch (err) {
+      checkTreeEx2Phase2Local();
+      setError(err.message || "exercise check failed");
+    } finally {
+      setLegacyLoading(false);
+    }
+  }
+
+  async function checkTreeEx2Phase3() {
+    const state = treeEx2Progress[treeEx2ActiveIndex];
+    if (treeEx2ActiveIndex !== 0 || !treeEx2InstanceId || !state || state.step !== 3) {
+      checkTreeEx2Phase3Local();
+      return;
+    }
+    setError("");
+    setLegacyLoading(true);
+    try {
+      const response = await fetch(apiUrl("/api/v1/exercises/tree/ex2/easy/check-step"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          instance_id: treeEx2InstanceId,
+          step: "phase3",
+          phase2_answers: state.phase2Answers,
+          selected_choices: state.phase3Choices,
+          lang: legacyLang
+        })
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
+      }
+      updateTreeEx2ProgressAt(treeEx2ActiveIndex, (prev) => ({
+        ...prev,
+        step: body.correct ? body.next_step : prev.step,
+        solved: !!body.correct,
+        phase3FeedbackType: body.feedback_type || (body.correct ? "success" : "error"),
+        phase3Feedback: body.feedback || ""
+      }));
+      recordExerciseAttempt("tree_ex2_easy", {
+        correct: !!body.correct,
+        solved: !!body.correct,
+        lastState: state.phase3Choices.join(", ") || "-"
+      });
+    } catch (err) {
+      checkTreeEx2Phase3Local();
+      setError(err.message || "exercise check failed");
+    } finally {
+      setLegacyLoading(false);
+    }
+  }
+
   function renderTreeExercises() {
     const firstPlayer = t("Spieler 1", "Player 1");
     const secondPlayer = t("Spieler 2", "Player 2");
     const firstNodeLabel = "P1";
     const secondNodeLabel = "P2";
-    const payoffAfterL = treeEx1Game.p2Action === "X" ? treeEx1Game.payoffLX : treeEx1Game.payoffLY;
-    const payoffAfterLForP1 = treeEx1Game.p2Action === "X" ? treeEx1Game.payoffLX.u1 : treeEx1Game.payoffLY.u1;
+    const solvedP2Action = treeEx1ExpectedPhase1Action || treeEx1Game.p2Action || "";
+    const solvedP1Action = treeEx1ExpectedRootAction || treeEx1Game.p1Action || "";
+    const payoffAfterL = solvedP2Action === "Y" ? treeEx1Game.payoffLY : treeEx1Game.payoffLX;
+    const payoffAfterLForP1 = solvedP2Action === "Y" ? treeEx1Game.payoffLY.u1 : treeEx1Game.payoffLX.u1;
     const phase1Done = treeEx1Step >= 2;
     const phase2Done = treeEx1Step >= 3;
-    const lEdgeClass = `tree-edge ${phase2Done ? (treeEx1Game.p1Action === "L" ? "bi-active" : "bi-muted") : ""}`.trim();
-    const rEdgeClass = `tree-edge ${phase2Done ? (treeEx1Game.p1Action === "R" ? "bi-active" : "bi-muted") : ""}`.trim();
-    const xEdgeClass = `tree-edge ${phase1Done ? (treeEx1Game.p2Action === "X" ? "bi-active" : "bi-muted") : ""}`.trim();
-    const yEdgeClass = `tree-edge ${phase1Done ? (treeEx1Game.p2Action === "Y" ? "bi-active" : "bi-muted") : ""}`.trim();
+    const lEdgeClass = `tree-edge ${phase2Done ? (solvedP1Action === "L" ? "bi-active" : "bi-muted") : ""}`.trim();
+    const rEdgeClass = `tree-edge ${phase2Done ? (solvedP1Action === "R" ? "bi-active" : "bi-muted") : ""}`.trim();
+    const xEdgeClass = `tree-edge ${phase1Done ? (solvedP2Action === "X" ? "bi-active" : "bi-muted") : ""}`.trim();
+    const yEdgeClass = `tree-edge ${phase1Done ? (solvedP2Action === "Y" ? "bi-active" : "bi-muted") : ""}`.trim();
     const rootNodeClass = ["tree-node", "decision", treeEx1Step === 2 ? "bi-current" : ""].filter(Boolean).join(" ");
     const secondNodeClass = [
       "tree-node",
@@ -3881,7 +4298,7 @@ function checkTreeEx2Phase2() {
     const terminalRClass = [
       "tree-node",
       "terminal",
-      phase2Done ? (treeEx1Game.p1Action === "R" ? "bi-selected-terminal" : "bi-muted-node") : ""
+      phase2Done ? (solvedP1Action === "R" ? "bi-selected-terminal" : "bi-muted-node") : ""
     ]
       .filter(Boolean)
       .join(" ");
@@ -3889,7 +4306,7 @@ function checkTreeEx2Phase2() {
       "tree-node",
       "terminal",
       phase1Done
-        ? treeEx1Game.p2Action === "X" && (!phase2Done || treeEx1Game.p1Action === "L")
+        ? solvedP2Action === "X" && (!phase2Done || solvedP1Action === "L")
           ? "bi-selected-terminal"
           : "bi-muted-node"
         : ""
@@ -3900,7 +4317,7 @@ function checkTreeEx2Phase2() {
       "tree-node",
       "terminal",
       phase1Done
-        ? treeEx1Game.p2Action === "Y" && (!phase2Done || treeEx1Game.p1Action === "L")
+        ? solvedP2Action === "Y" && (!phase2Done || solvedP1Action === "L")
           ? "bi-selected-terminal"
           : "bi-muted-node"
         : ""
@@ -4945,8 +5362,8 @@ function checkTreeEx2Phase2() {
                     <p className="hint tree-phase2-prompt">
                       {firstPlayer}{" "}
                       {t(
-                        `weiß, dass nach L ${treeEx1Game.p2Action} gespielt wird. Was wählt er?`,
-                        `knows that after L, ${treeEx1Game.p2Action} is played. What does this player choose?`
+                        `weiß, dass nach L ${solvedP2Action || "?"} gespielt wird. Was wählt er?`,
+                        `knows that after L, ${solvedP2Action || "?"} is played. What does this player choose?`
                       )}
                     </p>
                     {treeEx1Step === 2 && (
@@ -4973,7 +5390,7 @@ function checkTreeEx2Phase2() {
                     <h4>{t("Ergebnis", "Result")}</h4>
                     <p className="hint">{t("Das ist das teilspielperfekte Gleichgewicht:", "This is the subgame-perfect equilibrium:")}</p>
                     <p>
-                      <code>({treeEx1Game.p1Action} ; {treeEx1Game.p2Action} nach L)</code>
+                      <code>({solvedP1Action || "?"} ; {solvedP2Action || "?"} nach L)</code>
                     </p>
                   </div>
                 )}
