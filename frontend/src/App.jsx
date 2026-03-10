@@ -1962,10 +1962,9 @@ function App() {
     if (!apiBase.trim()) {
       return "/api/v1/game-tree/solve";
     }
-    if (!normalizedApiBase.valid) {
-      return "invalid API base URL";
-    }
-    return `${normalizedApiBase.value}/api/v1/game-tree/solve`;
+    return normalizedApiBase.valid
+      ? `${normalizedApiBase.value}/api/v1/game-tree/solve`
+      : "/api/v1/game-tree/solve";
   }, [apiBase, normalizedApiBase]);
 
   const selectedNode = useMemo(
@@ -2747,6 +2746,14 @@ function App() {
     setResult("");
     setLoading(true);
     try {
+      if (apiBase.trim() && !normalizedApiBase.valid) {
+        throw new Error(
+          t(
+            "Ungültige API Base URL. Bitte verwende z. B. http://localhost:8000 oder eine vollständige https-URL.",
+            "Invalid API base URL. Use e.g. http://localhost:8000 or a full https URL."
+          )
+        );
+      }
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -7178,6 +7185,7 @@ function App() {
         <div className="actions">
           <button
             type="button"
+            className="nav-pill-btn"
             onClick={() => {
               setActivePage("solve-normal");
               setNormalPage("toc");
@@ -7277,6 +7285,7 @@ function App() {
       <div className="actions">
         <button
           type="button"
+          className="nav-pill-btn"
           onClick={() => {
             setActivePage("solve-bayesian");
             setBayesPage("toc");
@@ -7745,6 +7754,7 @@ function App() {
       <div className="actions">
         <button
           type="button"
+          className="nav-pill-btn"
           onClick={() => {
             setActivePage("solve-tree");
             setTreePage("toc");
