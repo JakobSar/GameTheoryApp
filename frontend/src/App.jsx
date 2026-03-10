@@ -1481,12 +1481,7 @@ function App() {
     return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   });
   const [activePage, setActivePage] = useState("home");
-  const [isNavOpen, setIsNavOpen] = useState(() => {
-    if (typeof window === "undefined") {
-      return true;
-    }
-    return window.innerWidth >= 900;
-  });
+  const [isNavOpen, setIsNavOpen] = useState(false);
   const [apiBase, setApiBase] = useState(() => {
     const envBase = import.meta.env.VITE_API_BASE;
     if (typeof envBase === "string" && envBase.trim()) {
