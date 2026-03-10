@@ -1203,6 +1203,163 @@ body.dark-mode .hint {
   margin-top: 0;
 }
 
+.pd-overview-lead {
+  margin-top: 0.1rem;
+  margin-bottom: 0.65rem;
+}
+
+.pd-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+}
+
+.pd-layout > .special-block {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.pd-facts-box {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.pd-card-title {
+  margin: 0;
+  padding: 0.68rem 0.82rem 0.62rem;
+  border-bottom: 1px solid rgba(29, 32, 28, 0.12);
+  background: rgba(246, 244, 238, 0.5);
+}
+
+.pd-card-body {
+  padding: 0.62rem 0.82rem 0.74rem;
+  flex: 1;
+}
+
+.pd-fact-row {
+  display: block;
+  padding: 0.35rem 0;
+  border-top: 1px solid rgba(29, 32, 28, 0.12);
+}
+
+.pd-fact-row:first-of-type {
+  border-top: none;
+}
+
+.pd-fact-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin-bottom: 0.08rem;
+}
+
+.pd-fact-value {
+  display: block;
+  line-height: 1.25;
+}
+
+.pd-explainer-section + .pd-explainer-section {
+  margin-top: 0.7rem;
+}
+
+.pd-explainer-section h5 {
+  margin: 0 0 0.2rem;
+  font-size: 0.94rem;
+}
+
+.pd-explainer-section p {
+  margin: 0;
+}
+
+.pd-analysis-toggle {
+  margin-top: 0.8rem;
+}
+
+.pd-analysis-block {
+  margin-top: 0.7rem;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.pd-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+}
+
+.pd-action-grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pd-toggle-btn {
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0.52rem 0.55rem;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 118, 110, 0.2);
+  background: rgba(255, 255, 255, 0.96);
+  color: #1f3d32;
+  font-weight: 600;
+  font-size: 0.84rem;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal;
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.08);
+  transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, transform 0.12s ease;
+}
+
+.pd-toggle-btn:hover {
+  background: #f2fbf8;
+  border-color: rgba(15, 118, 110, 0.42);
+  box-shadow: 0 6px 16px rgba(15, 118, 110, 0.14);
+  transform: translateY(-1px);
+}
+
+.pd-toggle-btn.active {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #f8fffd;
+  box-shadow: 0 8px 18px rgba(15, 118, 110, 0.28);
+  transform: translateY(-1px);
+}
+
+.pd-analysis-note {
+  margin-top: 0.65rem;
+  margin-bottom: 0;
+  border: 1px solid rgba(15, 118, 110, 0.22);
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+  background: rgba(240, 253, 250, 0.75);
+}
+
+.pd-analysis-note p {
+  margin: 0;
+}
+
+.pd-analysis-note p + p {
+  margin-top: 0.4rem;
+}
+
+.matrix-table td.pd-cell-compare {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.matrix-table td.pd-cell-best {
+  background: rgba(15, 118, 110, 0.12);
+}
+
+.matrix-table td.pd-cell-nash {
+  box-shadow: inset 0 0 0 2px rgba(15, 118, 110, 0.75);
+  font-weight: 700;
+}
+
+.matrix-table td.pd-cell-efficient {
+  box-shadow: inset 0 0 0 2px rgba(245, 158, 11, 0.75);
+}
+
 .bayes-prior-card {
   margin: 0.5rem 0 0.9rem;
   border: 1px solid rgba(29, 32, 28, 0.14);
@@ -1957,6 +2114,47 @@ body.dark-mode .special-card-dot {
   background: rgba(182, 196, 188, 0.35);
 }
 
+body.dark-mode .pd-facts-box {
+  background: linear-gradient(180deg, rgba(17, 25, 22, 0.9), rgba(17, 25, 22, 0.76));
+  border-color: rgba(232, 238, 234, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(232, 238, 234, 0.08);
+}
+
+body.dark-mode .pd-card-title {
+  background: rgba(31, 45, 39, 0.66);
+  border-bottom-color: rgba(232, 238, 234, 0.2);
+}
+
+body.dark-mode .pd-analysis-block {
+  background: rgba(17, 25, 22, 0.72);
+}
+
+body.dark-mode .pd-analysis-note {
+  background: rgba(18, 36, 31, 0.72);
+  border-color: rgba(159, 230, 221, 0.35);
+}
+
+body.dark-mode .pd-toggle-btn {
+  border-color: rgba(232, 238, 234, 0.24);
+  background: rgba(27, 39, 34, 0.92);
+  color: #d7e3dd;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+}
+
+body.dark-mode .pd-toggle-btn:hover {
+  border-color: rgba(159, 230, 221, 0.4);
+  background: rgba(35, 51, 44, 0.95);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.34);
+}
+
+body.dark-mode .matrix-table td.pd-cell-compare {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+body.dark-mode .matrix-table td.pd-cell-best {
+  background: rgba(15, 118, 110, 0.2);
+}
+
 body.dark-mode .nav-group h3 {
   color: #cddad4;
 }
@@ -2244,6 +2442,62 @@ body.jlu-mode .actions:has(.nav-pill-btn) {
 body.jlu-mode .special-card-dot {
   border-color: rgba(83, 96, 107, 0.3);
   background: rgba(138, 174, 220, 0.35);
+}
+
+body.jlu-mode .pd-facts-box {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(83, 96, 107, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+
+body.jlu-mode .pd-card-title {
+  background: rgba(232, 241, 248, 0.78);
+  border-bottom-color: rgba(83, 96, 107, 0.2);
+}
+
+body.dark-mode .pd-fact-row {
+  border-top-color: rgba(232, 238, 234, 0.16);
+}
+
+body.dark-mode .pd-fact-label {
+  color: #c7d9d1;
+}
+
+body.jlu-mode .pd-fact-row {
+  border-top-color: rgba(83, 96, 107, 0.2);
+}
+
+body.jlu-mode .pd-fact-label {
+  color: #334b5f;
+}
+
+body.jlu-mode .pd-analysis-block {
+  background: rgba(255, 255, 255, 0.88);
+}
+
+body.jlu-mode .pd-analysis-note {
+  background: rgba(235, 245, 254, 0.74);
+  border-color: rgba(0, 105, 179, 0.28);
+}
+
+body.jlu-mode .pd-toggle-btn {
+  border-color: rgba(83, 96, 107, 0.24);
+  background: rgba(255, 255, 255, 0.98);
+  color: #143650;
+}
+
+body.jlu-mode .pd-toggle-btn:hover {
+  border-color: rgba(0, 105, 179, 0.32);
+  background: #edf5fc;
+  box-shadow: 0 6px 16px rgba(0, 105, 179, 0.18);
+}
+
+body.jlu-mode .matrix-table td.pd-cell-compare {
+  background: rgba(255, 196, 83, 0.18);
+}
+
+body.jlu-mode .matrix-table td.pd-cell-best {
+  background: rgba(0, 105, 179, 0.12);
 }
 
 body.jlu-mode .nav-group h3 {
@@ -2616,6 +2870,14 @@ body.jlu-mode .intro-list li::marker {
     line-height: 1;
   }
 
+  .pd-action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pd-action-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .tree-ex4-entry-row {
     gap: 0.14rem;
     padding: 0.3rem 0.34rem;
@@ -2676,5 +2938,12 @@ body.jlu-mode .intro-list li::marker {
   .choice-list.two-col-choices {
     grid-template-columns: 1fr;
     font-size: 0.94rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .pd-layout {
+    grid-template-columns: minmax(240px, 0.9fr) minmax(360px, 1.2fr) minmax(280px, 1fr);
+    gap: 0.9rem;
   }
 }

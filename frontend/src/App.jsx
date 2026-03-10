@@ -316,6 +316,36 @@ const SPECIAL_GAME_TRANSLATIONS = {
 
 const SPECIAL_QUIZ_TYPES = ["pd", "chicken", "stag", "bos", "ultimatum"];
 const SPECIAL_CARD_SWIPE_THRESHOLD = 56;
+const PRISONERS_DILEMMA_TITLE = "Gefangenendilemma";
+
+function buildPrisonersDilemmaCellClasses({ focusPlayer, showNash, showInefficiency }) {
+  const classes = {};
+  const addClass = (key, className) => {
+    classes[key] = classes[key] ? `${classes[key]} ${className}` : className;
+  };
+
+  if (focusPlayer === "p1") {
+    addClass("Kooperieren|Kooperieren", "pd-cell-compare");
+    addClass("Defektieren|Kooperieren", "pd-cell-best");
+    addClass("Kooperieren|Defektieren", "pd-cell-compare");
+    addClass("Defektieren|Defektieren", "pd-cell-best");
+  } else if (focusPlayer === "p2") {
+    addClass("Kooperieren|Kooperieren", "pd-cell-compare");
+    addClass("Kooperieren|Defektieren", "pd-cell-best");
+    addClass("Defektieren|Kooperieren", "pd-cell-compare");
+    addClass("Defektieren|Defektieren", "pd-cell-best");
+  }
+
+  if (showNash) {
+    addClass("Defektieren|Defektieren", "pd-cell-nash");
+  }
+
+  if (showInefficiency) {
+    addClass("Kooperieren|Kooperieren", "pd-cell-efficient");
+  }
+
+  return classes;
+}
 
 const NAV = [
   {
@@ -1273,7 +1303,13 @@ function NormalGameTable({ game, rowLabel = "Spieler 1", colLabel = "Spieler 2",
   );
 }
 
-function StaticPayoffTable({ data, rowLabel = "Player 1", colLabel = "Player 2", autoScale = true }) {
+function StaticPayoffTable({
+  data,
+  rowLabel = "Player 1",
+  colLabel = "Player 2",
+  autoScale = true,
+  getCellClassName = null
+}) {
   const { wrapRef, tableRef, tableScale, scaledHeight, useScale, shouldAutoScale } = useMatrixAutoScale(autoScale, [data, rowLabel, colLabel]);
   const shortRowLabels = data.rows.every((r) => r.length <= 3);
   const longSideLabel = rowLabel.length > 12;
@@ -1322,7 +1358,12 @@ function StaticPayoffTable({ data, rowLabel = "Player 1", colLabel = "Player 2",
                 {data.cols.map((c) => {
                   const key = `${r}|${c}`;
                   const value = data.payoffs[key];
-                  return <td key={key}>{value ? `(${value[0]}, ${value[1]})` : "-"}</td>;
+                  const cellClassName = typeof getCellClassName === "function" ? getCellClassName(r, c, value) : "";
+                  return (
+                    <td key={key} className={cellClassName || undefined}>
+                      {value ? `(${value[0]}, ${value[1]})` : "-"}
+                    </td>
+                  );
                 })}
               </tr>
             ))}
@@ -1657,6 +1698,10 @@ function App() {
   const [specialQuizFeedback, setSpecialQuizFeedback] = useState("");
   const [specialQuizFeedbackType, setSpecialQuizFeedbackType] = useState("neutral");
   const [specialCardIndex, setSpecialCardIndex] = useState(0);
+  const [showPrisonersAnalysis, setShowPrisonersAnalysis] = useState(false);
+  const [prisonersFocusPlayer, setPrisonersFocusPlayer] = useState("");
+  const [showPrisonersNash, setShowPrisonersNash] = useState(false);
+  const [showPrisonersInefficiency, setShowPrisonersInefficiency] = useState(false);
   const specialSwipeStartRef = useRef(null);
   const [eliminatorGame, setEliminatorGame] = useState(() => ELIMINATOR_PRESETS[0]);
   const [eliminatorActiveRows, setEliminatorActiveRows] = useState(() => ELIMINATOR_PRESETS[0].rows);
@@ -1845,6 +1890,16 @@ function App() {
       // Ignore storage failures in private mode / restricted environments.
     }
   }, [exerciseProgress]);
+
+  useEffect(() => {
+    const currentCard = SPECIAL_GAMES[specialCardIndex];
+    if (!currentCard || currentCard.title !== PRISONERS_DILEMMA_TITLE) {
+      setShowPrisonersAnalysis(false);
+      setPrisonersFocusPlayer("");
+      setShowPrisonersNash(false);
+      setShowPrisonersInefficiency(false);
+    }
+  }, [specialCardIndex]);
 
   function recordExerciseAttempt(exerciseKey, { correct, lastState, solved }) {
     setExerciseProgress((prev) => {
@@ -2057,6 +2112,37 @@ function App() {
       return;
     }
     shiftSpecialCard(dx < 0 ? 1 : -1);
+  }
+
+  function togglePrisonersAnalysisMode(mode) {
+    const sameP1 = mode === "p1" && prisonersFocusPlayer === "p1";
+    const sameP2 = mode === "p2" && prisonersFocusPlayer === "p2";
+    const sameNash = mode === "nash" && showPrisonersNash;
+    const sameIneff = mode === "ineff" && showPrisonersInefficiency;
+
+    if (mode === "p1") {
+      setPrisonersFocusPlayer(sameP1 ? "" : "p1");
+      setShowPrisonersNash(false);
+      setShowPrisonersInefficiency(false);
+      return;
+    }
+    if (mode === "p2") {
+      setPrisonersFocusPlayer(sameP2 ? "" : "p2");
+      setShowPrisonersNash(false);
+      setShowPrisonersInefficiency(false);
+      return;
+    }
+    if (mode === "nash") {
+      setPrisonersFocusPlayer("");
+      setShowPrisonersNash(!sameNash);
+      setShowPrisonersInefficiency(false);
+      return;
+    }
+    if (mode === "ineff") {
+      setPrisonersFocusPlayer("");
+      setShowPrisonersNash(false);
+      setShowPrisonersInefficiency(!sameIneff);
+    }
   }
 
   function answerEliminator(answerYes) {
@@ -5390,7 +5476,7 @@ function App() {
                     <h4>{t("Ergebnis", "Result")}</h4>
                     <p className="hint">{t("Das ist das teilspielperfekte Gleichgewicht:", "This is the subgame-perfect equilibrium:")}</p>
                     <p>
-                      <code>({solvedP1Action || "?"} ; {solvedP2Action || "?"} nach L)</code>
+                      <code>({solvedP1Action || "?"}, {solvedP2Action || "?"})</code>
                     </p>
                   </div>
                 )}
@@ -7128,6 +7214,12 @@ function App() {
     ];
     const currentSpecialGame = SPECIAL_GAMES[specialCardIndex];
     const currentSpecialTranslation = SPECIAL_GAME_TRANSLATIONS[currentSpecialGame?.title] || null;
+    const isPrisonersDilemmaCard = currentSpecialGame?.title === PRISONERS_DILEMMA_TITLE;
+    const prisonerCellClasses = buildPrisonersDilemmaCellClasses({
+      focusPlayer: prisonersFocusPlayer,
+      showNash: showPrisonersNash,
+      showInefficiency: showPrisonersInefficiency
+    });
 
     return (
       <>
@@ -7146,22 +7238,173 @@ function App() {
             onTouchStart={onSpecialCardTouchStart}
             onTouchEnd={onSpecialCardTouchEnd}
           >
-            <h3 className="special-card-title">{uiLang === "en" ? (currentSpecialTranslation?.title || currentSpecialGame.title) : currentSpecialGame.title}</h3>
-            <div className="special-row">
-              <article className="special-block">
-                <h4>{t("Beispielspiel", "Sample game")}</h4>
-                <p className="hint">{uiLang === "en" ? (currentSpecialTranslation?.intro || currentSpecialGame.intro) : currentSpecialGame.intro}</p>
-                <StaticPayoffTable data={currentSpecialGame.table} rowLabel={t("Spieler 1", "Player 1")} colLabel={t("Spieler 2", "Player 2")} autoScale />
-              </article>
-              <article className="special-block">
-                <h4>{t("Erklärung", "Explanation")}</h4>
-                <ul className="intro-list">
-                  {(uiLang === "en" ? (currentSpecialTranslation?.bullets || currentSpecialGame.bullets) : currentSpecialGame.bullets).map((bullet) => (
-                    <li key={bullet}>{bullet}</li>
-                  ))}
-                </ul>
-              </article>
-            </div>
+            {isPrisonersDilemmaCard ? (
+              <>
+                <h3 className="special-card-title">{t("Gefangenendilemma", "Prisoner's dilemma")}</h3>
+                <p className="hint pd-overview-lead">
+                  {t(
+                    "Zwei Spieler entscheiden unabhängig, ob sie kooperieren oder defektieren. Individuell ist Defektion rational, gemeinsam wäre Kooperation besser.",
+                    "Two players decide independently whether to cooperate or defect. Individually, defection is rational, but jointly cooperation would be better."
+                  )}
+                </p>
+                <div className="special-row pd-layout">
+                  <article className="special-block pd-facts-box">
+                    <h4 className="pd-card-title">{t("Schnelle Übersicht", "Quick overview")}</h4>
+                    <div className="pd-card-body">
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Spieltyp", "Game type")}:</span>
+                        <strong className="pd-fact-value">{t("Dominanzspiel", "Dominance game")}</strong>
+                      </div>
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Dominante Strategie", "Dominant strategy")}:</span>
+                        <strong className="pd-fact-value">{t("Defektieren", "Defect")}</strong>
+                      </div>
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Nash-Gleichgewicht", "Nash equilibrium")}:</span>
+                        <strong className="pd-fact-value">(Defektieren, Defektieren)</strong>
+                      </div>
+                      <div className="pd-fact-row">
+                        <span className="pd-fact-label">{t("Problem", "Problem")}:</span>
+                        <strong className="pd-fact-value">
+                          {t("individuell rational, kollektiv ineffizient", "individually rational, collectively inefficient")}
+                        </strong>
+                      </div>
+                    </div>
+                  </article>
+                  <article className="special-block">
+                    <h4 className="pd-card-title">{t("Auszahlungsmatrix", "Payoff matrix")}</h4>
+                    <div className="pd-card-body">
+                      <StaticPayoffTable
+                        data={currentSpecialGame.table}
+                        rowLabel={t("Spieler 1", "Player 1")}
+                        colLabel={t("Spieler 2", "Player 2")}
+                        autoScale
+                        getCellClassName={(row, col) => prisonerCellClasses[`${row}|${col}`] || ""}
+                      />
+                    </div>
+                  </article>
+                  <article className="special-block">
+                    <h4 className="pd-card-title">{t("Erklärung", "Explanation")}</h4>
+                    <div className="pd-card-body">
+                      <div className="pd-explainer-section">
+                        <h5>{t("Situation", "Situation")}</h5>
+                        <p>{t("Jeder Spieler kann kooperieren oder defektieren.", "Each player can cooperate or defect.")}</p>
+                      </div>
+                      <div className="pd-explainer-section">
+                        <h5>{t("Strategische Struktur", "Strategic structure")}</h5>
+                        <p>{t("Defektion ist für beide Spieler eine strikt dominante Strategie.", "Defection is a strictly dominant strategy for both players.")}</p>
+                      </div>
+                      <div className="pd-explainer-section">
+                        <h5>{t("Ergebnis", "Outcome")}</h5>
+                        <p>
+                          {t(
+                            "Das Nash-Gleichgewicht ist (Defektieren, Defektieren), obwohl (Kooperieren, Kooperieren) für beide besser wäre.",
+                            "The Nash equilibrium is (Defect, Defect), although (Cooperate, Cooperate) would be better for both."
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+
+                <div className="actions pd-analysis-toggle">
+                  <button type="button" onClick={() => setShowPrisonersAnalysis((prev) => !prev)}>
+                    {showPrisonersAnalysis ? t("Analyse ausblenden", "Hide analysis") : t("Analyse anzeigen", "Show analysis")}
+                  </button>
+                </div>
+
+                {showPrisonersAnalysis && (
+                  <article className="special-block pd-analysis-block">
+                    <h4>{t("Interaktive Vertiefung", "Interactive deep dive")}</h4>
+                    <p className="hint">
+                      {t(
+                        "Prüfe für jede mögliche Entscheidung des anderen Spielers, welche eigene Strategie den höheren Nutzen bringt.",
+                        "For every possible choice of the other player, check which own strategy gives the higher payoff."
+                      )}
+                    </p>
+                    <div className="pd-action-grid pd-action-grid-4">
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${prisonersFocusPlayer === "p1" ? "active" : ""}`}
+                        onClick={() => togglePrisonersAnalysisMode("p1")}
+                      >
+                        {t("Beste Antworten von Spieler 1", "Best responses of player 1")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${prisonersFocusPlayer === "p2" ? "active" : ""}`}
+                        onClick={() => togglePrisonersAnalysisMode("p2")}
+                      >
+                        {t("Beste Antworten von Spieler 2", "Best responses of player 2")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${showPrisonersNash ? "active" : ""}`}
+                        onClick={() => togglePrisonersAnalysisMode("nash")}
+                      >
+                        {t("Nash-Gleichgewicht zeigen", "Show Nash equilibrium")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`nav-pill-btn pd-toggle-btn ${showPrisonersInefficiency ? "active" : ""}`}
+                        onClick={() => togglePrisonersAnalysisMode("ineff")}
+                      >
+                        {t("Warum ist das ineffizient?", "Why is this inefficient?")}
+                      </button>
+                    </div>
+
+                    {prisonersFocusPlayer === "p1" && (
+                      <div className="pd-analysis-note">
+                        <p>{t("Wenn Spieler 2 kooperiert: Spieler 1 vergleicht 3 mit 5. Defektieren ist besser.", "If player 2 cooperates: player 1 compares 3 with 5. Defecting is better.")}</p>
+                        <p>{t("Wenn Spieler 2 defektiert: Spieler 1 vergleicht 0 mit 1. Defektieren ist besser.", "If player 2 defects: player 1 compares 0 with 1. Defecting is better.")}</p>
+                      </div>
+                    )}
+                    {prisonersFocusPlayer === "p2" && (
+                      <div className="pd-analysis-note">
+                        <p>{t("Wenn Spieler 1 kooperiert: Spieler 2 vergleicht 3 mit 5. Defektieren ist besser.", "If player 1 cooperates: player 2 compares 3 with 5. Defecting is better.")}</p>
+                        <p>{t("Wenn Spieler 1 defektiert: Spieler 2 vergleicht 0 mit 1. Defektieren ist besser.", "If player 1 defects: player 2 compares 0 with 1. Defecting is better.")}</p>
+                      </div>
+                    )}
+
+                    {showPrisonersNash && (
+                      <p className="pd-analysis-note">
+                        {t(
+                          "Hier spielt jeder Spieler eine beste Antwort auf die Strategie des anderen. Deshalb ist dies ein Nash-Gleichgewicht.",
+                          "Here each player plays a best response to the other's strategy. Therefore, this is a Nash equilibrium."
+                        )}
+                      </p>
+                    )}
+                    {showPrisonersInefficiency && (
+                      <p className="pd-analysis-note">
+                        {t(
+                          "Obwohl (Defektieren, Defektieren) ein Nash-Gleichgewicht ist, wäre (Kooperieren, Kooperieren) für beide Spieler besser. Das Gefangenendilemma zeigt also den Konflikt zwischen individueller Rationalität und kollektivem Wohl.",
+                          "Although (Defect, Defect) is a Nash equilibrium, (Cooperate, Cooperate) would be better for both players. The prisoner's dilemma shows the conflict between individual rationality and collective welfare."
+                        )}
+                      </p>
+                    )}
+                  </article>
+                )}
+              </>
+            ) : (
+              <>
+                <h3 className="special-card-title">{uiLang === "en" ? (currentSpecialTranslation?.title || currentSpecialGame.title) : currentSpecialGame.title}</h3>
+                <div className="special-row">
+                  <article className="special-block">
+                    <h4>{t("Beispielspiel", "Sample game")}</h4>
+                    <p className="hint">{uiLang === "en" ? (currentSpecialTranslation?.intro || currentSpecialGame.intro) : currentSpecialGame.intro}</p>
+                    <StaticPayoffTable data={currentSpecialGame.table} rowLabel={t("Spieler 1", "Player 1")} colLabel={t("Spieler 2", "Player 2")} autoScale />
+                  </article>
+                  <article className="special-block">
+                    <h4>{t("Erklärung", "Explanation")}</h4>
+                    <ul className="intro-list">
+                      {(uiLang === "en" ? (currentSpecialTranslation?.bullets || currentSpecialGame.bullets) : currentSpecialGame.bullets).map((bullet) => (
+                        <li key={bullet}>{bullet}</li>
+                      ))}
+                    </ul>
+                  </article>
+                </div>
+              </>
+            )}
           </div>
           <div className="special-card-footer">
             <p className="special-card-counter">
