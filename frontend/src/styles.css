@@ -1365,6 +1365,10 @@ body.dark-mode .hint {
   background: rgba(220, 38, 38, 0.08);
 }
 
+.matrix-table td.matrix-cell-clickable {
+  cursor: pointer;
+}
+
 .bayes-prior-card {
   margin: 0.5rem 0 0.9rem;
   border: 1px solid rgba(29, 32, 28, 0.14);

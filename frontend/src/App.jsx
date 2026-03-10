@@ -98,6 +98,8 @@ function buildEliminatorPresets() {
 }
 
 const ELIMINATOR_PRESETS = buildEliminatorPresets();
+const BEST_RESPONSE_ROWS = ["A", "B", "C"];
+const BEST_RESPONSE_COLS = ["X", "Y", "Z"];
 const EXERCISE_PROGRESS_KEY = "gt-exercise-progress-v1";
 const THEME_MODE_KEY = "gt-theme-mode-v1";
 const THEME_MODES = ["light", "dark", "jlu"];
@@ -503,6 +505,38 @@ function toNumberOrZero(value) {
 
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function buildRandomBestResponseGame() {
+  const payoffs = {};
+  BEST_RESPONSE_ROWS.forEach((row) => {
+    BEST_RESPONSE_COLS.forEach((col) => {
+      payoffs[`${row}|${col}`] = [randomInt(0, 9), randomInt(0, 9)];
+    });
+  });
+  return { rows: BEST_RESPONSE_ROWS, cols: BEST_RESPONSE_COLS, payoffs };
+}
+
+function normalizeApiBase(base) {
+  const raw = typeof base === "string" ? base.trim() : "";
+  if (!raw) {
+    return { value: "", valid: true };
+  }
+
+  const looksLikeLocalhost = /^(localhost|127\.0\.0\.1)(:\d+)?(\/.*)?$/i.test(raw);
+  const hasScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(raw);
+  const candidate = hasScheme ? raw : `${looksLikeLocalhost ? "http" : "https"}://${raw}`;
+
+  try {
+    const parsed = new URL(candidate);
+    const normalizedPath = parsed.pathname === "/" ? "" : parsed.pathname.replace(/\/+$/, "");
+    return {
+      value: `${parsed.protocol}//${parsed.host}${normalizedPath}`,
+      valid: true
+    };
+  } catch {
+    return { value: "", valid: false };
+  }
 }
 
 function buildSpecialGameQuiz(previousTypeKey = "") {
@@ -1144,6 +1178,50 @@ function computePureNash(game, activeRows, activeCols) {
   return nash;
 }
 
+function computeBestResponseCellSets(game) {
+  const p1 = [];
+  const p2 = [];
+
+  game.cols.forEach((col) => {
+    let maxU1 = -Infinity;
+    game.rows.forEach((row) => {
+      const [u1] = payoffFromMap(game, row, col);
+      maxU1 = Math.max(maxU1, u1);
+    });
+    game.rows.forEach((row) => {
+      if (payoffFromMap(game, row, col)[0] === maxU1) {
+        p1.push(`${row}|${col}`);
+      }
+    });
+  });
+
+  game.rows.forEach((row) => {
+    let maxU2 = -Infinity;
+    game.cols.forEach((col) => {
+      const [, u2] = payoffFromMap(game, row, col);
+      maxU2 = Math.max(maxU2, u2);
+    });
+    game.cols.forEach((col) => {
+      if (payoffFromMap(game, row, col)[1] === maxU2) {
+        p2.push(`${row}|${col}`);
+      }
+    });
+  });
+
+  const p2Set = new Set(p2);
+  const nash = p1.filter((key) => p2Set.has(key));
+  return {
+    p1: [...p1].sort(),
+    p2: [...p2].sort(),
+    nash: [...nash].sort()
+  };
+}
+
+function formatCellKey(key) {
+  const [row, col] = key.split("|");
+  return `(${row}, ${col})`;
+}
+
 function buildReducedMatrix(game, activeRows, activeCols) {
   const payoffs = {};
   activeRows.forEach((r) => {
@@ -1434,7 +1512,8 @@ function StaticPayoffTable({
   rowLabel = "Player 1",
   colLabel = "Player 2",
   autoScale = true,
-  getCellClassName = null
+  getCellClassName = null,
+  onCellClick = null
 }) {
   const { wrapRef, tableRef, tableScale, scaledHeight, useScale, shouldAutoScale } = useMatrixAutoScale(autoScale, [data, rowLabel, colLabel]);
   const shortRowLabels = data.rows.every((r) => r.length <= 3);
@@ -1485,8 +1564,13 @@ function StaticPayoffTable({
                   const key = `${r}|${c}`;
                   const value = data.payoffs[key];
                   const cellClassName = typeof getCellClassName === "function" ? getCellClassName(r, c, value) : "";
+                  const clickable = typeof onCellClick === "function";
                   return (
-                    <td key={key} className={cellClassName || undefined}>
+                    <td
+                      key={key}
+                      className={[cellClassName, clickable ? "matrix-cell-clickable" : ""].filter(Boolean).join(" ") || undefined}
+                      onClick={clickable ? () => onCellClick(r, c, value) : undefined}
+                    >
                       {value ? `(${value[0]}, ${value[1]})` : "-"}
                     </td>
                   );
@@ -1854,6 +1938,12 @@ function App() {
   const [eliminatorFeedbackType, setEliminatorFeedbackType] = useState("neutral");
   const [eliminatorShowWhy, setEliminatorShowWhy] = useState(false);
   const [eliminatorShowNash, setEliminatorShowNash] = useState(false);
+  const [brExplorerGame, setBrExplorerGame] = useState(() => buildRandomBestResponseGame());
+  const [brExplorerStep, setBrExplorerStep] = useState(1);
+  const [brExplorerP1Selected, setBrExplorerP1Selected] = useState([]);
+  const [brExplorerP2Selected, setBrExplorerP2Selected] = useState([]);
+  const [brExplorerFeedback, setBrExplorerFeedback] = useState("");
+  const [brExplorerFeedbackType, setBrExplorerFeedbackType] = useState("neutral");
   const [backwardStep, setBackwardStep] = useState(0);
   const [profileNotationStep, setProfileNotationStep] = useState(1);
   const [profileNotationP1, setProfileNotationP1] = useState("");
@@ -1866,13 +1956,17 @@ function App() {
   const isApplyingHistoryRef = useRef(false);
   const hasHistoryInitRef = useRef(false);
   const lastHistoryStateRef = useRef(null);
+  const normalizedApiBase = useMemo(() => normalizeApiBase(apiBase), [apiBase]);
 
   const endpoint = useMemo(() => {
     if (!apiBase.trim()) {
       return "/api/v1/game-tree/solve";
     }
-    return `${apiBase.replace(/\/+$/, "")}/api/v1/game-tree/solve`;
-  }, [apiBase]);
+    if (!normalizedApiBase.valid) {
+      return "invalid API base URL";
+    }
+    return `${normalizedApiBase.value}/api/v1/game-tree/solve`;
+  }, [apiBase, normalizedApiBase]);
 
   const selectedNode = useMemo(
     () => game.nodes.find((node) => node.id === selectedNodeId) ?? null,
@@ -1907,6 +2001,10 @@ function App() {
   const eliminatorNash = useMemo(
     () => computePureNash(eliminatorGame, eliminatorActiveRows, eliminatorActiveCols),
     [eliminatorGame, eliminatorActiveRows, eliminatorActiveCols]
+  );
+  const brExplorerCorrect = useMemo(
+    () => computeBestResponseCellSets(brExplorerGame),
+    [brExplorerGame]
   );
   const treeEx4Profiles = useMemo(() => buildTreeEx4Profiles(), []);
   const treeEx4Evaluation = useMemo(
@@ -2120,7 +2218,15 @@ function App() {
     if (!apiBase.trim()) {
       return path;
     }
-    return `${apiBase.replace(/\/+$/, "")}${path}`;
+    if (!normalizedApiBase.valid) {
+      throw new Error(
+        t(
+          "Ungültige API Base URL. Bitte verwende z. B. http://localhost:8000 oder eine vollständige https-URL.",
+          "Invalid API base URL. Use e.g. http://localhost:8000 or a full https URL."
+        )
+      );
+    }
+    return `${normalizedApiBase.value}${path}`;
   }
 
   function updateNode(nodeId, updater) {
@@ -2186,6 +2292,74 @@ function App() {
     setEliminatorFeedbackType("neutral");
     setEliminatorShowWhy(false);
     setEliminatorShowNash(false);
+  }
+
+  function resetBestResponseExplorer() {
+    setBrExplorerGame(buildRandomBestResponseGame());
+    setBrExplorerStep(1);
+    setBrExplorerP1Selected([]);
+    setBrExplorerP2Selected([]);
+    setBrExplorerFeedback("");
+    setBrExplorerFeedbackType("neutral");
+  }
+
+  function toggleBrExplorerSelection(key) {
+    if (brExplorerStep === 1) {
+      setBrExplorerP1Selected((prev) => (prev.includes(key) ? prev.filter((entry) => entry !== key) : [...prev, key]));
+    } else {
+      setBrExplorerP2Selected((prev) => (prev.includes(key) ? prev.filter((entry) => entry !== key) : [...prev, key]));
+    }
+    setBrExplorerFeedback("");
+    setBrExplorerFeedbackType("neutral");
+  }
+
+  function checkBestResponseExplorer() {
+    const nashText = brExplorerCorrect.nash.length
+      ? brExplorerCorrect.nash.map(formatCellKey).join(", ")
+      : t("kein reines Nash-Gleichgewicht", "no pure Nash equilibrium");
+
+    if (brExplorerStep === 1) {
+      const p1Correct = sameChoiceSet(brExplorerP1Selected, brExplorerCorrect.p1);
+      if (p1Correct) {
+        setBrExplorerStep(2);
+        setBrExplorerFeedbackType("success");
+        setBrExplorerFeedback(
+          t(
+            "Richtig. Jetzt Schritt 2: Markiere die besten Antworten von Spieler 2 (u₂-Maxima je Zeile).",
+            "Correct. Now step 2: mark Player-2 best responses (u2 maxima by row)."
+          )
+        );
+        return;
+      }
+      setBrExplorerFeedbackType("error");
+      setBrExplorerFeedback(
+        t(
+          "Nicht korrekt. Prüfe für jede Spalte, in welcher Zelle u₁ maximal ist.",
+          "Not correct. Check for each column in which cell u1 is maximal."
+        )
+      );
+      return;
+    }
+
+    const p2Correct = sameChoiceSet(brExplorerP2Selected, brExplorerCorrect.p2);
+    if (p2Correct) {
+      setBrExplorerFeedbackType("success");
+      setBrExplorerFeedback(
+        t(
+          `Richtig. Reine Nash-Gleichgewichte: ${nashText}.`,
+          `Correct. Pure Nash equilibria: ${nashText}.`
+        )
+      );
+      return;
+    }
+
+    setBrExplorerFeedbackType("error");
+    setBrExplorerFeedback(
+      t(
+        "Nicht korrekt. Prüfe für jede Zeile, in welcher Zelle u₂ maximal ist. Der Schnitt mit Schritt 1 ergibt die reinen Nash-Gleichgewichte.",
+        "Not correct. Check for each row in which cell u2 is maximal. The intersection with step 1 gives the pure Nash equilibria."
+      )
+    );
   }
 
   function getSpecialQuizTypeLabel(typeKey) {
@@ -6660,111 +6834,199 @@ function App() {
 
     return (
       <section className="panel">
-        <h2>{t("Strategie-Eliminator", "Strategy Eliminator")}</h2>
+        <h2>{t("Eliminator dominierter Strategien", "Dominated Strategy Eliminator")}</h2>
         <p className="hint">
           {t(
-            "Trainiere schrittweise Eliminierung strikt dominierter Strategien. Erst wenn keine Eliminierung mehr möglich ist, wird Nash berechnet.",
-            "Train step-by-step elimination of strictly dominated strategies. Nash is computed only after no further elimination is possible."
+            "Dieses Tool trainiert die schrittweise Eliminierung strikt dominierter Strategien.",
+            "This tool trains step-by-step elimination of strictly dominated strategies."
           )}
         </p>
-        <div className="actions">
-          <button type="button" onClick={resetEliminator}>
-            {t("Neues Beispiel laden", "Load new example")}
-          </button>
-        </div>
-        <p className="hint">
-          <strong>{t("Schritt", "Step")} {eliminatorDecisionCount}:</strong>{" "}
-          {eliminatorQuestion
-            ? eliminatorQuestion.check.player === 1
-              ? t(
-                  `Spieler 1: Ist ${eliminatorQuestion.check.dominated} strikt dominiert von ${eliminatorQuestion.check.dominant}?`,
-                  `Player 1: Is ${eliminatorQuestion.check.dominated} strictly dominated by ${eliminatorQuestion.check.dominant}?`
-                )
-              : t(
-                  `Spieler 2: Ist ${eliminatorQuestion.check.dominated} strikt dominiert von ${eliminatorQuestion.check.dominant}?`,
-                  `Player 2: Is ${eliminatorQuestion.check.dominated} strictly dominated by ${eliminatorQuestion.check.dominant}?`
-                )
-            : t(
-                  "Keine weiteren Dominanzen möglich.",
-                  "No further dominance elimination is possible."
-                )}
-        </p>
-        <StaticPayoffTable
-          data={eliminatorMatrix}
-          rowLabel={t("Spieler 1", "Player 1")}
-          colLabel={t("Spieler 2", "Player 2")}
-        />
-
-        {eliminatorQuestion ? (
-          <>
+        <div className="exercise-layout">
+          <article className="panel nested-panel">
+            <h3>{t("Payoff-Matrix", "Payoff matrix")}</h3>
+            <StaticPayoffTable
+              data={eliminatorMatrix}
+              rowLabel={t("Spieler 1", "Player 1")}
+              colLabel={t("Spieler 2", "Player 2")}
+            />
             <div className="actions">
-              <button type="button" onClick={() => answerEliminator(true)}>
-                {t("Ja", "Yes")}
-              </button>
-              <button type="button" onClick={() => answerEliminator(false)}>
-                {t("Nein", "No")}
-              </button>
-              <button type="button" onClick={() => setEliminatorShowWhy((v) => !v)}>
-                {eliminatorShowWhy ? t("Warum ausblenden", "Hide why") : t("Warum anzeigen", "Show why")}
+              <button type="button" onClick={resetEliminator}>
+                {t("Neues Beispiel laden", "Load new example")}
               </button>
             </div>
-            {eliminatorShowWhy && (
-              <div className="feedback-box feedback-card info">
-                <strong>{t("Dominanzvergleich", "Dominance comparison")}</strong>
-                <div className="eliminator-compare-list">
-                    {comparisonRows.map((entry) => (
-                      <div key={entry.label} className={`eliminator-compare-item ${entry.isStrict ? "strict" : "weak"}`}>
-                        <span>
-                        {eliminatorQuestion.check.player === 1
-                          ? `${t("Spalte", "Column")} ${entry.label}`
-                          : `${t("Zeile", "Row")} ${entry.label}`}
-                        </span>
-                        <span>{entry.dominantU} &gt; {entry.dominatedU}</span>
-                    </div>
-                  ))}
-                </div>
+            {!eliminatorQuestion && (
+              <p className="hint">
+                {t("Kandidatenstrategien", "Candidate strategies")}:{" "}
+                <code>{`S₁ = {${eliminatorActiveRows.join(", ")}}`}</code>,{" "}
+                <code>{`S₂ = {${eliminatorActiveCols.join(", ")}}`}</code>
+              </p>
+            )}
+            {!eliminatorQuestion && eliminatorShowNash && (
+              <div className={`feedback-box feedback-card ${eliminatorNash.length ? "success" : "warning"}`}>
+                <strong>{t("Reine Nash-Gleichgewichte", "Pure Nash equilibria")}</strong>
                 <p>
-                  {t(
-                    "Grün bedeutet: dominante Strategie hat strikt höheren Nutzen. Nur wenn alle Vergleiche grün sind, ist die Antwort Ja.",
-                    "Green means the dominant strategy yields a strictly higher payoff. Only if all comparisons are green is the correct answer yes."
-                  )}
+                  {eliminatorNash.length
+                    ? eliminatorNash.join(", ")
+                    : t("Kein reines Nash-Gleichgewicht in der reduzierten Matrix.", "No pure Nash equilibrium in the reduced matrix.")}
                 </p>
               </div>
             )}
-          </>
-        ) : (
-          <div className="actions">
-            <button type="button" onClick={() => setEliminatorShowNash(true)}>
-              {t("Jetzt Nash berechnen", "Compute Nash now")}
-            </button>
-          </div>
-        )}
+          </article>
 
-        {eliminatorFeedback && (
-          <div className={`feedback-box feedback-card ${eliminatorFeedbackType}`}>
-            <strong>{eliminatorFeedbackType === "success" ? t("Richtig", "Correct") : t("Nicht korrekt", "Incorrect")}</strong>
-            <p>{eliminatorFeedback}</p>
-          </div>
-        )}
-
-        {!eliminatorQuestion && (
-          <p className="hint">
-            {t("Kandidatenstrategien", "Candidate strategies")}:{" "}
-            <code>{`S₁ = {${eliminatorActiveRows.join(", ")}}`}</code>,{" "}
-            <code>{`S₂ = {${eliminatorActiveCols.join(", ")}}`}</code>
-          </p>
-        )}
-
-        {!eliminatorQuestion && eliminatorShowNash && (
-          <div className={`feedback-box feedback-card ${eliminatorNash.length ? "success" : "warning"}`}>
-            <strong>{t("Reine Nash-Gleichgewichte", "Pure Nash equilibria")}</strong>
-            <p>
-              {eliminatorNash.length
-                ? eliminatorNash.join(", ")
-                : t("Kein reines Nash-Gleichgewicht in der reduzierten Matrix.", "No pure Nash equilibrium in the reduced matrix.")}
+          <article className="panel nested-panel">
+            <h3>{t("Step by Step Solver", "Step by Step Solver")}</h3>
+            <p className="hint">
+              <strong>{t("Schritt", "Step")} {eliminatorDecisionCount}:</strong>{" "}
+              {eliminatorQuestion
+                ? eliminatorQuestion.check.player === 1
+                  ? t(
+                      `Spieler 1: Ist ${eliminatorQuestion.check.dominated} strikt dominiert von ${eliminatorQuestion.check.dominant}?`,
+                      `Player 1: Is ${eliminatorQuestion.check.dominated} strictly dominated by ${eliminatorQuestion.check.dominant}?`
+                    )
+                  : t(
+                      `Spieler 2: Ist ${eliminatorQuestion.check.dominated} strikt dominiert von ${eliminatorQuestion.check.dominant}?`,
+                      `Player 2: Is ${eliminatorQuestion.check.dominated} strictly dominated by ${eliminatorQuestion.check.dominant}?`
+                    )
+                : t(
+                    "Keine weiteren Dominanzen möglich.",
+                    "No further dominance elimination is possible."
+                  )}
             </p>
-          </div>
-        )}
+
+            {eliminatorQuestion ? (
+              <>
+                <div className="actions">
+                  <button type="button" onClick={() => answerEliminator(true)}>
+                    {t("Ja", "Yes")}
+                  </button>
+                  <button type="button" onClick={() => answerEliminator(false)}>
+                    {t("Nein", "No")}
+                  </button>
+                  <button type="button" onClick={() => setEliminatorShowWhy((v) => !v)}>
+                    {eliminatorShowWhy ? t("Warum ausblenden", "Hide why") : t("Warum anzeigen", "Show why")}
+                  </button>
+                </div>
+                {eliminatorShowWhy && (
+                  <div className="feedback-box feedback-card info">
+                    <strong>{t("Dominanzvergleich", "Dominance comparison")}</strong>
+                    <div className="eliminator-compare-list">
+                        {comparisonRows.map((entry) => (
+                          <div key={entry.label} className={`eliminator-compare-item ${entry.isStrict ? "strict" : "weak"}`}>
+                            <span>
+                            {eliminatorQuestion.check.player === 1
+                              ? `${t("Spalte", "Column")} ${entry.label}`
+                              : `${t("Zeile", "Row")} ${entry.label}`}
+                            </span>
+                            <span>{entry.dominantU} &gt; {entry.dominatedU}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p>
+                      {t(
+                        "Grün bedeutet: dominante Strategie hat strikt höheren Nutzen. Nur wenn alle Vergleiche grün sind, ist die Antwort Ja.",
+                        "Green means the dominant strategy yields a strictly higher payoff. Only if all comparisons are green is the correct answer yes."
+                      )}
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="actions">
+                <button type="button" onClick={() => setEliminatorShowNash(true)}>
+                  {t("Jetzt Nash berechnen", "Compute Nash now")}
+                </button>
+              </div>
+            )}
+
+            {eliminatorFeedback && (
+              <div className={`feedback-box feedback-card ${eliminatorFeedbackType}`}>
+                <strong>{eliminatorFeedbackType === "success" ? t("Richtig", "Correct") : t("Nicht korrekt", "Incorrect")}</strong>
+                <p>{eliminatorFeedback}</p>
+              </div>
+            )}
+          </article>
+        </div>
+      </section>
+    );
+  }
+
+  function renderBestResponseExplorerCard() {
+    const shownP1 = new Set(brExplorerP1Selected);
+    const shownP2 = new Set(brExplorerP2Selected);
+    const nashText = brExplorerCorrect.nash.length
+      ? brExplorerCorrect.nash.map(formatCellKey).join(", ")
+      : t("Kein reines Nash-Gleichgewicht.", "No pure Nash equilibrium.");
+
+    return (
+      <section className="panel">
+        <h2>{t("Best-Response-NE-Finder", "Best-response NE finder")}</h2>
+        <p className="hint">
+          {t(
+            "Dieses Tool trainiert, reine Nash-Gleichgewichte direkt über beste Antworten zu finden, auch ohne dominante Strategien.",
+            "This tool trains finding pure Nash equilibria directly via best responses, even without dominant strategies."
+          )}
+        </p>
+        <div className="exercise-layout">
+          <article className="panel nested-panel">
+            <h3>{t("Payoff-Matrix", "Payoff matrix")}</h3>
+            <StaticPayoffTable
+              data={brExplorerGame}
+              rowLabel={t("Spieler 1", "Player 1")}
+              colLabel={t("Spieler 2", "Player 2")}
+              onCellClick={(row, col) => toggleBrExplorerSelection(`${row}|${col}`)}
+              getCellClassName={(row, col) => {
+                const key = `${row}|${col}`;
+                const isP1 = shownP1.has(key);
+                const isP2 = shownP2.has(key);
+                if (isP1 && isP2) return "pd-cell-nash";
+                if (isP1) return "pd-cell-best";
+                if (isP2) return "pd-cell-compare";
+                return "";
+              }}
+            />
+            <div className="actions">
+              <button type="button" onClick={resetBestResponseExplorer}>
+                {t("Neues Beispiel laden", "Load new example")}
+              </button>
+            </div>
+          </article>
+
+          <article className="panel nested-panel">
+            <h3>{t("Step by Step Solver", "Step by Step Solver")}</h3>
+            <p className="hint">
+              {brExplorerStep === 1
+                ? (
+                  <>
+                    <strong>{t("Schritt 1:", "Step 1:")}</strong>{" "}
+                    {t(
+                      "Klicke in der Matrix alle Zellen an, in denen Spieler 1 (u₁) je Spalte maximal ist. Prüfe danach deine Auswahl.",
+                      "Click all matrix cells where Player 1 (u1) is maximal by column. Then check your selection."
+                    )}
+                  </>
+                )
+                : (
+                  <>
+                    <strong>{t("Schritt 2:", "Step 2:")}</strong>{" "}
+                    {t(
+                      "Klicke in der Matrix alle Zellen an, in denen Spieler 2 (u₂) je Zeile maximal ist. Prüfe danach deine Auswahl.",
+                      "Click all matrix cells where Player 2 (u2) is maximal by row. Then check your selection."
+                    )}
+                  </>
+                )}
+            </p>
+            <div className="actions">
+              <button type="button" onClick={checkBestResponseExplorer}>
+                {brExplorerStep === 1 ? t("Schritt 1 prüfen", "Check step 1") : t("Schritt 2 prüfen", "Check step 2")}
+              </button>
+            </div>
+            {brExplorerFeedback && (
+              <div className={`feedback-box feedback-card ${brExplorerFeedbackType}`}>
+                <strong>{brExplorerFeedbackType === "success" ? t("Richtig", "Correct") : t("Nicht korrekt", "Incorrect")}</strong>
+                <p>{brExplorerFeedback}</p>
+              </div>
+            )}
+          </article>
+        </div>
       </section>
     );
   }
@@ -6912,6 +7174,7 @@ function App() {
         </section>
 
         {renderStrategyEliminatorCard()}
+        {renderBestResponseExplorerCard()}
         <div className="actions">
           <button
             type="button"
