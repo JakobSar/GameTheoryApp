@@ -481,15 +481,15 @@ const NAV = [
     items: [
       { key: "learn-simultaneous", label: { de: "Simultane Entscheidungen", en: "Simultaneous decisions" } },
       { key: "learn-sequential", label: { de: "Sequenzielle Entscheidungen", en: "Sequential decisions" } },
-      { key: "learn-private", label: { de: "Private Informationen", en: "Private information" } }
+      { key: "learn-private", label: { de: "Private Informationen bei simultanen Entscheidungen", en: "Private information in simultaneous decisions" } }
     ]
   },
   {
     title: { de: "Spiel lösen", en: "Solve a game" },
     items: [
-      { key: "solve-normal", label: { de: "Normalformspiele", en: "Normal-form games" } },
-      { key: "solve-tree", label: { de: "Spielbäume", en: "Game trees" } },
-      { key: "solve-bayesian", label: { de: "Bayes-Spiele", en: "Bayesian games" } }
+      { key: "solve-normal", label: { de: "Simultane Spiele (Normalform)", en: "Simultaneous games (normal form)" } },
+      { key: "solve-tree", label: { de: "Sequenzielle Spiele (Extensivform)", en: "Sequential games (extensive form)" } },
+      { key: "solve-bayesian", label: { de: "Spiele mit privaten Informationen (Bayes)", en: "Games with private information (Bayesian)" } }
     ]
   },
   {
@@ -4885,7 +4885,7 @@ function App() {
     if (treePage === "toc") {
       return (
         <section className="panel">
-          <h2>{t("Trainiere Spielbäume", "Train game trees")}</h2>
+          <h2>{t("Trainiere Sequenzielle Spiele (Extensivform)", "Train sequential games (extensive form)")}</h2>
           <h3>{t("Teil 1: Grundlagen", "Part 1: Fundamentals")}</h3>
           <div className="exercise-link-grid">
             <button
@@ -6059,7 +6059,7 @@ function App() {
     if (normalPage === "toc") {
       return (
         <section className="panel">
-          <h2>{t("Trainiere Normalformspiele", "Train normal-form games")}</h2>
+          <h2>{t("Trainiere Simultane Spiele (Normalform)", "Train simultaneous games (normal form)")}</h2>
           <h3>{t("Teil 1: Grundlagen statischer Normalformspiele", "Part 1: Foundations of static simultaneous games")}</h3>
           <div className="exercise-link-grid">
             {exLinksTeil1.map((link) => (
@@ -7124,7 +7124,7 @@ function App() {
     return (
       <>
         <section className="panel">
-          <h2>{t("Einführung Normalformspiele", "Introduction Simultaneous games")}</h2>
+          <h2>{t("Einführung in Spiele mit simultanen Entscheidungen (Normalformspiele)", "Introduction to games with simultaneous decisions (normal-form games)")}</h2>
           <p className="hint">
             {t(
               "Ein Normalformspiel beschreibt eine Situation, in der alle Spieler gleichzeitig eine Strategie wählen und daraus für jeden Spieler ein Nutzen  entsteht.",
@@ -7191,7 +7191,7 @@ function App() {
               setNormalPage("toc");
             }}
           >
-            {t("Trainiere Normalformspiele", "Train normal-form games")}
+            {t("Trainiere Simultane Spiele (Normalform)", "Train simultaneous games (normal form)")}
           </button>
         </div>
       </>
@@ -7202,7 +7202,7 @@ function App() {
     return (
       <>
       <section className="panel">
-        <h2>{t("Einführung in Bayes-Spiele", "Introduction to Bayesian games")}</h2>
+        <h2>{t("Einführung in Spiele mit privaten Informationen bei simultanen Entscheidungen", "Introduction to games with private information in simultaneous decisions")}</h2>
         <p className="hint">
           {t(
             "Ein Bayes-Spiel beschreibt eine strategische Situation, in der Spieler gleichzeitig entscheiden, aber nicht vollständig über die Eigenschaften der anderen Spieler informiert sind. Jeder Spieler kennt vor seiner Entscheidung seinen eigenen Typ, während die Typen der anderen Spieler nur über eine gemeinsame Wahrscheinlichkeitsverteilung (common prior) beschrieben sind.",
@@ -7291,7 +7291,7 @@ function App() {
             setBayesPage("toc");
           }}
         >
-          {t("Trainiere Bayes-Spiele", "Train Bayesian games")}
+          {t("Trainiere Spiele mit privaten Informationen (Bayes)", "Train games with private information (Bayesian)")}
         </button>
       </div>
       </>
@@ -7302,7 +7302,7 @@ function App() {
     return (
       <>
       <section className="panel">
-        <h2>{t("Einführung in Extensivspiele", "Introduction to extensive games")}</h2>
+        <h2>{t("Einführung in Spiele mit sequenziellen Entscheidungen (Extensivformspiele)", "Introduction to games with sequential decisions (extensive-form games)")}</h2>
         <p className="hint">
           {t(
             "Extensive Games (Spielbäume) modellieren strategische Situationen mit zeitlicher Struktur: Entscheidungen werden nacheinander getroffen, nicht gleichzeitig.",
@@ -7760,7 +7760,7 @@ function App() {
             setTreePage("toc");
           }}
         >
-          {t("Trainiere Spielbäume", "Train game trees")}
+          {t("Trainiere Sequenzielle Spiele (Extensivform)", "Train sequential games (extensive form)")}
         </button>
       </div>
       </>
@@ -8697,7 +8697,7 @@ function App() {
     if (bayesPage === "toc") {
       return (
         <section className="panel">
-          <h2>{t("Trainiere Bayes-Spiele", "Train Bayesian games")}</h2>
+          <h2>{t("Trainiere Spiele mit privaten Informationen (Bayes)", "Train games with private information (Bayesian)")}</h2>
           <h3>{t("Teil 1: Grundlagen statischer Bayes-Spiele", "Part 1: Foundations of static Bayesian games")}</h3>
           <div className="exercise-link-grid">
             <button type="button" className="exercise-link" onClick={() => setBayesPage("ex1")}>
@@ -9014,7 +9014,7 @@ function App() {
                 {t("Sequenzielle Entscheidungen", "Sequential decisions")}
               </button>
               <button type="button" className="home-link" onClick={() => setActivePage("learn-private")}>
-                {t("Private Informationen", "Private information")}
+                {t("Private Informationen bei simultanen Entscheidungen", "Private information in simultaneous decisions")}
               </button>
             </div>
           </article>
@@ -9031,7 +9031,7 @@ function App() {
                   setNormalPage("toc");
                 }}
               >
-                <span>{t("Normalformspiele", "Normal-form games")}</span>
+                <span>{t("Simultane Spiele (Normalform)", "Simultaneous games (normal form)")}</span>
                 <span className="home-link-count">{solvedCountLabel([
                     "normal_ex1",
                     "normal_ex2",
@@ -9053,7 +9053,7 @@ function App() {
                   setTreePage("toc");
                 }}
               >
-                <span>{t("Spielbäume", "Game trees")}</span>
+                <span>{t("Sequenzielle Spiele (Extensivform)", "Sequential games (extensive form)")}</span>
                 <span className="home-link-count">{solvedCountLabel(["tree_ex1_easy", "tree_ex1_hard", "tree_ex2_easy", "tree_ex2_hard", "tree_ex3", "tree_ex4"])}</span>
               </button>
               <button
@@ -9064,7 +9064,7 @@ function App() {
                   setBayesPage("toc");
                 }}
               >
-                <span>{t("Bayes-Spiele", "Bayesian games")}</span>
+                <span>{t("Spiele mit privaten Informationen (Bayes)", "Games with private information (Bayesian)")}</span>
                 <span className="home-link-count">{solvedCountLabel(["bayes_ex1", "bayes_ex2a", "bayes_ex2b"])}</span>
               </button>
             </div>
@@ -9073,7 +9073,7 @@ function App() {
           <article className="panel home-card home-card-wide">
             <h3>{t("Extra", "Extra")}</h3>
             <p>
-              {t("Fünf klassische Spiele mit Intuition, Matrix und typischen Gleichgewichts-Ergebnissen.", "Five classic games with intuition, matrix representation, and typical equilibrium outcomes.")}
+              {t("Fünf klassische Normalformspiele mit Matrix, strategischer Logik und Gleichgewichtsprofilen.", "Five classic normal-form games with matrix representation, strategic logic, and equilibrium profiles.")}
             </p>
             <button type="button" className="home-link" onClick={() => setActivePage("extra-special")}>
               {t("Zu den besonderen Spielen", "Go to special games")}
