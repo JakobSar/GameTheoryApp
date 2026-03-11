@@ -7124,7 +7124,17 @@ function App() {
     return (
       <>
         <section className="panel">
-          <h2>{t("Einführung in Spiele mit simultanen Entscheidungen (Normalformspiele)", "Introduction to games with simultaneous decisions (normal-form games)")}</h2>
+          <h2>
+            {uiLang === "de" ? (
+              <>
+                Einführung in Spiele mit <u>simultanen Entscheidungen</u> (Normalformspiele)
+              </>
+            ) : (
+              <>
+                Introduction to games with <u>simultaneous decisions</u> (normal-form games)
+              </>
+            )}
+          </h2>
           <p className="hint">
             {t(
               "Ein Normalformspiel beschreibt eine Situation, in der alle Spieler gleichzeitig eine Strategie wählen und daraus für jeden Spieler ein Nutzen  entsteht.",
@@ -7202,7 +7212,17 @@ function App() {
     return (
       <>
       <section className="panel">
-        <h2>{t("Einführung in Spiele mit privaten Informationen bei simultanen Entscheidungen", "Introduction to games with private information in simultaneous decisions")}</h2>
+        <h2>
+          {uiLang === "de" ? (
+            <>
+              Einführung in Spiele mit <u>privaten Informationen</u> bei simultanen Entscheidungen
+            </>
+          ) : (
+            <>
+              Introduction to games with <u>private information</u> in simultaneous decisions
+            </>
+          )}
+        </h2>
         <p className="hint">
           {t(
             "Ein Bayes-Spiel beschreibt eine strategische Situation, in der Spieler gleichzeitig entscheiden, aber nicht vollständig über die Eigenschaften der anderen Spieler informiert sind. Jeder Spieler kennt vor seiner Entscheidung seinen eigenen Typ, während die Typen der anderen Spieler nur über eine gemeinsame Wahrscheinlichkeitsverteilung (common prior) beschrieben sind.",
@@ -7302,7 +7322,17 @@ function App() {
     return (
       <>
       <section className="panel">
-        <h2>{t("Einführung in Spiele mit sequenziellen Entscheidungen (Extensivformspiele)", "Introduction to games with sequential decisions (extensive-form games)")}</h2>
+        <h2>
+          {uiLang === "de" ? (
+            <>
+              Einführung in Spiele mit <u>sequenziellen Entscheidungen</u> (Extensivformspiele)
+            </>
+          ) : (
+            <>
+              Introduction to games with <u>sequential decisions</u> (extensive-form games)
+            </>
+          )}
+        </h2>
         <p className="hint">
           {t(
             "Extensive Games (Spielbäume) modellieren strategische Situationen mit zeitlicher Struktur: Entscheidungen werden nacheinander getroffen, nicht gleichzeitig.",

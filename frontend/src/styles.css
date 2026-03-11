@@ -139,6 +139,12 @@ html::before {
   margin-bottom: 0.8rem;
 }
 
+.panel h2 u {
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.18em;
+  text-decoration-skip-ink: auto;
+}
+
 .grid {
   display: grid;
   gap: 1rem;
