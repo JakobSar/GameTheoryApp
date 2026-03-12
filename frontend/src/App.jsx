@@ -4990,9 +4990,9 @@ function App() {
       };
 
       const profileText = (profile) => {
-        const p2Part = TREE_EX2_ROOT_ACTIONS.map((rootAction) => `${rootAction}:${profile.p2Choices[rootAction]}`).join(", ");
-        const p1Part = TREE_EX2_P1_NODES.map((nodeKey) => `${nodeKey}:${profile.p1Choices[nodeKey]}`).join(", ");
-        return `(${profile.rootAction}; P2: ${p2Part}; P1: ${p1Part})`;
+        const p2Part = TREE_EX2_ROOT_ACTIONS.map((rootAction) => profile.p2Choices[rootAction]).join(", ");
+        const p1Part = TREE_EX2_P1_NODES.map((nodeKey) => profile.p1Choices[nodeKey]).join(", ");
+        return `(${profile.rootAction}, (${p2Part}), (${p1Part}))`;
       };
 
       return (
