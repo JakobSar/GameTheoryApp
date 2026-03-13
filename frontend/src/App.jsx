@@ -830,6 +830,15 @@ function treeEx4EntryToId(entry) {
   return `p1-${entry.p1}|p2-${entry.p2}|p3-${entry.sL}${entry.sA}${entry.sB}`;
 }
 
+function formatTreeEx4ProfileId(profileId) {
+  const match = /^p1-([LR])\|p2-([ab])\|p3-([lr]{3})$/.exec(profileId || "");
+  if (!match) {
+    return profileId || "";
+  }
+  const [, p1, p2, p3] = match;
+  return `(${p1}, ${p2}, (${p3[0]}, ${p3[1]}, ${p3[2]}))`;
+}
+
 function evaluateTreeEx4Game(game, profiles) {
   const nashIds = [];
   const speIds = [];
@@ -1900,6 +1909,7 @@ function App() {
   const [treeEx4Completed, setTreeEx4Completed] = useState(false);
   const [treeEx4OverallFeedback, setTreeEx4OverallFeedback] = useState("");
   const [treeEx4OverallFeedbackType, setTreeEx4OverallFeedbackType] = useState("neutral");
+  const [showHelpTreeEx4, setShowHelpTreeEx4] = useState(false);
   const [showImpressumEmail, setShowImpressumEmail] = useState(false);
   const [showImpressumAddress, setShowImpressumAddress] = useState(false);
   const [showImpressumProject, setShowImpressumProject] = useState(false);
@@ -1959,13 +1969,12 @@ function App() {
   const normalizedApiBase = useMemo(() => normalizeApiBase(apiBase), [apiBase]);
 
   const endpoint = useMemo(() => {
-    if (!apiBase.trim()) {
+    try {
+      return apiUrl("/api/v1/game-tree/solve");
+    } catch {
       return "/api/v1/game-tree/solve";
     }
-    return normalizedApiBase.valid
-      ? `${normalizedApiBase.value}/api/v1/game-tree/solve`
-      : "/api/v1/game-tree/solve";
-  }, [apiBase, normalizedApiBase]);
+  }, [apiBase, normalizedApiBase, uiLang]);
 
   const selectedNode = useMemo(
     () => game.nodes.find((node) => node.id === selectedNodeId) ?? null,
@@ -2013,6 +2022,31 @@ function App() {
 
   const t = (deText, enText) => (uiLang === "de" ? deText : enText);
 
+  function formatClientError(err, fallback) {
+    const raw = typeof err?.message === "string" ? err.message.trim() : "";
+    if (/did not match the expected pattern/i.test(raw) || /fetch url failed/i.test(raw)) {
+      const locationProto = typeof window !== "undefined" ? window.location.protocol : "n/a";
+      const locationOrigin = typeof window !== "undefined" ? window.location.origin : "n/a";
+      const apiBaseRaw = typeof apiBase === "string" ? apiBase : "";
+      const normalized = normalizedApiBase?.value || "";
+      return t(
+        `URL/Pattern-Fehler.\nProtokoll: ${locationProto}\nOrigin: ${locationOrigin}\nAPI Base (raw): ${apiBaseRaw || "(leer)"}\nAPI Base (normalized): ${normalized || "(leer)"}\nOriginalfehler: ${raw}`,
+        `URL/pattern error.\nProtocol: ${locationProto}\nOrigin: ${locationOrigin}\nAPI base (raw): ${apiBaseRaw || "(empty)"}\nAPI base (normalized): ${normalized || "(empty)"}\nOriginal error: ${raw}`
+      );
+    }
+    return raw || fallback;
+  }
+
+  async function appFetch(input, init) {
+    try {
+      return await fetch(input, init);
+    } catch (err) {
+      const target = typeof input === "string" ? input : (input?.url || String(input));
+      const message = typeof err?.message === "string" ? err.message : String(err);
+      throw new Error(`Fetch URL failed: ${target}\n${message}`);
+    }
+  }
+
   useEffect(() => {
     const handlePopState = (event) => {
       const state = event.state;
@@ -2047,13 +2081,17 @@ function App() {
 
     if (isUnchanged) return;
 
-    if (!hasHistoryInitRef.current) {
-      window.history.replaceState(navState, "", window.location.href);
-      hasHistoryInitRef.current = true;
-    } else if (isApplyingHistoryRef.current) {
-      isApplyingHistoryRef.current = false;
-    } else {
-      window.history.pushState(navState, "", window.location.href);
+    try {
+      if (!hasHistoryInitRef.current) {
+        window.history.replaceState(navState, "");
+        hasHistoryInitRef.current = true;
+      } else if (isApplyingHistoryRef.current) {
+        isApplyingHistoryRef.current = false;
+      } else {
+        window.history.pushState(navState, "");
+      }
+    } catch {
+      // Ignore browser-specific History API pattern errors.
     }
 
     lastHistoryStateRef.current = navState;
@@ -2214,9 +2252,6 @@ function App() {
   }
 
   function apiUrl(path) {
-    if (!apiBase.trim()) {
-      return path;
-    }
     if (!normalizedApiBase.valid) {
       throw new Error(
         t(
@@ -2225,7 +2260,16 @@ function App() {
         )
       );
     }
-    return `${normalizedApiBase.value}${path}`;
+    if (normalizedApiBase.value) {
+      return `${normalizedApiBase.value}${path}`;
+    }
+
+    if (typeof window !== "undefined" && /^https?:$/i.test(window.location.protocol)) {
+      return `${window.location.origin}${path}`;
+    }
+
+    // Fallback for non-http contexts (e.g. file://), where relative /api URLs can fail pattern parsing.
+    return `https://game-theory-api.onrender.com${path}`;
   }
 
   function updateNode(nodeId, updater) {
@@ -2754,7 +2798,7 @@ function App() {
           )
         );
       }
-      const response = await fetch(endpoint, {
+      const response = await appFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ game })
@@ -2767,7 +2811,7 @@ function App() {
       setResult(JSON.stringify(body, null, 2));
     } catch (err) {
       setSolveData(null);
-      setError(err.message || "request failed");
+      setError(formatClientError(err, "request failed"));
     } finally {
       setLoading(false);
     }
@@ -2777,7 +2821,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl(`/api/v1/exercises/ex1/new?lang=${legacyLang}`));
+      const response = await appFetch(apiUrl(`/api/v1/exercises/ex1/new?lang=${legacyLang}`));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -2788,7 +2832,7 @@ function App() {
       setEx1FeedbackType("neutral");
       setShowHelpEx1(false);
     } catch (err) {
-      setError(err.message || "exercise request failed");
+      setError(formatClientError(err, "exercise request failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -2801,7 +2845,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/ex1/check"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/ex1/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2819,7 +2863,7 @@ function App() {
       setEx1FeedbackType(body.correct ? "success" : "error");
       recordExerciseAttempt("normal_ex1", { correct: body.correct, lastState: ex1Selected });
     } catch (err) {
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -2829,7 +2873,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl(`/api/v1/exercises/ex2/new?lang=${legacyLang}`));
+      const response = await appFetch(apiUrl(`/api/v1/exercises/ex2/new?lang=${legacyLang}`));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -2840,7 +2884,7 @@ function App() {
       setEx2FeedbackType("neutral");
       setShowHelpEx2(false);
     } catch (err) {
-      setError(err.message || "exercise request failed");
+      setError(formatClientError(err, "exercise request failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -2853,7 +2897,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/ex2/check"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/ex2/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2870,7 +2914,7 @@ function App() {
       setEx2FeedbackType(body.correct ? "success" : "error");
       recordExerciseAttempt("normal_ex2", { correct: body.correct, lastState: ex2Selected });
     } catch (err) {
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -2880,7 +2924,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl(`/api/v1/exercises/ex3/new?lang=${legacyLang}`));
+      const response = await appFetch(apiUrl(`/api/v1/exercises/ex3/new?lang=${legacyLang}`));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -2891,7 +2935,7 @@ function App() {
       setEx3FeedbackType("neutral");
       setShowHelpEx3(false);
     } catch (err) {
-      setError(err.message || "exercise request failed");
+      setError(formatClientError(err, "exercise request failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -2904,7 +2948,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/ex3/check"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/ex3/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2921,7 +2965,7 @@ function App() {
       setEx3FeedbackType(body.correct ? "success" : "error");
       recordExerciseAttempt("normal_ex3", { correct: body.correct, lastState: ex3Selected });
     } catch (err) {
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -2931,7 +2975,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/ex4/new"));
+      const response = await appFetch(apiUrl("/api/v1/exercises/ex4/new"));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -2942,7 +2986,7 @@ function App() {
       setEx4FeedbackType("neutral");
       setShowHelpEx4(false);
     } catch (err) {
-      setError(err.message || "exercise request failed");
+      setError(formatClientError(err, "exercise request failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -2955,7 +2999,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/ex4/check"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/ex4/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2972,7 +3016,7 @@ function App() {
       setEx4FeedbackType(body.correct ? "success" : "error");
       recordExerciseAttempt("normal_ex4", { correct: body.correct, lastState: ex4Selected.join(", ") || "-" });
     } catch (err) {
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -2982,7 +3026,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl(`/api/v1/exercises/ex5/new?lang=${legacyLang}`));
+      const response = await appFetch(apiUrl(`/api/v1/exercises/ex5/new?lang=${legacyLang}`));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -2993,7 +3037,7 @@ function App() {
       setEx5FeedbackType("neutral");
       setShowHelpEx5(false);
     } catch (err) {
-      setError(err.message || "exercise request failed");
+      setError(formatClientError(err, "exercise request failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -3015,7 +3059,7 @@ function App() {
           }
         });
       });
-      const response = await fetch(apiUrl("/api/v1/exercises/ex5/check"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/ex5/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3036,7 +3080,7 @@ function App() {
         solved: !!body.correct
       });
     } catch (err) {
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -3046,7 +3090,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/ex6/new"));
+      const response = await appFetch(apiUrl("/api/v1/exercises/ex6/new"));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -3057,7 +3101,7 @@ function App() {
       setEx6FeedbackType("neutral");
       setShowHelpEx6(false);
     } catch (err) {
-      setError(err.message || "exercise request failed");
+      setError(formatClientError(err, "exercise request failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -3070,7 +3114,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/ex6/check"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/ex6/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3087,7 +3131,7 @@ function App() {
       setEx6FeedbackType(body.correct ? "success" : "error");
       recordExerciseAttempt("normal_ex6", { correct: body.correct, lastState: ex6Selected });
     } catch (err) {
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -3097,7 +3141,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl(`/api/v1/exercises/ex7/new?lang=${legacyLang}`));
+      const response = await appFetch(apiUrl(`/api/v1/exercises/ex7/new?lang=${legacyLang}`));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -3108,7 +3152,7 @@ function App() {
       setEx7FeedbackType("neutral");
       setShowHelpEx7(false);
     } catch (err) {
-      setError(err.message || "exercise request failed");
+      setError(formatClientError(err, "exercise request failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -3121,7 +3165,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/ex7/check"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/ex7/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3138,7 +3182,7 @@ function App() {
       setEx7FeedbackType(body.correct ? "success" : "error");
       recordExerciseAttempt("normal_ex7", { correct: body.correct, lastState: ex7Selected.join(", ") || "-" });
     } catch (err) {
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -3148,7 +3192,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl(`/api/v1/exercises/ex8/new?lang=${legacyLang}`));
+      const response = await appFetch(apiUrl(`/api/v1/exercises/ex8/new?lang=${legacyLang}`));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -3159,7 +3203,7 @@ function App() {
       setEx8FeedbackType("neutral");
       setShowHelpEx8(false);
     } catch (err) {
-      setError(err.message || "exercise request failed");
+      setError(formatClientError(err, "exercise request failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -3172,7 +3216,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/ex8/check"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/ex8/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3189,7 +3233,7 @@ function App() {
       setEx8FeedbackType(body.correct ? "success" : "error");
       recordExerciseAttempt("normal_ex8", { correct: body.correct, lastState: ex8Selected.join(", ") || "-" });
     } catch (err) {
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -3199,7 +3243,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/ex9/new"));
+      const response = await appFetch(apiUrl("/api/v1/exercises/ex9/new"));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -3210,7 +3254,7 @@ function App() {
       setEx9FeedbackType("neutral");
       setShowHelpEx9(false);
     } catch (err) {
-      setError(err.message || "exercise request failed");
+      setError(formatClientError(err, "exercise request failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -3223,7 +3267,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/ex9/check"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/ex9/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3241,7 +3285,7 @@ function App() {
       setEx9FeedbackType(body.correct ? "success" : "error");
       recordExerciseAttempt("normal_ex9", { correct: body.correct, lastState: ex9Selected });
     } catch (err) {
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -3251,7 +3295,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/bayes/ex1/new"));
+      const response = await appFetch(apiUrl("/api/v1/exercises/bayes/ex1/new"));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -3262,7 +3306,7 @@ function App() {
       setBayesEx1FeedbackType("neutral");
       setShowHelpBayesEx1(false);
     } catch (err) {
-      setError(err.message || "exercise request failed");
+      setError(formatClientError(err, "exercise request failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -3275,7 +3319,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/bayes/ex1/check"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/bayes/ex1/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3293,7 +3337,7 @@ function App() {
       setBayesEx1FeedbackType(body.correct ? "success" : "error");
       recordExerciseAttempt("bayes_ex1", { correct: body.correct, lastState: bayesEx1Selected.join(", ") || "-" });
     } catch (err) {
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -3303,7 +3347,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/bayes/ex2a/new"));
+      const response = await appFetch(apiUrl("/api/v1/exercises/bayes/ex2a/new"));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -3320,7 +3364,7 @@ function App() {
       setBayesEx2bFeedback("");
       setBayesEx2bFeedbackType("neutral");
     } catch (err) {
-      setError(err.message || "exercise request failed");
+      setError(formatClientError(err, "exercise request failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -3333,7 +3377,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/bayes/ex2a/check"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/bayes/ex2a/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3352,7 +3396,7 @@ function App() {
       setBayesEx2aSubmitted(true);
       recordExerciseAttempt("bayes_ex2a", { correct: body.correct, lastState: bayesEx2aSelected });
     } catch (err) {
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -3362,7 +3406,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl(`/api/v1/exercises/bayes/ex2b/new?lang=${legacyLang}`));
+      const response = await appFetch(apiUrl(`/api/v1/exercises/bayes/ex2b/new?lang=${legacyLang}`));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -3374,7 +3418,7 @@ function App() {
       setBayesEx2bFeedbackType("neutral");
       setShowHelpBayesEx2b(false);
     } catch (err) {
-      setError(err.message || "exercise request failed");
+      setError(formatClientError(err, "exercise request failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -3387,7 +3431,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/bayes/ex2b/check"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/bayes/ex2b/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3405,7 +3449,7 @@ function App() {
       setBayesEx2bFeedbackType(body.correct ? "success" : "error");
       recordExerciseAttempt("bayes_ex2b", { correct: body.correct, lastState: bayesEx2bSelected.join(", ") || "-" });
     } catch (err) {
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -3701,7 +3745,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl(`/api/v1/exercises/tree/ex1/easy/new?lang=${legacyLang}`), {
+      const response = await appFetch(apiUrl(`/api/v1/exercises/tree/ex1/easy/new?lang=${legacyLang}`), {
         method: "POST"
       });
       const body = await response.json();
@@ -3717,7 +3761,7 @@ function App() {
       setTreeEx1InstanceId("");
       setTreeEx1ExpectedPhase1Action("");
       setTreeEx1ExpectedRootAction("");
-      setError(err.message || "exercise request failed");
+      setError(formatClientError(err, "exercise request failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -3911,6 +3955,7 @@ function App() {
     setTreeEx4Completed(false);
     setTreeEx4OverallFeedback("");
     setTreeEx4OverallFeedbackType("neutral");
+    setShowHelpTreeEx4(false);
   }
 
   function addTreeEx4SpeEntry() {
@@ -3981,10 +4026,11 @@ function App() {
     }
     setTreeEx4SpeSolved(true);
     setTreeEx4SpeFeedbackType("success");
+    const speList = treeEx4Evaluation.speIds.map(formatTreeEx4ProfileId).join("; ");
     setTreeEx4SpeFeedback(
       t(
-        `Richtig. Anzahl SPE: ${treeEx4Evaluation.speIds.length}.`,
-        `Correct. Number of SPE: ${treeEx4Evaluation.speIds.length}.`
+        `Anzahl SPE: ${treeEx4Evaluation.speIds.length}\nSPE-Profil(e): ${speList}`,
+        `Number of SPE: ${treeEx4Evaluation.speIds.length}\nSPE profile(s): ${speList}`
       )
     );
     recordExerciseAttempt("tree_ex4", {
@@ -4026,10 +4072,11 @@ function App() {
     }
     setTreeEx4NashSolved(true);
     setTreeEx4NashFeedbackType("success");
+    const nashList = treeEx4Evaluation.nashIds.map(formatTreeEx4ProfileId).join("; ");
     setTreeEx4NashFeedback(
       t(
-        `Richtig. Anzahl Nash-GG: ${treeEx4Evaluation.nashIds.length}.`,
-        `Correct. Number of Nash equilibria: ${treeEx4Evaluation.nashIds.length}.`
+        `Anzahl Nash-GG: ${treeEx4Evaluation.nashIds.length}\nNash-Profil(e): ${nashList}`,
+        `Number of Nash equilibria: ${treeEx4Evaluation.nashIds.length}\nNash profile(s): ${nashList}`
       )
     );
     recordExerciseAttempt("tree_ex4", {
@@ -4131,7 +4178,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/tree/ex1/hard/check"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/tree/ex1/hard/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4171,7 +4218,7 @@ function App() {
         lastState: selected.join(",") || "-",
         solved: sameSet
       });
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -4246,7 +4293,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/tree/ex1/easy/check-step"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/tree/ex1/easy/check-step"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4266,7 +4313,7 @@ function App() {
       setTreeEx1Step(2);
     } catch (err) {
       evaluateTreeEx1Phase1Local(action);
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -4284,7 +4331,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const stepResponse = await fetch(apiUrl("/api/v1/exercises/tree/ex1/easy/check-step"), {
+      const stepResponse = await appFetch(apiUrl("/api/v1/exercises/tree/ex1/easy/check-step"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4303,7 +4350,7 @@ function App() {
       setTreeEx1Phase2FeedbackType(stepBody.correct ? "success" : "error");
       setTreeEx1Phase2Feedback(stepBody.feedback || "");
 
-      const finalResponse = await fetch(apiUrl("/api/v1/exercises/tree/ex1/easy/check-final"), {
+      const finalResponse = await appFetch(apiUrl("/api/v1/exercises/tree/ex1/easy/check-final"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4333,7 +4380,7 @@ function App() {
       setTreeEx1Step(3);
     } catch (err) {
       evaluateTreeEx1Phase2Local(action);
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -4347,7 +4394,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/tree/ex2/easy/new"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/tree/ex2/easy/new"), {
         method: "POST"
       });
       const body = await response.json();
@@ -4363,7 +4410,7 @@ function App() {
       setTreeEx2Games(buildTreeEx2Set());
       setTreeEx2Progress(buildTreeEx2ProgressSet());
       setTreeEx2InstanceId("");
-      setError(err.message || "exercise request failed");
+      setError(formatClientError(err, "exercise request failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -4604,7 +4651,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/tree/ex2/hard/check"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/tree/ex2/hard/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4650,7 +4697,7 @@ function App() {
         solved: sameSet,
         lastState: selectedIds.join(",") || "-"
       });
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -4719,7 +4766,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/tree/ex2/easy/check-step"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/tree/ex2/easy/check-step"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4741,7 +4788,7 @@ function App() {
       }));
     } catch (err) {
       checkTreeEx2Phase1Local();
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -4756,7 +4803,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/tree/ex2/easy/check-step"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/tree/ex2/easy/check-step"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4778,7 +4825,7 @@ function App() {
       }));
     } catch (err) {
       checkTreeEx2Phase2Local();
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -4793,7 +4840,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await fetch(apiUrl("/api/v1/exercises/tree/ex2/easy/check-step"), {
+      const response = await appFetch(apiUrl("/api/v1/exercises/tree/ex2/easy/check-step"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4822,7 +4869,7 @@ function App() {
       });
     } catch (err) {
       checkTreeEx2Phase3Local();
-      setError(err.message || "exercise check failed");
+      setError(formatClientError(err, "exercise check failed"));
     } finally {
       setLegacyLoading(false);
     }
@@ -4975,18 +5022,18 @@ function App() {
         "R|D": { x: 390, y: 570 }
       };
       const terminalPos = {
-        "L|U|x": { x: 650, y: 6 },
-        "L|U|y": { x: 650, y: 54 },
-        "L|D|x": { x: 650, y: 126 },
-        "L|D|y": { x: 650, y: 174 },
-        "M|U|x": { x: 650, y: 226 },
-        "M|U|y": { x: 650, y: 274 },
-        "M|D|x": { x: 650, y: 326 },
-        "M|D|y": { x: 650, y: 374 },
-        "R|U|x": { x: 650, y: 426 },
-        "R|U|y": { x: 650, y: 474 },
-        "R|D|x": { x: 650, y: 546 },
-        "R|D|y": { x: 650, y: 594 }
+        "L|U|x": { x: 585, y: 6 },
+        "L|U|y": { x: 585, y: 54 },
+        "L|D|x": { x: 585, y: 126 },
+        "L|D|y": { x: 585, y: 174 },
+        "M|U|x": { x: 585, y: 226 },
+        "M|U|y": { x: 585, y: 274 },
+        "M|D|x": { x: 585, y: 326 },
+        "M|D|y": { x: 585, y: 374 },
+        "R|U|x": { x: 585, y: 426 },
+        "R|U|y": { x: 585, y: 474 },
+        "R|D|x": { x: 585, y: 546 },
+        "R|D|y": { x: 585, y: 594 }
       };
 
       const profileText = (profile) => {
@@ -5021,7 +5068,7 @@ function App() {
             <article className="panel nested-panel">
               <h3>{t("Spiel", "Game")}</h3>
               <div className="tree-example-wrap">
-                <svg viewBox="0 0 940 620" className="tree-example-svg tree-example-svg-large" role="img" aria-label={t("Komplexer Spielbaum", "Complex game tree")}>
+                <svg viewBox="-20 -24 760 664" className="tree-example-svg tree-example-svg-large tree-example-svg-ex2" role="img" aria-label={t("Komplexer Spielbaum", "Complex game tree")}>
                   <defs>
                     <marker id="tree-arrow-ex2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
                       <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
@@ -5270,7 +5317,6 @@ function App() {
                   {TREE_EX2_ROOT_ACTIONS.map((rootAction) => {
                     const payoffU = activeGame.continuationPayoffs[`${rootAction}|U`];
                     const payoffD = activeGame.continuationPayoffs[`${rootAction}|D`];
-                    const indifferent = payoffU[1] === payoffD[1];
                     return (
                       <div key={`phase2-select-${rootAction}`} className="action-row">
                         <label>{t("Nach", "After")} {rootAction}</label>
@@ -5282,11 +5328,9 @@ function App() {
                           <option value="">{t("Bitte wählen", "Choose")}</option>
                           <option value="U">U ({payoffU[0]}, {payoffU[1]})</option>
                           <option value="D">D ({payoffD[0]}, {payoffD[1]})</option>
-                          {indifferent && (
-                            <option value="indifferent">
-                              {t("Indifferent (U oder D)", "Indifferent (U or D)")}
-                            </option>
-                          )}
+                          <option value="indifferent">
+                            {t("Indifferent (U oder D)", "Indifferent (U or D)")}
+                          </option>
                         </select>
                       </div>
                     );
@@ -5608,7 +5652,7 @@ function App() {
             <article className="panel nested-panel">
               <h3>{t("Spiel", "Game")}</h3>
               <div className="tree-example-wrap tree-example-wrap-ex4">
-                <svg viewBox="24 50 510 510" className="tree-example-svg tree-example-svg-large tree-example-svg-ex4" role="img" aria-label={t("Dreistufiges Spiel", "Three-stage game")}>
+                <svg viewBox="24 76 510 450" className="tree-example-svg tree-example-svg-large tree-example-svg-ex4" role="img" aria-label={t("Dreistufiges Spiel", "Three-stage game")}>
                   <defs>
                     <marker id="tree-arrow-ex4" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
                       <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
@@ -5645,11 +5689,11 @@ function App() {
                   <circle cx="160" cy="400" r="17" className="tree-node decision" />
                   <circle cx="300" cy="320" r="16" className="tree-node decision" />
                   <circle cx="300" cy="460" r="16" className="tree-node decision" />
-                  <text x="40" y="280" className="tree-label" textAnchor="middle" dominantBaseline="middle">1</text>
-                  <text x="160" y="150" className="tree-label" textAnchor="middle" dominantBaseline="middle">3</text>
-                  <text x="160" y="400" className="tree-label" textAnchor="middle" dominantBaseline="middle">2</text>
-                  <text x="300" y="320" className="tree-label" textAnchor="middle" dominantBaseline="middle">3</text>
-                  <text x="300" y="460" className="tree-label" textAnchor="middle" dominantBaseline="middle">3</text>
+                  <text x="40" y="280" className="tree-label" textAnchor="middle" dominantBaseline="middle">P1</text>
+                  <text x="160" y="150" className="tree-label" textAnchor="middle" dominantBaseline="middle">P3</text>
+                  <text x="160" y="400" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                  <text x="300" y="320" className="tree-label" textAnchor="middle" dominantBaseline="middle">P3</text>
+                  <text x="300" y="460" className="tree-label" textAnchor="middle" dominantBaseline="middle">P3</text>
 
                   <circle cx="410" cy="112" r="8" className="tree-node terminal" />
                   <circle cx="410" cy="198" r="8" className="tree-node terminal" />
@@ -5688,7 +5732,33 @@ function App() {
               <div className="actions">
                 <button type="button" onClick={() => resetTreeEx4(false)}>{t("Startspiel laden", "Load baseline game")}</button>
                 <button type="button" onClick={() => resetTreeEx4(true)}>{t("Neues Spiel", "New game")}</button>
+                <button type="button" onClick={() => setShowHelpTreeEx4((v) => !v)}>{t("Hilfe", "Help")}</button>
               </div>
+              {showHelpTreeEx4 && (
+                <section className="panel nested-panel">
+                  <h4>{t("Hilfe", "Help")}</h4>
+                  <ul className="intro-list">
+                    <li>
+                      {t(
+                        "Nash-GG: Kein Spieler kann sich durch einseitiges Abweichen verbessern (gegeben die Strategien der anderen).",
+                        "Nash equilibrium: no player can improve by deviating unilaterally (given others' strategies)."
+                      )}
+                    </li>
+                    <li>
+                      {t(
+                        "Teilspielperfektes GG (SPE): Nash-GG mit zusätzlicher Bedingung, dass die Strategien in jedem Teilspiel optimal sind.",
+                        "Subgame-perfect equilibrium (SPE): a Nash equilibrium with the additional requirement that strategies are optimal in every subgame."
+                      )}
+                    </li>
+                    <li>
+                      {t(
+                        "Daher gilt: Jedes SPE ist ein Nash-GG, aber nicht jedes Nash-GG ist teilspielperfekt (unglaubwürdige Drohungen fallen raus).",
+                        "Therefore: every SPE is a Nash equilibrium, but not every Nash equilibrium is subgame-perfect (non-credible threats are ruled out)."
+                      )}
+                    </li>
+                  </ul>
+                </section>
+              )}
             </article>
 
             <article className="panel nested-panel">

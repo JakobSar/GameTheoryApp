@@ -1464,7 +1464,13 @@ body.dark-mode .hint {
 }
 
 .tree-example-svg-ex4 {
+  min-width: 0;
   height: 460px;
+}
+
+.tree-example-svg-ex2 {
+  min-width: 0;
+  height: auto;
 }
 
 .phase3-toggle {
