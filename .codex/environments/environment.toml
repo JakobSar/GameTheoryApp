@@ -15,3 +15,11 @@ npm cache verify
 npm install
 npm run dev
 '''
+
+[[actions]]
+name = "Backend"
+icon = "tool"
+command = '''
+source .venv/bin/activate
+uvicorn backend.app.main:app --reload --port 8000
+'''

@@ -1966,11 +1966,13 @@ function App() {
   const isApplyingHistoryRef = useRef(false);
   const hasHistoryInitRef = useRef(false);
   const lastHistoryStateRef = useRef(null);
+  const treeEx2SpeListRef = useRef(null);
   const normalizedApiBase = useMemo(() => normalizeApiBase(apiBase), [apiBase]);
+  const treeEx2HardRowCount = treeEx2Progress[1]?.speEntries?.length ?? 0;
 
   const endpoint = useMemo(() => {
     try {
-      return apiUrl("/api/v1/game-tree/solve");
+      return safeApiUrl("/api/v1/game-tree/solve");
     } catch {
       return "/api/v1/game-tree/solve";
     }
@@ -2002,6 +2004,45 @@ function App() {
       ),
     [eliminatorGame, eliminatorChecks, eliminatorCheckIndex, eliminatorActiveRows, eliminatorActiveCols]
   );
+
+  useEffect(() => {
+    if (treePage !== "ex2" || treeEx2ActiveIndex !== 1) {
+      return undefined;
+    }
+    const listEl = treeEx2SpeListRef.current;
+    if (!listEl) {
+      return undefined;
+    }
+
+    const fitRows = () => {
+      const available = Math.max(220, listEl.clientWidth - 8);
+      const rows = listEl.querySelectorAll(".tree-ex2-spe-row");
+      rows.forEach((row) => {
+        row.style.setProperty("--spe-row-scale", "1");
+        const naturalWidth = Math.max(1, row.scrollWidth);
+        const scale = Math.max(0.6, Math.min(1, available / naturalWidth));
+        row.style.setProperty("--spe-row-scale", scale.toFixed(3));
+      });
+    };
+
+    fitRows();
+    const rafId = window.requestAnimationFrame(fitRows);
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(fitRows) : null;
+    if (observer) {
+      observer.observe(listEl);
+    } else {
+      window.addEventListener("resize", fitRows);
+    }
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      if (observer) {
+        observer.disconnect();
+      } else {
+        window.removeEventListener("resize", fitRows);
+      }
+    };
+  }, [treePage, treeEx2ActiveIndex, treeEx2HardRowCount]);
   const eliminatorMatrix = useMemo(
     () => buildReducedMatrix(eliminatorGame, eliminatorActiveRows, eliminatorActiveCols),
     [eliminatorGame, eliminatorActiveRows, eliminatorActiveCols]
@@ -2270,6 +2311,15 @@ function App() {
 
     // Fallback for non-http contexts (e.g. file://), where relative /api URLs can fail pattern parsing.
     return `https://game-theory-api.onrender.com${path}`;
+  }
+
+  function safeApiUrl(path) {
+    try {
+      return apiUrl(path);
+    } catch (err) {
+      const message = typeof err?.message === "string" ? err.message : String(err);
+      throw new Error(`API URL build failed: ${path}\n${message}`);
+    }
   }
 
   function updateNode(nodeId, updater) {
@@ -2821,7 +2871,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl(`/api/v1/exercises/ex1/new?lang=${legacyLang}`));
+      const response = await appFetch(safeApiUrl(`/api/v1/exercises/ex1/new?lang=${legacyLang}`));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -2845,7 +2895,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/ex1/check"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/ex1/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2873,7 +2923,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl(`/api/v1/exercises/ex2/new?lang=${legacyLang}`));
+      const response = await appFetch(safeApiUrl(`/api/v1/exercises/ex2/new?lang=${legacyLang}`));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -2897,7 +2947,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/ex2/check"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/ex2/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2924,7 +2974,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl(`/api/v1/exercises/ex3/new?lang=${legacyLang}`));
+      const response = await appFetch(safeApiUrl(`/api/v1/exercises/ex3/new?lang=${legacyLang}`));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -2948,7 +2998,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/ex3/check"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/ex3/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2975,7 +3025,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/ex4/new"));
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/ex4/new"));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -2999,7 +3049,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/ex4/check"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/ex4/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3026,7 +3076,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl(`/api/v1/exercises/ex5/new?lang=${legacyLang}`));
+      const response = await appFetch(safeApiUrl(`/api/v1/exercises/ex5/new?lang=${legacyLang}`));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -3059,7 +3109,7 @@ function App() {
           }
         });
       });
-      const response = await appFetch(apiUrl("/api/v1/exercises/ex5/check"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/ex5/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3090,7 +3140,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/ex6/new"));
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/ex6/new"));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -3114,7 +3164,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/ex6/check"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/ex6/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3141,7 +3191,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl(`/api/v1/exercises/ex7/new?lang=${legacyLang}`));
+      const response = await appFetch(safeApiUrl(`/api/v1/exercises/ex7/new?lang=${legacyLang}`));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -3165,7 +3215,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/ex7/check"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/ex7/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3192,7 +3242,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl(`/api/v1/exercises/ex8/new?lang=${legacyLang}`));
+      const response = await appFetch(safeApiUrl(`/api/v1/exercises/ex8/new?lang=${legacyLang}`));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -3216,7 +3266,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/ex8/check"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/ex8/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3243,7 +3293,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/ex9/new"));
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/ex9/new"));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -3267,7 +3317,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/ex9/check"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/ex9/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3295,7 +3345,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/bayes/ex1/new"));
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/bayes/ex1/new"));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -3319,7 +3369,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/bayes/ex1/check"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/bayes/ex1/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3347,7 +3397,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/bayes/ex2a/new"));
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/bayes/ex2a/new"));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -3377,7 +3427,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/bayes/ex2a/check"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/bayes/ex2a/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3406,7 +3456,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl(`/api/v1/exercises/bayes/ex2b/new?lang=${legacyLang}`));
+      const response = await appFetch(safeApiUrl(`/api/v1/exercises/bayes/ex2b/new?lang=${legacyLang}`));
       const body = await response.json();
       if (!response.ok) {
         throw new Error(body.detail ? JSON.stringify(body.detail) : `request failed: ${response.status}`);
@@ -3431,7 +3481,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/bayes/ex2b/check"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/bayes/ex2b/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3745,7 +3795,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl(`/api/v1/exercises/tree/ex1/easy/new?lang=${legacyLang}`), {
+      const response = await appFetch(safeApiUrl(`/api/v1/exercises/tree/ex1/easy/new?lang=${legacyLang}`), {
         method: "POST"
       });
       const body = await response.json();
@@ -4178,7 +4228,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/tree/ex1/hard/check"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/tree/ex1/hard/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4293,7 +4343,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/tree/ex1/easy/check-step"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/tree/ex1/easy/check-step"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4331,7 +4381,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const stepResponse = await appFetch(apiUrl("/api/v1/exercises/tree/ex1/easy/check-step"), {
+      const stepResponse = await appFetch(safeApiUrl("/api/v1/exercises/tree/ex1/easy/check-step"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4350,7 +4400,7 @@ function App() {
       setTreeEx1Phase2FeedbackType(stepBody.correct ? "success" : "error");
       setTreeEx1Phase2Feedback(stepBody.feedback || "");
 
-      const finalResponse = await appFetch(apiUrl("/api/v1/exercises/tree/ex1/easy/check-final"), {
+      const finalResponse = await appFetch(safeApiUrl("/api/v1/exercises/tree/ex1/easy/check-final"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4394,7 +4444,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/tree/ex2/easy/new"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/tree/ex2/easy/new"), {
         method: "POST"
       });
       const body = await response.json();
@@ -4651,7 +4701,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/tree/ex2/hard/check"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/tree/ex2/hard/check"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4766,7 +4816,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/tree/ex2/easy/check-step"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/tree/ex2/easy/check-step"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4803,7 +4853,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/tree/ex2/easy/check-step"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/tree/ex2/easy/check-step"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4840,7 +4890,7 @@ function App() {
     setError("");
     setLegacyLoading(true);
     try {
-      const response = await appFetch(apiUrl("/api/v1/exercises/tree/ex2/easy/check-step"), {
+      const response = await appFetch(safeApiUrl("/api/v1/exercises/tree/ex2/easy/check-step"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -5009,31 +5059,31 @@ function App() {
       const isSimulator = treeEx2ActiveIndex === 0;
       const rootPos = { x: 46, y: 300 };
       const p2Pos = {
-        L: { x: 210, y: 80 },
-        M: { x: 210, y: 300 },
-        R: { x: 210, y: 520 }
+        L: { x: 210, y: 92 },
+        M: { x: 210, y: 304 },
+        R: { x: 210, y: 516 }
       };
       const p1Pos = {
-        "L|U": { x: 390, y: 30 },
-        "L|D": { x: 390, y: 150 },
-        "M|U": { x: 390, y: 250 },
-        "M|D": { x: 390, y: 350 },
-        "R|U": { x: 390, y: 450 },
-        "R|D": { x: 390, y: 570 }
+        "L|U": { x: 390, y: 44 },
+        "L|D": { x: 390, y: 140 },
+        "M|U": { x: 390, y: 256 },
+        "M|D": { x: 390, y: 352 },
+        "R|U": { x: 390, y: 468 },
+        "R|D": { x: 390, y: 564 }
       };
       const terminalPos = {
-        "L|U|x": { x: 585, y: 6 },
-        "L|U|y": { x: 585, y: 54 },
-        "L|D|x": { x: 585, y: 126 },
-        "L|D|y": { x: 585, y: 174 },
-        "M|U|x": { x: 585, y: 226 },
-        "M|U|y": { x: 585, y: 274 },
-        "M|D|x": { x: 585, y: 326 },
-        "M|D|y": { x: 585, y: 374 },
-        "R|U|x": { x: 585, y: 426 },
-        "R|U|y": { x: 585, y: 474 },
-        "R|D|x": { x: 585, y: 546 },
-        "R|D|y": { x: 585, y: 594 }
+        "L|U|x": { x: 585, y: 24 },
+        "L|U|y": { x: 585, y: 64 },
+        "L|D|x": { x: 585, y: 120 },
+        "L|D|y": { x: 585, y: 160 },
+        "M|U|x": { x: 585, y: 236 },
+        "M|U|y": { x: 585, y: 276 },
+        "M|D|x": { x: 585, y: 332 },
+        "M|D|y": { x: 585, y: 372 },
+        "R|U|x": { x: 585, y: 448 },
+        "R|U|y": { x: 585, y: 488 },
+        "R|D|x": { x: 585, y: 544 },
+        "R|D|y": { x: 585, y: 584 }
       };
 
       const profileText = (profile) => {
@@ -5067,8 +5117,8 @@ function App() {
           <div className="exercise-layout tree-ex-layout">
             <article className="panel nested-panel">
               <h3>{t("Spiel", "Game")}</h3>
-              <div className="tree-example-wrap">
-                <svg viewBox="-20 -24 760 664" className="tree-example-svg tree-example-svg-large tree-example-svg-ex2" role="img" aria-label={t("Komplexer Spielbaum", "Complex game tree")}>
+              <div className="tree-example-wrap tree-example-wrap-ex2">
+                <svg viewBox="6 -14 724 644" className="tree-example-svg tree-example-svg-large tree-example-svg-ex2" role="img" aria-label={t("Komplexer Spielbaum", "Complex game tree")}>
                   <defs>
                     <marker id="tree-arrow-ex2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
                       <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
@@ -5148,7 +5198,7 @@ function App() {
                         cx={p1Pos[nodeKey].x}
                         cy={p1Pos[nodeKey].y}
                         r="17"
-                        className={`tree-node decision ${activeState.step === 1 ? "bi-current" : ""}`}
+                        className={`tree-node decision ${isSimulator && activeState.step === 1 ? "bi-current" : ""}`}
                       />
                       <text x={p1Pos[nodeKey].x} y={p1Pos[nodeKey].y} className="tree-label" textAnchor="middle" dominantBaseline="middle">P1</text>
                     </g>
@@ -5187,57 +5237,57 @@ function App() {
                       "Enter exactly all strategy profiles that are subgame-perfect equilibria."
                     )}
                   </p>
-                  <div className="choice-list">
+                  <div ref={treeEx2SpeListRef} className="choice-list tree-ex2-spe-list">
                     {activeState.speEntries.map((entry, index) => (
-                      <div key={`tree-ex2-spe-entry-${index}`} className="strategy-entry-row strategy-entry-row-wide">
+                      <div key={`tree-ex2-spe-entry-${index}`} className="strategy-entry-row strategy-entry-row-wide tree-ex2-spe-row">
                         <span>(</span>
                         <select value={entry.rootAction} onChange={(e) => updateTreeEx2SpeEntry(index, "rootAction", e.target.value)}>
-                          <option value="">-</option>
+                          <option value=""></option>
                           {TREE_EX2_ROOT_ACTIONS.map((a) => <option key={`tree-ex2-root-${a}`} value={a}>{a}</option>)}
                         </select>
                         <span>,(</span>
                         <select value={entry.p2L} onChange={(e) => updateTreeEx2SpeEntry(index, "p2L", e.target.value)}>
-                          <option value="">-</option>
+                          <option value=""></option>
                           {TREE_EX2_P2_ACTIONS.map((a) => <option key={`tree-ex2-p2-l-${a}`} value={a}>{a}</option>)}
                         </select>
                         <span>,</span>
                         <select value={entry.p2M} onChange={(e) => updateTreeEx2SpeEntry(index, "p2M", e.target.value)}>
-                          <option value="">-</option>
+                          <option value=""></option>
                           {TREE_EX2_P2_ACTIONS.map((a) => <option key={`tree-ex2-p2-m-${a}`} value={a}>{a}</option>)}
                         </select>
                         <span>,</span>
                         <select value={entry.p2R} onChange={(e) => updateTreeEx2SpeEntry(index, "p2R", e.target.value)}>
-                          <option value="">-</option>
+                          <option value=""></option>
                           {TREE_EX2_P2_ACTIONS.map((a) => <option key={`tree-ex2-p2-r-${a}`} value={a}>{a}</option>)}
                         </select>
                         <span>), (</span>
                         <select value={entry.p1LU} onChange={(e) => updateTreeEx2SpeEntry(index, "p1LU", e.target.value)}>
-                          <option value="">-</option>
+                          <option value=""></option>
                           {TREE_EX2_P1_ACTIONS.map((a) => <option key={`tree-ex2-p1-lu-${a}`} value={a}>{a}</option>)}
                         </select>
                         <span>,</span>
                         <select value={entry.p1LD} onChange={(e) => updateTreeEx2SpeEntry(index, "p1LD", e.target.value)}>
-                          <option value="">-</option>
+                          <option value=""></option>
                           {TREE_EX2_P1_ACTIONS.map((a) => <option key={`tree-ex2-p1-ld-${a}`} value={a}>{a}</option>)}
                         </select>
                         <span>,</span>
                         <select value={entry.p1MU} onChange={(e) => updateTreeEx2SpeEntry(index, "p1MU", e.target.value)}>
-                          <option value="">-</option>
+                          <option value=""></option>
                           {TREE_EX2_P1_ACTIONS.map((a) => <option key={`tree-ex2-p1-mu-${a}`} value={a}>{a}</option>)}
                         </select>
                         <span>,</span>
                         <select value={entry.p1MD} onChange={(e) => updateTreeEx2SpeEntry(index, "p1MD", e.target.value)}>
-                          <option value="">-</option>
+                          <option value=""></option>
                           {TREE_EX2_P1_ACTIONS.map((a) => <option key={`tree-ex2-p1-md-${a}`} value={a}>{a}</option>)}
                         </select>
                         <span>,</span>
                         <select value={entry.p1RU} onChange={(e) => updateTreeEx2SpeEntry(index, "p1RU", e.target.value)}>
-                          <option value="">-</option>
+                          <option value=""></option>
                           {TREE_EX2_P1_ACTIONS.map((a) => <option key={`tree-ex2-p1-ru-${a}`} value={a}>{a}</option>)}
                         </select>
                         <span>,</span>
                         <select value={entry.p1RD} onChange={(e) => updateTreeEx2SpeEntry(index, "p1RD", e.target.value)}>
-                          <option value="">-</option>
+                          <option value=""></option>
                           {TREE_EX2_P1_ACTIONS.map((a) => <option key={`tree-ex2-p1-rd-${a}`} value={a}>{a}</option>)}
                         </select>
                         <span>))</span>
@@ -6035,12 +6085,12 @@ function App() {
                     <div key={`tree-ex1-hard-entry-${index}`} className="strategy-entry-row">
                       <span>(</span>
                       <select value={entry.p1} onChange={(e) => updateTreeEx1HardEntry(index, "p1", e.target.value)}>
-                        <option value="">-</option>
+                        <option value=""></option>
                         {TREE_EX1_P1_ACTIONS.map((a) => <option key={`tree-ex1-p1-${a}`} value={a}>{a}</option>)}
                       </select>
                       <span>,</span>
                       <select value={entry.p2} onChange={(e) => updateTreeEx1HardEntry(index, "p2", e.target.value)}>
-                        <option value="">-</option>
+                        <option value=""></option>
                         {TREE_EX1_P2_ACTIONS.map((a) => <option key={`tree-ex1-p2-${a}`} value={a}>{a}</option>)}
                       </select>
                       <span>)</span>
@@ -7731,7 +7781,7 @@ function App() {
                       <label>
                         <span><code>g1</code> {t("nach L", "after L")}</span>
                         <select value={profileNotationP2.g1} onChange={(e) => setProfileP2Action("g1", e.target.value)}>
-                          <option value="">-</option>
+                          <option value=""></option>
                           <option value="a">a</option>
                           <option value="b">b</option>
                         </select>
@@ -7739,7 +7789,7 @@ function App() {
                       <label>
                         <span><code>g2</code> {t("nach R", "after R")}</span>
                         <select value={profileNotationP2.g2} onChange={(e) => setProfileP2Action("g2", e.target.value)}>
-                          <option value="">-</option>
+                          <option value=""></option>
                           <option value="a">a</option>
                           <option value="b">b</option>
                         </select>
@@ -7757,7 +7807,7 @@ function App() {
                       <label>
                         <span><code>h1</code></span>
                         <select value={profileNotationP3.h1} onChange={(e) => setProfileNodeAction("h1", e.target.value)}>
-                          <option value="">-</option>
+                          <option value=""></option>
                           <option value="l">l</option>
                           <option value="r">r</option>
                         </select>
@@ -7765,7 +7815,7 @@ function App() {
                       <label>
                         <span><code>h2</code></span>
                         <select value={profileNotationP3.h2} onChange={(e) => setProfileNodeAction("h2", e.target.value)}>
-                          <option value="">-</option>
+                          <option value=""></option>
                           <option value="l">l</option>
                           <option value="r">r</option>
                         </select>
@@ -7800,7 +7850,7 @@ function App() {
                   <label>
                     <span>{t("Spieler 1", "Player 1")}</span>
                     <select value={profileNotationP1} onChange={(e) => setProfileNotationP1(e.target.value)}>
-                      <option value="">-</option>
+                      <option value=""></option>
                       <option value="L">L</option>
                       <option value="R">R</option>
                     </select>
