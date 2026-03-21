@@ -2072,19 +2072,6 @@ body.dark-mode .hint {
   height: auto;
 }
 
-.tree-example-wrap-ex9 {
-  width: min(100%, 860px);
-  aspect-ratio: auto;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.tree-example-svg-ex9 {
-  min-width: 0;
-  width: 100%;
-  height: auto;
-}
-
 .phase3-toggle {
   width: auto;
 }
