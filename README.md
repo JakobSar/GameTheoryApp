@@ -63,6 +63,29 @@ Wichtige Endpunkte:
 
 ## Lokale Entwicklung
 
+### Schnellstart (Backend + Frontend zusammen)
+
+Einmalig:
+
+```bash
+chmod +x scripts/dev.sh
+make setup
+```
+
+Dann immer:
+
+```bash
+make dev
+```
+
+Damit laufen:
+- Backend: `http://localhost:8000`
+- Frontend: `http://localhost:3000`
+
+Mit `Ctrl + C` werden beide Prozesse beendet.
+
+Hinweis: Der Setup-Flow nutzt automatisch `python3.13`/`3.12`/`3.11` (nicht `3.14`), um Build-Probleme mit `pydantic-core` zu vermeiden.
+
 ### Voraussetzungen
 
 - Python 3.11+

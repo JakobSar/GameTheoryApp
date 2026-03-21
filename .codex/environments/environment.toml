@@ -9,11 +9,8 @@ script = ""
 name = "Ausgeführt"
 icon = "run"
 command = '''
-cd "/Users/jakob/Documents/Parforceleistung/Studium/HiWi ZEW/GameTheoryApp/frontend"
-rm -rf node_modules package-lock.json
-npm cache verify
-npm install
-npm run dev
+cd "/Users/jakob/Documents/Parforceleistung/Studium/HiWi ZEW/GameTheoryApp"
+make dev
 '''
 
 [[actions]]
@@ -22,4 +19,12 @@ icon = "tool"
 command = '''
 source .venv/bin/activate
 uvicorn backend.app.main:app --reload --port 8000
+'''
+
+[[actions]]
+name = "App (make dev)"
+icon = "play"
+command = '''
+cd "/Users/jakob/Documents/Parforceleistung/Studium/HiWi ZEW/GameTheoryApp"
+make dev
 '''

@@ -101,6 +101,7 @@ const ELIMINATOR_PRESETS = buildEliminatorPresets();
 const BEST_RESPONSE_ROWS = ["A", "B", "C"];
 const BEST_RESPONSE_COLS = ["X", "Y", "Z"];
 const EXERCISE_PROGRESS_KEY = "gt-exercise-progress-v1";
+const EXERCISE_RECENT_ATTEMPTS_LIMIT = 12;
 const THEME_MODE_KEY = "gt-theme-mode-v1";
 const THEME_MODES = ["light", "dark", "jlu"];
 
@@ -316,8 +317,30 @@ const SPECIAL_GAME_TRANSLATIONS = {
   }
 };
 
+const SPECIAL_GAME_STRATEGY_LABELS_EN = {
+  Kooperieren: "Cooperate",
+  Defektieren: "Defect",
+  Ausweichen: "Swerve",
+  Geradeaus: "Straight",
+  Hirsch: "Stag",
+  Hase: "Hare",
+  Oper: "Opera",
+  Fußball: "Football",
+  Fair: "Fair",
+  Unfair: "Unfair",
+  Annehmen: "Accept",
+  Ablehnen: "Reject"
+};
+
 const SPECIAL_QUIZ_TYPES = ["pd", "chicken", "stag", "bos", "ultimatum"];
 const SPECIAL_CARD_SWIPE_THRESHOLD = 56;
+const EXERCISE_SIDE_TRIGGER_INSIDE_PX = 56;
+const EXERCISE_SIDE_TRIGGER_OUTSIDE_PX = 104;
+const EXERCISE_PAGE_TRANSITION_MS = 300;
+const NORMAL_PAGE_ORDER = ["toc", "ex1", "ex2", "ex3", "ex4", "ex5", "ex6", "ex7", "ex8", "ex9"];
+const BAYES_PAGE_ORDER = ["toc", "ex1", "ex2a", "ex2b"];
+const TREE_PAGE_TRANSITION_MS = 300;
+const TREE_PAGE_ORDER = ["toc", "ex1", "ex2", "ex6", "ex3", "ex4", "ex5", "ex8"];
 const PRISONERS_DILEMMA_TITLE = "Gefangenendilemma";
 const CHICKEN_GAME_TITLE = "Feiglingsspiel (Chicken)";
 const STAG_HUNT_TITLE = "Jagdspiel (Stag Hunt)";
@@ -705,6 +728,115 @@ function buildTreeEx3Game() {
   }
 }
 
+function buildTreeEx6Game() {
+  while (true) {
+    const UL = [randomInt(0, 9), randomInt(0, 9)];
+    const UR = [randomInt(0, 9), randomInt(0, 9)];
+    const DL = [randomInt(0, 9), randomInt(0, 9)];
+    const DR = [randomInt(0, 9), randomInt(0, 9)];
+    const all = [UL, UR, DL, DR].map((cell) => `${cell[0]}|${cell[1]}`);
+    if (new Set(all).size < 4) continue;
+    return { UL, UR, DL, DR };
+  }
+}
+
+function shuffleArray(items) {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = randomInt(0, i);
+    const tmp = arr[i];
+    arr[i] = arr[j];
+    arr[j] = tmp;
+  }
+  return arr;
+}
+
+function buildTreeEx6MatrixOptions(game) {
+  const baseRows = ["U", "D"];
+  const baseCols = ["L", "R"];
+  const matrixA = {
+    rows: baseRows,
+    cols: baseCols,
+    payoffs: {
+      "U|L": game.UL,
+      "U|R": game.UR,
+      "D|L": game.DL,
+      "D|R": game.DR
+    }
+  };
+  const matrixB = {
+    rows: baseRows,
+    cols: baseCols,
+    payoffs: {
+      "U|L": game.UL,
+      "U|R": game.DL,
+      "D|L": game.UR,
+      "D|R": game.DR
+    }
+  };
+  const matrixC = {
+    rows: baseRows,
+    cols: baseCols,
+    payoffs: {
+      "U|L": game.UR,
+      "U|R": game.UL,
+      "D|L": game.DR,
+      "D|R": game.DL
+    }
+  };
+  const matrixD = {
+    rows: baseRows,
+    cols: baseCols,
+    payoffs: {
+      "U|L": game.DL,
+      "U|R": game.DR,
+      "D|L": game.UL,
+      "D|R": game.UR
+    }
+  };
+  return shuffleArray([
+    { id: "m1", matrix: matrixA },
+    { id: "m2", matrix: matrixB },
+    { id: "m3", matrix: matrixC },
+    { id: "m4", matrix: matrixD }
+  ]);
+}
+
+function buildTreeEx6PureNeIds(game) {
+  const rows = ["U", "D"];
+  const cols = ["L", "R"];
+  const payoff = {
+    "U|L": game.UL,
+    "U|R": game.UR,
+    "D|L": game.DL,
+    "D|R": game.DR
+  };
+
+  const bestRowsByCol = {};
+  cols.forEach((col) => {
+    const p1Vals = rows.map((row) => payoff[`${row}|${col}`][0]);
+    const maxVal = Math.max(...p1Vals);
+    bestRowsByCol[col] = rows.filter((row) => payoff[`${row}|${col}`][0] === maxVal);
+  });
+
+  const bestColsByRow = {};
+  rows.forEach((row) => {
+    const p2Vals = cols.map((col) => payoff[`${row}|${col}`][1]);
+    const maxVal = Math.max(...p2Vals);
+    bestColsByRow[row] = cols.filter((col) => payoff[`${row}|${col}`][1] === maxVal);
+  });
+
+  const pureNe = [];
+  rows.forEach((row) => {
+    cols.forEach((col) => {
+      if (bestRowsByCol[col].includes(row) && bestColsByRow[row].includes(col)) {
+        pureNe.push(`${row}|${col}`);
+      }
+    });
+  });
+  return pureNe;
+}
+
 const TREE_EX2_ROOT_ACTIONS = ["L", "M", "R"];
 const TREE_EX2_P2_ACTIONS = ["U", "D"];
 const TREE_EX2_P1_ACTIONS = ["x", "y"];
@@ -728,6 +860,153 @@ const TREE_EX3_THREAT_OPTIONS = [
 const TREE_EX3_SPE_CORRECT = ["spe-jn"];
 const TREE_EX3_NASH_CORRECT = ["nash-jn", "nash-nk"];
 const TREE_EX3_THREAT_CORRECT = "threat-nk";
+const TREE_EX5_2_OFFERS = [
+  { id: "o1", label: "90/10", p1: 9, p2: 1 },
+  { id: "o2", label: "70/30", p1: 7, p2: 3 },
+  { id: "o3", label: "50/50", p1: 5, p2: 5 }
+];
+const TREE_EX5_2_SPE_OPTIONS = [
+  { id: "spe-ult-1", p1: "90/10", p2: ["A", "A", "A"] },
+  { id: "spe-ult-2", p1: "70/30", p2: ["A", "A", "A"] },
+  { id: "spe-ult-3", p1: "90/10", p2: ["R", "A", "A"] }
+];
+const TREE_EX5_2_SPE_CORRECT = "spe-ult-1";
+const TREE_EX5_3_OFFERS = [
+  { id: "r1", label: "R1: 70/30", p1: 7, p2: 3 },
+  { id: "r2", label: "R2: 60/20", p1: 6, p2: 2 },
+  { id: "r3", label: "R3: 50/10", p1: 5, p2: 1 }
+];
+const TREE_EX5_3_SPE_OPTIONS = [
+  { id: "spe3-aaa", p2: ["A", "A", "A"] },
+  { id: "spe3-raa", p2: ["R", "A", "A"] },
+  { id: "spe3-rra", p2: ["R", "R", "A"] }
+];
+const TREE_EX5_3_SPE_CORRECT = "spe3-aaa";
+const TREE_EX8_Q1_ACTIONS = ["q1=4", "q1=2"];
+const TREE_EX8_Q2_ACTIONS = ["q2=1", "q2=3"];
+const TREE_EX8_FALLBACK_GAME = {
+  offers: [
+    {
+      id: "q1-high",
+      p1Action: "q1=4",
+      outcomes: {
+        "q2=1": [7, 3],
+        "q2=3": [5, 2]
+      }
+    },
+    {
+      id: "q1-low",
+      p1Action: "q1=2",
+      outcomes: {
+        "q2=1": [6, 2],
+        "q2=3": [8, 4]
+      }
+    }
+  ]
+};
+
+function normalizeTreeEx8Game(game) {
+  if (!game || !Array.isArray(game.offers) || game.offers.length !== 2) {
+    return TREE_EX8_FALLBACK_GAME;
+  }
+  const valid = game.offers.every((offer) =>
+    offer
+    && (offer.id === "q1-high" || offer.id === "q1-low")
+    && typeof offer.p1Action === "string"
+    && offer.outcomes
+    && Array.isArray(offer.outcomes["q2=1"])
+    && Array.isArray(offer.outcomes["q2=3"])
+    && offer.outcomes["q2=1"].length === 2
+    && offer.outcomes["q2=3"].length === 2
+  );
+  return valid ? game : TREE_EX8_FALLBACK_GAME;
+}
+
+function buildTreeEx8Game() {
+  while (true) {
+    const high = {
+      id: "q1-high",
+      p1Action: "q1=4",
+      outcomes: {
+        "q2=1": [randomInt(2, 11), randomInt(1, 9)],
+        "q2=3": [randomInt(2, 11), randomInt(1, 9)]
+      }
+    };
+    const low = {
+      id: "q1-low",
+      p1Action: "q1=2",
+      outcomes: {
+        "q2=1": [randomInt(2, 11), randomInt(1, 9)],
+        "q2=3": [randomInt(2, 11), randomInt(1, 9)]
+      }
+    };
+
+    const bestHigh = high.outcomes["q2=1"][1] > high.outcomes["q2=3"][1] ? "q2=1" : "q2=3";
+    const bestLow = low.outcomes["q2=1"][1] > low.outcomes["q2=3"][1] ? "q2=1" : "q2=3";
+    if (high.outcomes["q2=1"][1] === high.outcomes["q2=3"][1]) continue;
+    if (low.outcomes["q2=1"][1] === low.outcomes["q2=3"][1]) continue;
+
+    const p1High = high.outcomes[bestHigh][0];
+    const p1Low = low.outcomes[bestLow][0];
+    if (p1High === p1Low) continue;
+
+    return { offers: [high, low] };
+  }
+}
+
+function buildTreeEx8Solution(game) {
+  const offers = normalizeTreeEx8Game(game).offers;
+  if (offers.length !== 2) {
+    return {
+      p2BestByOffer: { "q1-high": "q2=1", "q1-low": "q2=3" },
+      p1Best: "q1=2"
+    };
+  }
+
+  const p2BestByOffer = {};
+  offers.forEach((offer) => {
+    p2BestByOffer[offer.id] = offer.outcomes["q2=1"][1] > offer.outcomes["q2=3"][1] ? "q2=1" : "q2=3";
+  });
+
+  const highOffer = offers.find((offer) => offer.id === "q1-high");
+  const lowOffer = offers.find((offer) => offer.id === "q1-low");
+  const p1High = highOffer.outcomes[p2BestByOffer["q1-high"]][0];
+  const p1Low = lowOffer.outcomes[p2BestByOffer["q1-low"]][0];
+  const p1Best = p1High > p1Low ? "q1=4" : "q1=2";
+
+  return { p2BestByOffer, p1Best };
+}
+
+function buildTreeEx8SpeOptions(solution) {
+  const p1Correct = solution.p1Best;
+  const p1Wrong = p1Correct === "q1=4" ? "q1=2" : "q1=4";
+  const highBest = solution.p2BestByOffer["q1-high"];
+  const lowBest = solution.p2BestByOffer["q1-low"];
+  const highWrong = highBest === "q2=1" ? "q2=3" : "q2=1";
+  const lowWrong = lowBest === "q2=1" ? "q2=3" : "q2=1";
+
+  return [
+    {
+      id: "spe-s8-1",
+      text: `(${p1Correct}, (${highBest}, ${lowBest}))`
+    },
+    {
+      id: "spe-s8-2",
+      text: `(${p1Wrong}, (${highBest}, ${lowBest}))`
+    },
+    {
+      id: "spe-s8-3",
+      text: `(${p1Correct}, (${highWrong}, ${lowWrong}))`
+    }
+  ];
+}
+const TREE_EX6_INFO_OPTIONS = [
+  { id: "info-1", textDe: "P2 beobachtet den Zug von P1 vollständig, daher ist es ein perfektes Informationsspiel.", textEn: "P2 fully observes P1's move, so this is a perfect-information game." },
+  { id: "info-2", textDe: "Die beiden P2-Knoten liegen in einer Informationsmenge. P2 weiß beim Ziehen nicht, ob P1 U oder D gespielt hat.", textEn: "The two P2 nodes are in one information set. When moving, P2 does not know whether P1 played U or D." },
+  { id: "info-3", textDe: "P2 hat zwei getrennte Entscheidungen und kann je nach beobachtetem Pfad unterschiedlich reagieren.", textEn: "P2 has two separate decisions and can react differently by observed path." }
+];
+const TREE_EX6_INFO_CORRECT = "info-2";
+const TREE_EX6_MATRIX_CORRECT = "m1";
 const TREE_EX1_P1_ACTIONS = ["L", "R"];
 const TREE_EX1_P2_ACTIONS = ["X", "Y"];
 const TREE_EX4_P1_ACTIONS = ["L", "R"];
@@ -1522,10 +1801,14 @@ function StaticPayoffTable({
   colLabel = "Player 2",
   autoScale = true,
   getCellClassName = null,
-  onCellClick = null
+  onCellClick = null,
+  rowDisplayMap = null,
+  colDisplayMap = null
 }) {
   const { wrapRef, tableRef, tableScale, scaledHeight, useScale, shouldAutoScale } = useMatrixAutoScale(autoScale, [data, rowLabel, colLabel]);
-  const shortRowLabels = data.rows.every((r) => r.length <= 3);
+  const rowLabelFor = (row) => rowDisplayMap?.[row] || row;
+  const colLabelFor = (col) => colDisplayMap?.[col] || col;
+  const shortRowLabels = data.rows.every((r) => rowLabelFor(r).length <= 3);
   const longSideLabel = rowLabel.length > 12;
   const tableClass = [
     "matrix-table",
@@ -1556,7 +1839,7 @@ function StaticPayoffTable({
               <th />
               <th />
               {data.cols.map((c) => (
-                <th key={c}>{c}</th>
+                <th key={c}>{colLabelFor(c)}</th>
               ))}
             </tr>
           </thead>
@@ -1568,7 +1851,7 @@ function StaticPayoffTable({
                     <span className="player-side-label">{rowLabel}</span>
                   </th>
                 )}
-                <th>{r}</th>
+                <th>{rowLabelFor(r)}</th>
                 {data.cols.map((c) => {
                   const key = `${r}|${c}`;
                   const value = data.payoffs[key];
@@ -1834,6 +2117,9 @@ function App() {
   const [ex9FeedbackType, setEx9FeedbackType] = useState("neutral");
   const [legacyLoading, setLegacyLoading] = useState(false);
   const [normalPage, setNormalPage] = useState("toc");
+  const [normalRenderPage, setNormalRenderPage] = useState("toc");
+  const [normalPageAnimPhase, setNormalPageAnimPhase] = useState("idle");
+  const [normalPageAnimDirection, setNormalPageAnimDirection] = useState("next");
   const [showHelpEx1, setShowHelpEx1] = useState(false);
   const [showHelpEx2, setShowHelpEx2] = useState(false);
   const [showHelpEx3, setShowHelpEx3] = useState(false);
@@ -1844,6 +2130,9 @@ function App() {
   const [showHelpEx8, setShowHelpEx8] = useState(false);
   const [showHelpEx9, setShowHelpEx9] = useState(false);
   const [bayesPage, setBayesPage] = useState("toc");
+  const [bayesRenderPage, setBayesRenderPage] = useState("toc");
+  const [bayesPageAnimPhase, setBayesPageAnimPhase] = useState("idle");
+  const [bayesPageAnimDirection, setBayesPageAnimDirection] = useState("next");
   const [bayesEx1Data, setBayesEx1Data] = useState(null);
   const [bayesEx1Selected, setBayesEx1Selected] = useState([]);
   const [bayesEx1Feedback, setBayesEx1Feedback] = useState("");
@@ -1862,6 +2151,9 @@ function App() {
   const [bayesEx2bFeedbackType, setBayesEx2bFeedbackType] = useState("neutral");
   const [showHelpBayesEx2b, setShowHelpBayesEx2b] = useState(false);
   const [treePage, setTreePage] = useState("toc");
+  const [treeRenderPage, setTreeRenderPage] = useState("toc");
+  const [treePageAnimPhase, setTreePageAnimPhase] = useState("idle");
+  const [treePageAnimDirection, setTreePageAnimDirection] = useState("next");
   const [treeEx1Game, setTreeEx1Game] = useState(() => buildTreeEx1Game());
   const [treeEx1Step, setTreeEx1Step] = useState(1);
   const [treeEx1Phase1Choice, setTreeEx1Phase1Choice] = useState("");
@@ -1910,6 +2202,49 @@ function App() {
   const [treeEx4OverallFeedback, setTreeEx4OverallFeedback] = useState("");
   const [treeEx4OverallFeedbackType, setTreeEx4OverallFeedbackType] = useState("neutral");
   const [showHelpTreeEx4, setShowHelpTreeEx4] = useState(false);
+  const [treeEx5ActiveLevel, setTreeEx5ActiveLevel] = useState(0);
+  const [treeEx5P2Answers, setTreeEx5P2Answers] = useState(() => ({}));
+  const [treeEx5Phase1Feedback, setTreeEx5Phase1Feedback] = useState("");
+  const [treeEx5Phase1FeedbackType, setTreeEx5Phase1FeedbackType] = useState("neutral");
+  const [treeEx5SpeChoice, setTreeEx5SpeChoice] = useState("");
+  const [treeEx5SpeFeedback, setTreeEx5SpeFeedback] = useState("");
+  const [treeEx5SpeFeedbackType, setTreeEx5SpeFeedbackType] = useState("neutral");
+  const [treeEx5Phase1Solved, setTreeEx5Phase1Solved] = useState(false);
+  const [treeEx5SpeSolved, setTreeEx5SpeSolved] = useState(false);
+  const [treeEx5Completed, setTreeEx5Completed] = useState(false);
+  const [treeEx5OverallFeedback, setTreeEx5OverallFeedback] = useState("");
+  const [treeEx5OverallFeedbackType, setTreeEx5OverallFeedbackType] = useState("neutral");
+  const [treeEx8Game, setTreeEx8Game] = useState(() => normalizeTreeEx8Game(buildTreeEx8Game()));
+  const [treeEx8P2Answers, setTreeEx8P2Answers] = useState(() => ({ "q1-high": "", "q1-low": "" }));
+  const [treeEx8P1Choice, setTreeEx8P1Choice] = useState("");
+  const [treeEx8SpeChoice, setTreeEx8SpeChoice] = useState("");
+  const [treeEx8P2Feedback, setTreeEx8P2Feedback] = useState("");
+  const [treeEx8P2FeedbackType, setTreeEx8P2FeedbackType] = useState("neutral");
+  const [treeEx8P1Feedback, setTreeEx8P1Feedback] = useState("");
+  const [treeEx8P1FeedbackType, setTreeEx8P1FeedbackType] = useState("neutral");
+  const [treeEx8SpeFeedback, setTreeEx8SpeFeedback] = useState("");
+  const [treeEx8SpeFeedbackType, setTreeEx8SpeFeedbackType] = useState("neutral");
+  const [treeEx8P2Solved, setTreeEx8P2Solved] = useState(false);
+  const [treeEx8P1Solved, setTreeEx8P1Solved] = useState(false);
+  const [treeEx8SpeSolved, setTreeEx8SpeSolved] = useState(false);
+  const [treeEx8Completed, setTreeEx8Completed] = useState(false);
+  const [treeEx8OverallFeedback, setTreeEx8OverallFeedback] = useState("");
+  const [treeEx8OverallFeedbackType, setTreeEx8OverallFeedbackType] = useState("neutral");
+  const [showHelpTreeEx8, setShowHelpTreeEx8] = useState(false);
+  const [treeEx6Game, setTreeEx6Game] = useState(() => buildTreeEx6Game());
+  const [treeEx6InfoChoice, setTreeEx6InfoChoice] = useState("");
+  const [treeEx6MatrixChoice, setTreeEx6MatrixChoice] = useState("");
+  const [treeEx6InfoFeedback, setTreeEx6InfoFeedback] = useState("");
+  const [treeEx6InfoFeedbackType, setTreeEx6InfoFeedbackType] = useState("neutral");
+  const [treeEx6MatrixFeedback, setTreeEx6MatrixFeedback] = useState("");
+  const [treeEx6MatrixFeedbackType, setTreeEx6MatrixFeedbackType] = useState("neutral");
+  const [treeEx6InfoSolved, setTreeEx6InfoSolved] = useState(false);
+  const [treeEx6MatrixSolved, setTreeEx6MatrixSolved] = useState(false);
+  const [treeEx6NeChoices, setTreeEx6NeChoices] = useState([]);
+  const [treeEx6SpeChoices, setTreeEx6SpeChoices] = useState([]);
+  const [treeEx6EqFeedback, setTreeEx6EqFeedback] = useState("");
+  const [treeEx6EqFeedbackType, setTreeEx6EqFeedbackType] = useState("neutral");
+  const [treeEx6EqSolved, setTreeEx6EqSolved] = useState(false);
   const [showImpressumEmail, setShowImpressumEmail] = useState(false);
   const [showImpressumAddress, setShowImpressumAddress] = useState(false);
   const [showImpressumProject, setShowImpressumProject] = useState(false);
@@ -1939,6 +2274,25 @@ function App() {
   const [showUltimatumNash, setShowUltimatumNash] = useState(false);
   const [showUltimatumFairnessGap, setShowUltimatumFairnessGap] = useState(false);
   const specialSwipeStartRef = useRef(null);
+  const normalPageTargetRef = useRef("toc");
+  const normalPageExitTimerRef = useRef(null);
+  const normalPageEnterTimerRef = useRef(null);
+  const bayesPageTargetRef = useRef("toc");
+  const bayesPageExitTimerRef = useRef(null);
+  const bayesPageEnterTimerRef = useRef(null);
+  const contentAreaRef = useRef(null);
+  const treePageTargetRef = useRef("toc");
+  const treePageExitTimerRef = useRef(null);
+  const treePageEnterTimerRef = useRef(null);
+  const treeEx8SafeGame = useMemo(() => normalizeTreeEx8Game(treeEx8Game), [treeEx8Game]);
+  const treeEx8Solution = useMemo(() => buildTreeEx8Solution(treeEx8SafeGame), [treeEx8SafeGame]);
+  const treeEx8SpeOptions = useMemo(
+    () => buildTreeEx8SpeOptions(treeEx8Solution),
+    [treeEx8Solution]
+  );
+  const treeEx6InfoOptions = useMemo(() => shuffleArray(TREE_EX6_INFO_OPTIONS), [treeEx6Game]);
+  const treeEx6MatrixOptions = useMemo(() => buildTreeEx6MatrixOptions(treeEx6Game), [treeEx6Game]);
+  const treeEx6PureNeIds = useMemo(() => buildTreeEx6PureNeIds(treeEx6Game), [treeEx6Game]);
   const [eliminatorGame, setEliminatorGame] = useState(() => ELIMINATOR_PRESETS[0]);
   const [eliminatorActiveRows, setEliminatorActiveRows] = useState(() => ELIMINATOR_PRESETS[0].rows);
   const [eliminatorActiveCols, setEliminatorActiveCols] = useState(() => ELIMINATOR_PRESETS[0].cols);
@@ -1948,6 +2302,8 @@ function App() {
   const [eliminatorFeedbackType, setEliminatorFeedbackType] = useState("neutral");
   const [eliminatorShowWhy, setEliminatorShowWhy] = useState(false);
   const [eliminatorShowNash, setEliminatorShowNash] = useState(false);
+  const [exerciseSideHover, setExerciseSideHover] = useState(null);
+  const [contentAreaBounds, setContentAreaBounds] = useState({ left: 0, right: 0, viewportWidth: 0 });
   const [brExplorerGame, setBrExplorerGame] = useState(() => buildRandomBestResponseGame());
   const [brExplorerStep, setBrExplorerStep] = useState(1);
   const [brExplorerP1Selected, setBrExplorerP1Selected] = useState([]);
@@ -1962,7 +2318,11 @@ function App() {
   const [profileNotationQuizAnswer, setProfileNotationQuizAnswer] = useState("");
   const [profileNotationQuizFeedback, setProfileNotationQuizFeedback] = useState("");
   const [profileNotationQuizType, setProfileNotationQuizType] = useState("neutral");
+  const [infoSetQuizAnswer, setInfoSetQuizAnswer] = useState("");
+  const [infoSetQuizFeedback, setInfoSetQuizFeedback] = useState("");
+  const [infoSetQuizType, setInfoSetQuizType] = useState("neutral");
   const [exerciseProgress, setExerciseProgress] = useState(() => loadExerciseProgress());
+  const previousActivePageRef = useRef(activePage);
   const isApplyingHistoryRef = useRef(false);
   const hasHistoryInitRef = useRef(false);
   const lastHistoryStateRef = useRef(null);
@@ -2004,6 +2364,212 @@ function App() {
       ),
     [eliminatorGame, eliminatorChecks, eliminatorCheckIndex, eliminatorActiveRows, eliminatorActiveCols]
   );
+
+  useEffect(() => {
+    const enteringSolveNormal = activePage === "solve-normal" && previousActivePageRef.current !== "solve-normal";
+    if (enteringSolveNormal) {
+      if (normalPageExitTimerRef.current) {
+        clearTimeout(normalPageExitTimerRef.current);
+        normalPageExitTimerRef.current = null;
+      }
+      if (normalPageEnterTimerRef.current) {
+        clearTimeout(normalPageEnterTimerRef.current);
+        normalPageEnterTimerRef.current = null;
+      }
+      normalPageTargetRef.current = normalPage;
+      setNormalRenderPage(normalPage);
+      setNormalPageAnimPhase("idle");
+      return;
+    }
+
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
+      setNormalRenderPage(normalPage);
+      setNormalPageAnimPhase("idle");
+      normalPageTargetRef.current = normalPage;
+      return;
+    }
+
+    const fromPage = normalPageAnimPhase === "idle" ? normalRenderPage : normalPageTargetRef.current;
+    normalPageTargetRef.current = normalPage;
+    if (fromPage === normalPage && normalPageAnimPhase === "idle") {
+      return;
+    }
+
+    const clearTimers = () => {
+      if (normalPageExitTimerRef.current) {
+        clearTimeout(normalPageExitTimerRef.current);
+        normalPageExitTimerRef.current = null;
+      }
+      if (normalPageEnterTimerRef.current) {
+        clearTimeout(normalPageEnterTimerRef.current);
+        normalPageEnterTimerRef.current = null;
+      }
+    };
+    clearTimers();
+
+    const fromOrder = NORMAL_PAGE_ORDER.indexOf(fromPage);
+    const toOrder = NORMAL_PAGE_ORDER.indexOf(normalPage);
+    setNormalPageAnimDirection(toOrder >= fromOrder ? "next" : "prev");
+    setNormalPageAnimPhase("exit");
+
+    normalPageExitTimerRef.current = setTimeout(() => {
+      setNormalRenderPage(normalPageTargetRef.current);
+      setNormalPageAnimPhase("enter");
+      normalPageEnterTimerRef.current = setTimeout(() => {
+        setNormalPageAnimPhase("idle");
+        normalPageEnterTimerRef.current = null;
+      }, EXERCISE_PAGE_TRANSITION_MS);
+      normalPageExitTimerRef.current = null;
+    }, EXERCISE_PAGE_TRANSITION_MS);
+  }, [normalPage, activePage]);
+
+  useEffect(() => {
+    const enteringSolveBayes = activePage === "solve-bayesian" && previousActivePageRef.current !== "solve-bayesian";
+    if (enteringSolveBayes) {
+      if (bayesPageExitTimerRef.current) {
+        clearTimeout(bayesPageExitTimerRef.current);
+        bayesPageExitTimerRef.current = null;
+      }
+      if (bayesPageEnterTimerRef.current) {
+        clearTimeout(bayesPageEnterTimerRef.current);
+        bayesPageEnterTimerRef.current = null;
+      }
+      bayesPageTargetRef.current = bayesPage;
+      setBayesRenderPage(bayesPage);
+      setBayesPageAnimPhase("idle");
+      return;
+    }
+
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
+      setBayesRenderPage(bayesPage);
+      setBayesPageAnimPhase("idle");
+      bayesPageTargetRef.current = bayesPage;
+      return;
+    }
+
+    const fromPage = bayesPageAnimPhase === "idle" ? bayesRenderPage : bayesPageTargetRef.current;
+    bayesPageTargetRef.current = bayesPage;
+    if (fromPage === bayesPage && bayesPageAnimPhase === "idle") {
+      return;
+    }
+
+    const clearTimers = () => {
+      if (bayesPageExitTimerRef.current) {
+        clearTimeout(bayesPageExitTimerRef.current);
+        bayesPageExitTimerRef.current = null;
+      }
+      if (bayesPageEnterTimerRef.current) {
+        clearTimeout(bayesPageEnterTimerRef.current);
+        bayesPageEnterTimerRef.current = null;
+      }
+    };
+    clearTimers();
+
+    const fromOrder = BAYES_PAGE_ORDER.indexOf(fromPage);
+    const toOrder = BAYES_PAGE_ORDER.indexOf(bayesPage);
+    setBayesPageAnimDirection(toOrder >= fromOrder ? "next" : "prev");
+    setBayesPageAnimPhase("exit");
+
+    bayesPageExitTimerRef.current = setTimeout(() => {
+      setBayesRenderPage(bayesPageTargetRef.current);
+      setBayesPageAnimPhase("enter");
+      bayesPageEnterTimerRef.current = setTimeout(() => {
+        setBayesPageAnimPhase("idle");
+        bayesPageEnterTimerRef.current = null;
+      }, EXERCISE_PAGE_TRANSITION_MS);
+      bayesPageExitTimerRef.current = null;
+    }, EXERCISE_PAGE_TRANSITION_MS);
+  }, [bayesPage, activePage]);
+
+  useEffect(() => {
+    const enteringSolveTree = activePage === "solve-tree" && previousActivePageRef.current !== "solve-tree";
+    if (enteringSolveTree) {
+      if (treePageExitTimerRef.current) {
+        clearTimeout(treePageExitTimerRef.current);
+        treePageExitTimerRef.current = null;
+      }
+      if (treePageEnterTimerRef.current) {
+        clearTimeout(treePageEnterTimerRef.current);
+        treePageEnterTimerRef.current = null;
+      }
+      treePageTargetRef.current = treePage;
+      setTreeRenderPage(treePage);
+      setTreePageAnimPhase("idle");
+      return;
+    }
+
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
+      setTreeRenderPage(treePage);
+      setTreePageAnimPhase("idle");
+      treePageTargetRef.current = treePage;
+      return;
+    }
+
+    const fromPage = treePageAnimPhase === "idle" ? treeRenderPage : treePageTargetRef.current;
+    treePageTargetRef.current = treePage;
+    if (fromPage === treePage && treePageAnimPhase === "idle") {
+      return;
+    }
+
+    const clearTimers = () => {
+      if (treePageExitTimerRef.current) {
+        clearTimeout(treePageExitTimerRef.current);
+        treePageExitTimerRef.current = null;
+      }
+      if (treePageEnterTimerRef.current) {
+        clearTimeout(treePageEnterTimerRef.current);
+        treePageEnterTimerRef.current = null;
+      }
+    };
+    clearTimers();
+
+    const fromOrder = TREE_PAGE_ORDER.indexOf(fromPage);
+    const toOrder = TREE_PAGE_ORDER.indexOf(treePage);
+    setTreePageAnimDirection(toOrder >= fromOrder ? "next" : "prev");
+    setTreePageAnimPhase("exit");
+
+    treePageExitTimerRef.current = setTimeout(() => {
+      setTreeRenderPage(treePageTargetRef.current);
+      setTreePageAnimPhase("enter");
+      treePageEnterTimerRef.current = setTimeout(() => {
+        setTreePageAnimPhase("idle");
+        treePageEnterTimerRef.current = null;
+      }, TREE_PAGE_TRANSITION_MS);
+      treePageExitTimerRef.current = null;
+    }, TREE_PAGE_TRANSITION_MS);
+  }, [treePage, activePage]);
+
+  useEffect(() => {
+    previousActivePageRef.current = activePage;
+  }, [activePage]);
+
+  useEffect(
+    () => () => {
+      if (normalPageExitTimerRef.current) {
+        clearTimeout(normalPageExitTimerRef.current);
+      }
+      if (normalPageEnterTimerRef.current) {
+        clearTimeout(normalPageEnterTimerRef.current);
+      }
+      if (bayesPageExitTimerRef.current) {
+        clearTimeout(bayesPageExitTimerRef.current);
+      }
+      if (bayesPageEnterTimerRef.current) {
+        clearTimeout(bayesPageEnterTimerRef.current);
+      }
+      if (treePageExitTimerRef.current) {
+        clearTimeout(treePageExitTimerRef.current);
+      }
+      if (treePageEnterTimerRef.current) {
+        clearTimeout(treePageEnterTimerRef.current);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    setExerciseSideHover(null);
+  }, [activePage, normalPage, bayesPage, treePage]);
 
   useEffect(() => {
     if (treePage !== "ex2" || treeEx2ActiveIndex !== 1) {
@@ -2060,8 +2626,136 @@ function App() {
     () => evaluateTreeEx4Game(treeEx4Game, treeEx4Profiles),
     [treeEx4Game, treeEx4Profiles]
   );
+  const exerciseSideNav = useMemo(() => {
+    if (activePage === "solve-normal") {
+      const idx = NORMAL_PAGE_ORDER.indexOf(normalPage);
+      if (idx <= 0) return null;
+      return {
+        prev: idx > 0 ? NORMAL_PAGE_ORDER[idx - 1] : null,
+        next: idx < NORMAL_PAGE_ORDER.length - 1 ? NORMAL_PAGE_ORDER[idx + 1] : null,
+        go: (target) => setNormalPage(target)
+      };
+    }
+    if (activePage === "solve-bayesian") {
+      const idx = BAYES_PAGE_ORDER.indexOf(bayesPage);
+      if (idx <= 0) return null;
+      return {
+        prev: idx > 0 ? BAYES_PAGE_ORDER[idx - 1] : null,
+        next: idx < BAYES_PAGE_ORDER.length - 1 ? BAYES_PAGE_ORDER[idx + 1] : null,
+        go: (target) => setBayesPage(target)
+      };
+    }
+    if (activePage === "solve-tree") {
+      const idx = TREE_PAGE_ORDER.indexOf(treePage);
+      if (idx <= 0) return null;
+      return {
+        prev: idx > 0 ? TREE_PAGE_ORDER[idx - 1] : null,
+        next: idx < TREE_PAGE_ORDER.length - 1 ? TREE_PAGE_ORDER[idx + 1] : null,
+        go: (target) => setTreePage(target)
+      };
+    }
+    return null;
+  }, [activePage, bayesPage, normalPage, treePage]);
+  const showLeftExerciseNav = !!exerciseSideNav?.prev && exerciseSideHover === "left";
+  const showRightExerciseNav = !!exerciseSideNav?.next && exerciseSideHover === "right";
+  const leftNavX = Math.max(8, Math.round(contentAreaBounds.left - 52));
+  const rightNavX = contentAreaBounds.viewportWidth > 0
+    ? Math.min(contentAreaBounds.viewportWidth - 50, Math.round(contentAreaBounds.right + 10))
+    : 8;
 
   const t = (deText, enText) => (uiLang === "de" ? deText : enText);
+
+  useEffect(() => {
+    if (!exerciseSideNav) {
+      setExerciseSideHover(null);
+      return undefined;
+    }
+
+    const handlePointerMove = (event) => {
+      const host = contentAreaRef.current;
+      if (!host) {
+        setExerciseSideHover(null);
+        return;
+      }
+      const rect = host.getBoundingClientRect();
+      const x = event.clientX;
+      const y = event.clientY;
+      setContentAreaBounds((prev) => {
+        const next = { left: rect.left, right: rect.right, viewportWidth: window.innerWidth };
+        if (
+          Math.abs(prev.left - next.left) < 0.5
+          && Math.abs(prev.right - next.right) < 0.5
+          && prev.viewportWidth === next.viewportWidth
+        ) {
+          return prev;
+        }
+        return next;
+      });
+
+      if (y < rect.top || y > rect.bottom) {
+        setExerciseSideHover(null);
+        return;
+      }
+
+      const nearLeft = x >= rect.left - EXERCISE_SIDE_TRIGGER_OUTSIDE_PX && x <= rect.left + EXERCISE_SIDE_TRIGGER_INSIDE_PX;
+      const nearRight = x <= rect.right + EXERCISE_SIDE_TRIGGER_OUTSIDE_PX && x >= rect.right - EXERCISE_SIDE_TRIGGER_INSIDE_PX;
+
+      if (nearLeft && !nearRight) {
+        setExerciseSideHover("left");
+        return;
+      }
+      if (nearRight && !nearLeft) {
+        setExerciseSideHover("right");
+        return;
+      }
+      setExerciseSideHover(null);
+    };
+
+    window.addEventListener("mousemove", handlePointerMove, { passive: true });
+    return () => window.removeEventListener("mousemove", handlePointerMove);
+  }, [exerciseSideNav]);
+
+  useEffect(() => {
+    const updateBounds = () => {
+      const host = contentAreaRef.current;
+      if (!host || typeof window === "undefined") return;
+      const rect = host.getBoundingClientRect();
+      setContentAreaBounds({
+        left: rect.left,
+        right: rect.right,
+        viewportWidth: window.innerWidth
+      });
+    };
+
+    updateBounds();
+    let rafId = null;
+    let startedAt = null;
+    const sampleDuringLayoutShift = (ts) => {
+      if (startedAt == null) startedAt = ts;
+      updateBounds();
+      if (ts - startedAt < 550) {
+        rafId = window.requestAnimationFrame(sampleDuringLayoutShift);
+      }
+    };
+    rafId = window.requestAnimationFrame(sampleDuringLayoutShift);
+
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateBounds) : null;
+    if (observer && contentAreaRef.current) {
+      observer.observe(contentAreaRef.current);
+    }
+    window.addEventListener("resize", updateBounds);
+    window.addEventListener("scroll", updateBounds, { passive: true });
+    return () => {
+      if (rafId != null) {
+        window.cancelAnimationFrame(rafId);
+      }
+      if (observer) {
+        observer.disconnect();
+      }
+      window.removeEventListener("resize", updateBounds);
+      window.removeEventListener("scroll", updateBounds);
+    };
+  }, [activePage, isNavOpen]);
 
   function formatClientError(err, fallback) {
     const raw = typeof err?.message === "string" ? err.message.trim() : "";
@@ -2202,6 +2896,47 @@ function App() {
   }, [treeEx4SpeSolved, treeEx4NashSolved, treeEx4Completed, uiLang]);
 
   useEffect(() => {
+    if (treeEx5Completed) return;
+    if (!(treeEx5Phase1Solved && treeEx5SpeSolved)) return;
+    const progressKey = treeEx5ActiveLevel === 1 ? "tree_ex5_3" : "tree_ex5_2";
+    setTreeEx5Completed(true);
+    setTreeEx5OverallFeedbackType("success");
+    setTreeEx5OverallFeedback(
+      t(
+        "Sehr gut. Rückwärtsinduktion und SPE sind korrekt.",
+        "Great. Backward induction and SPE are correct."
+      )
+    );
+    recordExerciseAttempt(progressKey, {
+      correct: true,
+      solved: true,
+      lastState: "all-correct"
+    });
+  }, [treeEx5Phase1Solved, treeEx5SpeSolved, treeEx5Completed, treeEx5ActiveLevel, uiLang]);
+
+  useEffect(() => {
+    if (treeEx8Completed) return;
+    if (!(treeEx8P2Solved && treeEx8P1Solved && treeEx8SpeSolved)) return;
+    setTreeEx8Completed(true);
+    setTreeEx8OverallFeedbackType("success");
+    setTreeEx8OverallFeedback(
+      t(
+        "Sehr gut. Du hast Rückwärtsinduktion und SPE im Stackelberg-Spiel korrekt gelöst.",
+        "Great. You solved backward induction and SPE correctly in the Stackelberg game."
+      )
+    );
+    recordExerciseAttempt("tree_ex8", {
+      correct: true,
+      solved: true,
+      lastState: "all-correct"
+    });
+  }, [treeEx8P2Solved, treeEx8P1Solved, treeEx8SpeSolved, treeEx8Completed, uiLang]);
+
+  useEffect(() => {
+    resetTreeEx5();
+  }, [treeEx5ActiveLevel]);
+
+  useEffect(() => {
     try {
       window.localStorage.setItem(EXERCISE_PROGRESS_KEY, JSON.stringify(exerciseProgress));
     } catch {
@@ -2245,10 +2980,14 @@ function App() {
 
   function recordExerciseAttempt(exerciseKey, { correct, lastState, solved }) {
     setExerciseProgress((prev) => {
-      const current = prev[exerciseKey] || { attempts: 0, correct: 0, solved: false, lastState: "", updatedAt: 0 };
+      const timestamp = Date.now();
+      const current = prev[exerciseKey] || { attempts: 0, correct: 0, solved: false, lastState: "", updatedAt: 0, recentAttempts: [] };
       const nextAttempts = current.attempts + 1;
       const nextCorrect = current.correct + (correct ? 1 : 0);
       const nextSolved = current.solved || (typeof solved === "boolean" ? solved : !!correct);
+      const recentAttempts = Array.isArray(current.recentAttempts) ? current.recentAttempts : [];
+      const nextRecentAttempts = [...recentAttempts, { correct: !!correct, updatedAt: timestamp }]
+        .slice(-EXERCISE_RECENT_ATTEMPTS_LIMIT);
       return {
         ...prev,
         [exerciseKey]: {
@@ -2256,7 +2995,8 @@ function App() {
           correct: nextCorrect,
           solved: nextSolved,
           lastState: lastState || "",
-          updatedAt: Date.now()
+          updatedAt: timestamp,
+          recentAttempts: nextRecentAttempts
         }
       };
     });
@@ -2270,19 +3010,34 @@ function App() {
     }
 
     const attempts = entries.reduce((sum, entry) => sum + (entry.attempts || 0), 0);
-    const correct = entries.reduce((sum, entry) => sum + (entry.correct || 0), 0);
-    const errorRate = attempts > 0 ? Math.round(((attempts - correct) / attempts) * 100) : null;
-    const solvedCount = entries.reduce((sum, entry) => sum + (entry.solved ? 1 : 0), 0);
-    const solvedText = keys.length === 1
-      ? (entries[0].solved ? t("Gelöst", "Solved") : t("Offen", "Open"))
-      : t(`${solvedCount}/${keys.length} gelöst`, `${solvedCount}/${keys.length} solved`);
-    if (solvedCount === 0) {
-      return solvedText;
+    if (attempts === 0) {
+      return t("Offen", "Open");
     }
-    const rateText = errorRate == null ? "–" : `${errorRate}%`;
+    const correct = entries.reduce((sum, entry) => sum + (entry.correct || 0), 0);
+    const errorRate = Math.round(((attempts - correct) / attempts) * 100);
+    const mergedRecent = entries
+      .flatMap((entry) => {
+        if (Array.isArray(entry.recentAttempts) && entry.recentAttempts.length) {
+          return entry.recentAttempts.map((item) => ({
+            correct: !!item?.correct,
+            updatedAt: Number(item?.updatedAt) || 0
+          }));
+        }
+        return [];
+      })
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, 3)
+      .reverse();
+    let symbolText = mergedRecent.map((item) => (item.correct ? "✓" : "✗")).join(" ");
+    if (!symbolText) {
+      const syntheticLength = Math.min(attempts, 3);
+      const syntheticCorrect = Math.min(correct, syntheticLength);
+      const syntheticIncorrect = Math.max(0, syntheticLength - syntheticCorrect);
+      symbolText = `${"✓ ".repeat(syntheticCorrect)}${"✗ ".repeat(syntheticIncorrect)}`.trim() || "–";
+    }
     return t(
-      `${solvedText} · Fehlerquote: ${rateText}`,
-      `${solvedText} · Error rate: ${rateText}`
+      `${symbolText} · Fehlerquote: ${errorRate}%`,
+      `${symbolText} · Error rate: ${errorRate}%`
     );
   }
 
@@ -2790,6 +3545,36 @@ function App() {
       t(
         "Nicht korrekt. Für Spieler 2 braucht eine Strategie hier genau zwei Einträge: nach L und nach R.",
         "Not correct. For Player 2, a strategy here needs exactly two entries: after L and after R."
+      )
+    );
+  }
+
+  function checkInfoSetQuiz() {
+    if (!infoSetQuizAnswer) {
+      setInfoSetQuizType("warning");
+      setInfoSetQuizFeedback(
+        t(
+          "Bitte wähle zuerst eine Option.",
+          "Please select an option first."
+        )
+      );
+      return;
+    }
+    if (infoSetQuizAnswer === "same-info-set") {
+      setInfoSetQuizType("success");
+      setInfoSetQuizFeedback(
+        t(
+          "Richtig. Die Knoten liegen in derselben Informationsmenge: Spieler 2 weiß an diesem Punkt nicht, ob vorher L oder R gespielt wurde.",
+          "Correct. The two nodes are in the same information set: at this point, Player 2 does not know whether L or R was played before."
+        )
+      );
+      return;
+    }
+    setInfoSetQuizType("error");
+    setInfoSetQuizFeedback(
+      t(
+        "Nicht korrekt. Die gestrichelte Verbindung bedeutet nicht perfekte Beobachtung, sondern unvollständige Information über den zuvor erreichten Knoten.",
+        "Not correct. The dashed link does not mean perfect observation; it means incomplete information about which previous node was reached."
       )
     );
   }
@@ -4008,6 +4793,471 @@ function App() {
     setShowHelpTreeEx4(false);
   }
 
+  function getTreeEx5Config() {
+    if (treeEx5ActiveLevel === 1) {
+      return {
+        progressKey: "tree_ex5_3",
+        offers: TREE_EX5_3_OFFERS,
+        speOptions: TREE_EX5_3_SPE_OPTIONS,
+        speCorrect: TREE_EX5_3_SPE_CORRECT,
+        phase1Success: t(
+          "Richtig. In allen drei Runden ist Annehmen optimal, weil die sichere Auszahlung höher ist als das Fortsetzen der Verhandlung.",
+          "Correct. Accept is optimal in all three rounds because the sure payoff is higher than continuing the negotiation."
+        ),
+        speSuccess: t(
+          "Richtig. Im 3-stufigen Spiel ist das SPE durch (A, A, A) bei den Antwortknoten gegeben.",
+          "Correct. In the 3-stage game, the SPE is given by (A, A, A) at the response nodes."
+        ),
+        speError: t(
+          "Nicht korrekt. Das SPE im 3-stufigen Spiel ist (A, A, A).",
+          "Not correct. The SPE in the 3-stage game is (A, A, A)."
+        )
+      };
+    }
+    return {
+      progressKey: "tree_ex5_2",
+      offers: TREE_EX5_2_OFFERS,
+      speOptions: TREE_EX5_2_SPE_OPTIONS,
+      speCorrect: TREE_EX5_2_SPE_CORRECT,
+      phase1Success: t(
+        "Richtig. Spieler 2 nimmt alle drei Angebote an. Antizipierend wählt Spieler 1 dann das Angebot 90/10.",
+        "Correct. Player 2 accepts all three offers. Anticipating this, Player 1 chooses 90/10."
+      ),
+      speSuccess: t(
+        "Richtig. SPE: Spieler 2 nimmt jedes Angebot an und Spieler 1 wählt daher 90/10.",
+        "Correct. SPE: Player 2 accepts every offer, so Player 1 chooses 90/10."
+      ),
+      speError: t(
+        "Nicht korrekt. Das SPE ist (90/10, (A, A, A)).",
+        "Not correct. The SPE is (90/10, (A, A, A))."
+      )
+    };
+  }
+
+  function resetTreeEx5() {
+    const cfg = getTreeEx5Config();
+    const emptyAnswers = {};
+    cfg.offers.forEach((offer) => {
+      emptyAnswers[offer.id] = "";
+    });
+    setTreeEx5P2Answers(emptyAnswers);
+    setTreeEx5Phase1Feedback("");
+    setTreeEx5Phase1FeedbackType("neutral");
+    setTreeEx5SpeChoice("");
+    setTreeEx5SpeFeedback("");
+    setTreeEx5SpeFeedbackType("neutral");
+    setTreeEx5Phase1Solved(false);
+    setTreeEx5SpeSolved(false);
+    setTreeEx5Completed(false);
+    setTreeEx5OverallFeedback("");
+    setTreeEx5OverallFeedbackType("neutral");
+  }
+
+  function setTreeEx5Answer(offerId, action) {
+    setTreeEx5P2Answers((prev) => ({ ...prev, [offerId]: action }));
+    setTreeEx5Phase1Feedback("");
+    setTreeEx5Phase1FeedbackType("neutral");
+  }
+
+  function resetTreeEx8(newGame = false) {
+    if (newGame) {
+      setTreeEx8Game(normalizeTreeEx8Game(buildTreeEx8Game()));
+    }
+    setTreeEx8P2Answers({ "q1-high": "", "q1-low": "" });
+    setTreeEx8P1Choice("");
+    setTreeEx8SpeChoice("");
+    setTreeEx8P2Feedback("");
+    setTreeEx8P2FeedbackType("neutral");
+    setTreeEx8P1Feedback("");
+    setTreeEx8P1FeedbackType("neutral");
+    setTreeEx8SpeFeedback("");
+    setTreeEx8SpeFeedbackType("neutral");
+    setTreeEx8P2Solved(false);
+    setTreeEx8P1Solved(false);
+    setTreeEx8SpeSolved(false);
+    setTreeEx8Completed(false);
+    setTreeEx8OverallFeedback("");
+    setTreeEx8OverallFeedbackType("neutral");
+    setShowHelpTreeEx8(false);
+  }
+
+  function setTreeEx8P2Answer(nodeId, action) {
+    setTreeEx8P2Answers((prev) => ({ ...prev, [nodeId]: action }));
+    setTreeEx8P2Feedback("");
+    setTreeEx8P2FeedbackType("neutral");
+    setTreeEx8P2Solved(false);
+  }
+
+  function checkTreeEx8P2() {
+    const missing = treeEx8SafeGame.offers.some((offer) => !treeEx8P2Answers[offer.id]);
+    if (missing) {
+      setTreeEx8P2FeedbackType("warning");
+      setTreeEx8P2Feedback(
+        t(
+          "Bitte wähle in beiden Teilspielen die Antwort von Spieler 2.",
+          "Please select Player 2's response in both subgames."
+        )
+      );
+      recordExerciseAttempt("tree_ex8", { correct: false, solved: false, lastState: "p2-missing" });
+      return;
+    }
+    const wrong = treeEx8SafeGame.offers.some((offer) => treeEx8P2Answers[offer.id] !== treeEx8Solution.p2BestByOffer[offer.id]);
+    if (wrong) {
+      setTreeEx8P2FeedbackType("error");
+      setTreeEx8P2Feedback(
+        t(
+          "Nicht korrekt. Spieler 2 wählt in jedem Teilspiel die höhere eigene Auszahlung.",
+          "Not correct. In each subgame, Player 2 chooses the higher own payoff."
+        )
+      );
+      setTreeEx8P2Solved(false);
+      recordExerciseAttempt("tree_ex8", {
+        correct: false,
+        solved: false,
+        lastState: `p2:${treeEx8P2Answers["q1-high"] || "-"},${treeEx8P2Answers["q1-low"] || "-"}`
+      });
+      return;
+    }
+    setTreeEx8P2FeedbackType("success");
+    setTreeEx8P2Feedback(
+      t(
+        `Richtig. Beste Antworten: nach q1=4 -> ${treeEx8Solution.p2BestByOffer["q1-high"]}, nach q1=2 -> ${treeEx8Solution.p2BestByOffer["q1-low"]}.`,
+        `Correct. Best responses: after q1=4 -> ${treeEx8Solution.p2BestByOffer["q1-high"]}, after q1=2 -> ${treeEx8Solution.p2BestByOffer["q1-low"]}.`
+      )
+    );
+    setTreeEx8P2Solved(true);
+    recordExerciseAttempt("tree_ex8", {
+      correct: true,
+      solved: treeEx8P1Solved && treeEx8SpeSolved,
+      lastState: `p2:${treeEx8P2Answers["q1-high"]},${treeEx8P2Answers["q1-low"]}`
+    });
+  }
+
+  function checkTreeEx8P1() {
+    if (!treeEx8P1Choice) {
+      setTreeEx8P1FeedbackType("warning");
+      setTreeEx8P1Feedback(
+        t("Bitte wähle zuerst die Aktion von Spieler 1.", "Please choose Player 1's action first.")
+      );
+      recordExerciseAttempt("tree_ex8", { correct: false, solved: false, lastState: "p1-missing" });
+      return;
+    }
+    if (treeEx8P1Choice !== treeEx8Solution.p1Best) {
+      setTreeEx8P1FeedbackType("error");
+      setTreeEx8P1Feedback(
+        t(
+          "Nicht korrekt. Vergleiche die antizipierten Auszahlungen von Spieler 1 nach den optimalen Antworten von Spieler 2.",
+          "Not correct. Compare Player 1's anticipated payoffs after Player 2's optimal responses."
+        )
+      );
+      setTreeEx8P1Solved(false);
+      recordExerciseAttempt("tree_ex8", {
+        correct: false,
+        solved: false,
+        lastState: `p1:${treeEx8P1Choice}`
+      });
+      return;
+    }
+    setTreeEx8P1FeedbackType("success");
+    setTreeEx8P1Feedback(
+      t(`Richtig. Spieler 1 wählt ${treeEx8Solution.p1Best}.`, `Correct. Player 1 chooses ${treeEx8Solution.p1Best}.`)
+    );
+    setTreeEx8P1Solved(true);
+    recordExerciseAttempt("tree_ex8", {
+      correct: true,
+      solved: treeEx8P2Solved && treeEx8SpeSolved,
+      lastState: `p1:${treeEx8P1Choice}`
+    });
+  }
+
+  function checkTreeEx8Spe() {
+    if (!treeEx8SpeChoice) {
+      setTreeEx8SpeFeedbackType("warning");
+      setTreeEx8SpeFeedback(
+        t("Bitte wähle zuerst ein SPE-Profil.", "Please select an SPE profile first.")
+      );
+      recordExerciseAttempt("tree_ex8", { correct: false, solved: false, lastState: "spe-missing" });
+      return;
+    }
+    if (treeEx8SpeChoice !== "spe-s8-1") {
+      setTreeEx8SpeFeedbackType("error");
+      setTreeEx8SpeFeedback(
+        t(
+          "Nicht korrekt. Im SPE muss Spieler 2 an beiden Knoten optimal reagieren und Spieler 1 diese Antworten antizipieren.",
+          "Not correct. In SPE, Player 2 must respond optimally at both nodes and Player 1 anticipates those responses."
+        )
+      );
+      setTreeEx8SpeSolved(false);
+      recordExerciseAttempt("tree_ex8", {
+        correct: false,
+        solved: false,
+        lastState: `spe:${treeEx8SpeChoice}`
+      });
+      return;
+    }
+    setTreeEx8SpeFeedbackType("success");
+    setTreeEx8SpeFeedback(
+      t(
+        `Richtig. Das SPE-Profil ist ${treeEx8SpeOptions[0].text}.`,
+        `Correct. The SPE profile is ${treeEx8SpeOptions[0].text}.`
+      )
+    );
+    setTreeEx8SpeSolved(true);
+    recordExerciseAttempt("tree_ex8", {
+      correct: true,
+      solved: treeEx8P2Solved && treeEx8P1Solved,
+      lastState: `spe:${treeEx8SpeChoice}`
+    });
+  }
+
+  function resetTreeEx6(newGame = false) {
+    if (newGame) {
+      setTreeEx6Game(buildTreeEx6Game());
+    }
+    setTreeEx6InfoChoice("");
+    setTreeEx6MatrixChoice("");
+    setTreeEx6InfoFeedback("");
+    setTreeEx6InfoFeedbackType("neutral");
+    setTreeEx6MatrixFeedback("");
+    setTreeEx6MatrixFeedbackType("neutral");
+    setTreeEx6InfoSolved(false);
+    setTreeEx6MatrixSolved(false);
+    setTreeEx6NeChoices([]);
+    setTreeEx6SpeChoices([]);
+    setTreeEx6EqFeedback("");
+    setTreeEx6EqFeedbackType("neutral");
+    setTreeEx6EqSolved(false);
+  }
+
+  function checkTreeEx6Info() {
+    if (!treeEx6InfoChoice) {
+      setTreeEx6InfoFeedbackType("warning");
+      setTreeEx6InfoFeedback(
+        t("Bitte wähle zuerst eine Aussage aus.", "Please select a statement first.")
+      );
+      setTreeEx6InfoSolved(false);
+      recordExerciseAttempt("tree_ex6", { correct: false, solved: false, lastState: "info-missing" });
+      return;
+    }
+    const correct = treeEx6InfoChoice === TREE_EX6_INFO_CORRECT;
+    if (!correct) {
+      setTreeEx6InfoFeedbackType("error");
+      setTreeEx6InfoFeedback(
+        t("Nicht korrekt. Entscheidend ist die gemeinsame Informationsmenge von P2.", "Not correct. The key point is P2's shared information set.")
+      );
+      setTreeEx6InfoSolved(false);
+      recordExerciseAttempt("tree_ex6", {
+        correct: false,
+        solved: false,
+        lastState: `info:${treeEx6InfoChoice}`
+      });
+      return;
+    }
+    const solvedNow = treeEx6MatrixSolved && treeEx6EqSolved;
+    setTreeEx6InfoFeedbackType("success");
+    setTreeEx6InfoFeedback(
+      t(
+        "Richtig. Die beiden P2-Knoten liegen in einer Informationsmenge.",
+        "Correct. The two P2 nodes lie in one information set."
+      )
+    );
+    setTreeEx6InfoSolved(true);
+    recordExerciseAttempt("tree_ex6", {
+      correct: true,
+      solved: solvedNow,
+      lastState: `info:${treeEx6InfoChoice}`
+    });
+  }
+
+  function checkTreeEx6Matrix() {
+    if (!treeEx6MatrixChoice) {
+      setTreeEx6MatrixFeedbackType("warning");
+      setTreeEx6MatrixFeedback(
+        t("Bitte wähle zuerst eine Matrix aus.", "Please select a matrix first.")
+      );
+      setTreeEx6MatrixSolved(false);
+      recordExerciseAttempt("tree_ex6", { correct: false, solved: false, lastState: "matrix-missing" });
+      return;
+    }
+    const correct = treeEx6MatrixChoice === TREE_EX6_MATRIX_CORRECT;
+    if (!correct) {
+      setTreeEx6MatrixFeedbackType("error");
+      setTreeEx6MatrixFeedback(
+        t(
+          "Nicht korrekt. Übertrage die Auszahlungen exakt entlang der Pfade (U/D und L/R).",
+          "Not correct. Transfer payoffs exactly along the paths (U/D and L/R)."
+        )
+      );
+      setTreeEx6MatrixSolved(false);
+      recordExerciseAttempt("tree_ex6", {
+        correct: false,
+        solved: false,
+        lastState: `matrix:${treeEx6MatrixChoice}`
+      });
+      return;
+    }
+    const solvedNow = treeEx6InfoSolved && treeEx6EqSolved;
+    setTreeEx6MatrixFeedbackType("success");
+    setTreeEx6MatrixFeedback(
+      t(
+        "Richtig. Diese Matrix entspricht genau der strategischen Form des Baums.",
+        "Correct. This matrix exactly matches the strategic form of the tree."
+      )
+    );
+    setTreeEx6MatrixSolved(true);
+    recordExerciseAttempt("tree_ex6", {
+      correct: true,
+      solved: solvedNow,
+      lastState: `matrix:${treeEx6MatrixChoice}`
+    });
+  }
+
+  function toggleTreeEx6NeChoice(choiceId) {
+    setTreeEx6NeChoices((prev) =>
+      prev.includes(choiceId) ? prev.filter((entry) => entry !== choiceId) : [...prev, choiceId]
+    );
+    setTreeEx6EqFeedback("");
+    setTreeEx6EqFeedbackType("neutral");
+    setTreeEx6EqSolved(false);
+  }
+
+  function toggleTreeEx6SpeChoice(choiceId) {
+    setTreeEx6SpeChoices((prev) =>
+      prev.includes(choiceId) ? prev.filter((entry) => entry !== choiceId) : [...prev, choiceId]
+    );
+    setTreeEx6EqFeedback("");
+    setTreeEx6EqFeedbackType("neutral");
+    setTreeEx6EqSolved(false);
+  }
+
+  function checkTreeEx6Equilibria() {
+    if (!treeEx6NeChoices.length || !treeEx6SpeChoices.length) {
+      setTreeEx6EqFeedbackType("warning");
+      setTreeEx6EqFeedback(
+        t(
+          "Bitte markiere zuerst die Profile für NE und SPE.",
+          "Please first mark the profiles for NE and SPE."
+        )
+      );
+      setTreeEx6EqSolved(false);
+      recordExerciseAttempt("tree_ex6", { correct: false, solved: false, lastState: "eq-missing" });
+      return;
+    }
+
+    const correctNe = [...treeEx6PureNeIds].sort();
+    const selectedNe = [...treeEx6NeChoices].sort();
+    const selectedSpe = [...treeEx6SpeChoices].sort();
+    const neOk = sameChoiceSet(selectedNe, correctNe);
+    const speOk = sameChoiceSet(selectedSpe, correctNe);
+
+    if (!(neOk && speOk)) {
+      setTreeEx6EqFeedbackType("error");
+      setTreeEx6EqFeedback(
+        t(
+          "Nicht korrekt. In diesem Spiel ohne echtes Teilspiel sind die reinen SPE genau die reinen Nash-Gleichgewichte.",
+          "Not correct. In this game without proper subgames, pure SPE are exactly pure Nash equilibria."
+        )
+      );
+      setTreeEx6EqSolved(false);
+      recordExerciseAttempt("tree_ex6", {
+        correct: false,
+        solved: false,
+        lastState: `eq:${selectedNe.join(",")}|${selectedSpe.join(",")}`
+      });
+      return;
+    }
+
+    const solvedNow = treeEx6InfoSolved && treeEx6MatrixSolved;
+    setTreeEx6EqFeedbackType("success");
+    setTreeEx6EqFeedback(
+      t(
+        "Richtig. Hier stimmen die reinen Nash- und SPE-Profile überein.",
+        "Correct. Here, pure Nash and SPE profiles coincide."
+      )
+    );
+    setTreeEx6EqSolved(true);
+    recordExerciseAttempt("tree_ex6", {
+      correct: true,
+      solved: solvedNow,
+      lastState: `eq:${selectedNe.join(",")}|${selectedSpe.join(",")}`
+    });
+  }
+
+  function checkTreeEx5Phase1() {
+    const cfg = getTreeEx5Config();
+    const missing = cfg.offers.filter((offer) => !treeEx5P2Answers[offer.id]);
+    if (missing.length) {
+      setTreeEx5Phase1FeedbackType("warning");
+      setTreeEx5Phase1Feedback(
+        t(
+          "Bitte entscheide für jedes Angebot, ob Spieler 2 annimmt oder ablehnt.",
+          "Please decide for each offer whether Player 2 accepts or rejects."
+        )
+      );
+      recordExerciseAttempt(cfg.progressKey, { correct: false, solved: false, lastState: "phase1-missing" });
+      return;
+    }
+    const wrongOffers = cfg.offers.filter((offer) => treeEx5P2Answers[offer.id] !== "A");
+    if (wrongOffers.length) {
+      setTreeEx5Phase1FeedbackType("error");
+      setTreeEx5Phase1Feedback(
+        t(
+          "Nicht korrekt. In jedem Teilspiel ist Annehmen optimal, weil Spieler 2 bei Annahme mehr als 0 erhält.",
+          "Not correct. In each subgame, Accept is optimal because Player 2 gets more than 0 when accepting."
+        )
+      );
+      setTreeEx5Phase1Solved(false);
+      recordExerciseAttempt(cfg.progressKey, {
+        correct: false,
+        solved: false,
+        lastState: `phase1:${cfg.offers.map((offer) => treeEx5P2Answers[offer.id] || "-").join("")}`
+      });
+      return;
+    }
+    setTreeEx5Phase1FeedbackType("success");
+    setTreeEx5Phase1Feedback(cfg.phase1Success);
+    setTreeEx5Phase1Solved(true);
+    recordExerciseAttempt(cfg.progressKey, {
+      correct: true,
+      solved: false,
+      lastState: `phase1:${cfg.offers.map((offer) => treeEx5P2Answers[offer.id] || "-").join("")}`
+    });
+  }
+
+  function checkTreeEx5Spe() {
+    const cfg = getTreeEx5Config();
+    if (!treeEx5SpeChoice) {
+      setTreeEx5SpeFeedbackType("warning");
+      setTreeEx5SpeFeedback(
+        t(
+          "Bitte wähle zuerst ein Profil aus.",
+          "Please select a profile first."
+        )
+      );
+      recordExerciseAttempt(cfg.progressKey, { correct: false, solved: false, lastState: "spe-empty" });
+      return;
+    }
+    if (treeEx5SpeChoice !== cfg.speCorrect) {
+      setTreeEx5SpeFeedbackType("error");
+      setTreeEx5SpeFeedback(cfg.speError);
+      setTreeEx5SpeSolved(false);
+      recordExerciseAttempt(cfg.progressKey, {
+        correct: false,
+        solved: false,
+        lastState: `spe:${treeEx5SpeChoice}`
+      });
+      return;
+    }
+    setTreeEx5SpeFeedbackType("success");
+    setTreeEx5SpeFeedback(cfg.speSuccess);
+    setTreeEx5SpeSolved(true);
+    recordExerciseAttempt(cfg.progressKey, {
+      correct: true,
+      solved: false,
+      lastState: `spe:${treeEx5SpeChoice}`
+    });
+  }
+
   function addTreeEx4SpeEntry() {
     setTreeEx4SpeEntries((prev) => [...prev, createEmptyTreeEx4Entry()]);
     setTreeEx4SpeFeedback("");
@@ -4926,6 +6176,7 @@ function App() {
   }
 
   function renderTreeExercises() {
+    const activeTreePage = treeRenderPage;
     const firstPlayer = t("Spieler 1", "Player 1");
     const secondPlayer = t("Spieler 2", "Player 2");
     const firstNodeLabel = "P1";
@@ -4979,11 +6230,17 @@ function App() {
       .filter(Boolean)
       .join(" ");
 
-    if (treePage === "toc") {
+    if (activeTreePage === "toc") {
       return (
         <section className="panel">
           <h2>{t("Trainiere Sequenzielle Spiele (Extensivform)", "Train sequential games (extensive form)")}</h2>
-          <h3>{t("Teil 1: Grundlagen", "Part 1: Fundamentals")}</h3>
+          <h3>{t("Teil 1: Sprache der Extensivform", "Part 1: Language of extensive form")}</h3>
+          <p className="hint">
+            {t(
+              "Du lernst, Spielbäume, Informationsmengen und reine Strategien in Extensivspielen sauber zu lesen und zu notieren.",
+              "You learn to read and write game trees, information sets, and pure strategies in extensive-form games."
+            )}
+          </p>
           <div className="exercise-link-grid">
             <button
               type="button"
@@ -5015,8 +6272,29 @@ function App() {
                 {buildProgressMeta(["tree_ex2_easy", "tree_ex2_hard"])}
               </span>
             </button>
+            <button
+              type="button"
+              className="exercise-link"
+              onClick={() => {
+                resetTreeEx6();
+                setTreePage("ex6");
+              }}
+            >
+              <span className="exercise-link-title">
+                {t("Übung 3 – Informationsmengen & simultane Züge", "Exercise 3 - Information sets and simultaneous moves")}
+              </span>
+              <span className="exercise-link-meta">
+                {buildProgressMeta("tree_ex6")}
+              </span>
+            </button>
           </div>
-          <h3>{t("Teil 2: Sequenzielle Gleichgewichte", "Part 2: Sequential equilibria")}</h3>
+          <h3>{t("Teil 2: Lösungsmethoden", "Part 2: Solution methods")}</h3>
+          <p className="hint">
+            {t(
+              "Du trainierst Rückwärtsinduktion, SPE und den Vergleich zu Nash-Gleichgewichten in sequenziellen Spielen.",
+              "You practice backward induction, SPE, and the comparison with Nash equilibria in sequential games."
+            )}
+          </p>
           <div className="exercise-link-grid">
             <button
               type="button"
@@ -5049,11 +6327,58 @@ function App() {
               </span>
             </button>
           </div>
+          <h3>{t("Teil 3: Anwendungen (light)", "Part 3: Applications (light)")}</h3>
+          <p className="hint">
+            {t(
+              "Du wendest die Methoden auf klassische ökonomische Anwendungen an: Ultimatum, Stackelberg und finite Verhandlung.",
+              "You apply the methods to classic economic applications: ultimatum, Stackelberg, and finite bargaining."
+            )}
+          </p>
+          <div className="exercise-link-grid">
+            <button
+              type="button"
+              className="exercise-link"
+              onClick={() => {
+                setTreeEx5ActiveLevel(0);
+                resetTreeEx5();
+                setTreePage("ex5");
+              }}
+            >
+              <span className="exercise-link-title">
+                {t(
+                  "Übung 1 – Ultimatumspiel mit vollständig rationalen Spielern und ohne Zusatzfaktoren",
+                  "Exercise 1 - Ultimatum game with fully rational players and no additional factors"
+                )}
+              </span>
+              <span className="exercise-link-meta">
+                {buildProgressMeta(["tree_ex5_2", "tree_ex5_3"])}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="exercise-link"
+              onClick={() => {
+                resetTreeEx8(true);
+                setTreePage("ex8");
+              }}
+            >
+              <span className="exercise-link-title">
+                {t("Übung 2 – Stackelberg light", "Exercise 2 - Stackelberg light")}
+              </span>
+              <span className="exercise-link-meta">{buildProgressMeta("tree_ex8")}</span>
+            </button>
+            <button type="button" className="exercise-link" disabled>
+              <span className="exercise-link-title">
+                {t("Übung 3 – Finite Bargaining (2 Perioden) light (bald)", "Exercise 3 - Finite bargaining (2 periods) light (soon)")}
+              </span>
+              <span className="exercise-link-meta">{t("Bald", "Soon")}</span>
+            </button>
+          </div>
         </section>
       );
     }
 
-    if (treePage === "ex2") {
+    if (activeTreePage === "ex2") {
       const activeGame = treeEx2Games[treeEx2ActiveIndex];
       const activeState = treeEx2Progress[treeEx2ActiveIndex];
       const isSimulator = treeEx2ActiveIndex === 0;
@@ -5335,9 +6660,10 @@ function App() {
                 const payoffY = activeGame.payoffs[`${nodeKey}|y`];
                 const [rootAction, p2Action] = nodeKey.split("|");
                 return (
-                  <div key={`phase1-select-${nodeKey}`} className="action-row">
+                  <div key={`phase1-select-${nodeKey}`} className="action-row tree-ex2-action-row">
                     <label>{`${rootAction} → ${p2Action}`}</label>
                     <select
+                      className="tree-ex2-select"
                       value={activeState.phase1Answers[nodeKey]}
                       disabled={activeState.step !== 1}
                       onChange={(e) => setTreeEx2Phase1Answer(nodeKey, e.target.value)}
@@ -5368,9 +6694,10 @@ function App() {
                     const payoffU = activeGame.continuationPayoffs[`${rootAction}|U`];
                     const payoffD = activeGame.continuationPayoffs[`${rootAction}|D`];
                     return (
-                      <div key={`phase2-select-${rootAction}`} className="action-row">
+                      <div key={`phase2-select-${rootAction}`} className="action-row tree-ex2-action-row">
                         <label>{t("Nach", "After")} {rootAction}</label>
                         <select
+                          className="tree-ex2-select"
                           value={activeState.phase2Answers[rootAction]}
                           disabled={activeState.step !== 2}
                           onChange={(e) => setTreeEx2Phase2Answer(rootAction, e.target.value)}
@@ -5472,11 +6799,11 @@ function App() {
                   type="button"
                   className="nav-pill-btn"
                   onClick={() => {
-                    resetTreeEx3();
-                    setTreePage("ex3");
+                    resetTreeEx6();
+                    setTreePage("ex6");
                   }}
                 >
-                  {t("Weiter zu Teil 2 · Übung 1", "Next to Part 2 · Exercise 1")}
+                  {t("Weiter zu Teil 1 · Übung 3", "Next to Part 1 · Exercise 3")}
                 </button>
               </>
             ) : (
@@ -5486,11 +6813,11 @@ function App() {
                   type="button"
                   className="nav-pill-btn"
                   onClick={() => {
-                    resetTreeEx3();
-                    setTreePage("ex3");
+                    resetTreeEx6();
+                    setTreePage("ex6");
                   }}
                 >
-                  {t("Weiter zu Teil 2 · Übung 1", "Next to Part 2 · Exercise 1")}
+                  {t("Weiter zu Teil 1 · Übung 3", "Next to Part 1 · Exercise 3")}
                 </button>
               </>
             )}
@@ -5499,7 +6826,216 @@ function App() {
       );
     }
 
-    if (treePage === "ex3") {
+    if (activeTreePage === "ex6") {
+      const ex6ProfileOptions = [
+        { id: "U|L", label: "(U, L)" },
+        { id: "U|R", label: "(U, R)" },
+        { id: "D|L", label: "(D, L)" },
+        { id: "D|R", label: "(D, R)" }
+      ];
+      return (
+        <section className="panel">
+          <h2>{t("Übung 3 – Informationsmengen & simultane Züge", "Exercise 3 - Information sets and simultaneous moves")}</h2>
+          <p className="hint">
+            {t(
+              "Übersetze das Extensivspiel mit Informationsmenge in die strategische (Normal-)Form.",
+              "Translate the extensive-form game with an information set into strategic (normal) form."
+            )}
+          </p>
+          <div className="exercise-layout tree-ex-layout">
+            <article className="panel nested-panel">
+              <h3>{t("Spiel", "Game")}</h3>
+              <div className="tree-example-wrap tree-example-wrap-ex4">
+                <svg viewBox="24 90 520 360" className="tree-example-svg tree-example-svg-large tree-example-svg-ex4" role="img" aria-label={t("Spiel mit Informationsmenge", "Game with information set")}>
+                  <defs>
+                    <marker id="tree-arrow-ex6" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                      <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
+                    </marker>
+                  </defs>
+                  <line x1="72" y1="262" x2="212" y2="162" className="tree-edge" markerEnd="url(#tree-arrow-ex6)" />
+                  <line x1="72" y1="262" x2="212" y2="362" className="tree-edge" markerEnd="url(#tree-arrow-ex6)" />
+                  <text x="138" y="206" className="tree-action" textAnchor="middle" dominantBaseline="middle">U</text>
+                  <text x="138" y="322" className="tree-action" textAnchor="middle" dominantBaseline="middle">D</text>
+
+                  <line x1="236" y1="162" x2="386" y2="132" className="tree-edge" markerEnd="url(#tree-arrow-ex6)" />
+                  <line x1="236" y1="162" x2="386" y2="192" className="tree-edge" markerEnd="url(#tree-arrow-ex6)" />
+                  <line x1="236" y1="362" x2="386" y2="332" className="tree-edge" markerEnd="url(#tree-arrow-ex6)" />
+                  <line x1="236" y1="362" x2="386" y2="392" className="tree-edge" markerEnd="url(#tree-arrow-ex6)" />
+                  <text x="310" y="136" className="tree-action" textAnchor="middle" dominantBaseline="middle">L</text>
+                  <text x="310" y="188" className="tree-action" textAnchor="middle" dominantBaseline="middle">R</text>
+                  <text x="310" y="336" className="tree-action" textAnchor="middle" dominantBaseline="middle">L</text>
+                  <text x="310" y="388" className="tree-action" textAnchor="middle" dominantBaseline="middle">R</text>
+
+                  <circle cx="56" cy="262" r="20" className="tree-node decision" />
+                  <text x="56" y="262" className="tree-label" textAnchor="middle" dominantBaseline="middle">P1</text>
+                  <circle cx="220" cy="162" r="18" className="tree-node decision" />
+                  <circle cx="220" cy="362" r="18" className="tree-node decision" />
+                  <text x="220" y="162" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                  <text x="220" y="362" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                  <path d="M220 180 C262 224, 262 300, 220 344" className="tree-info-set" />
+
+                  <circle cx="396" cy="132" r="8" className="tree-node terminal" />
+                  <circle cx="396" cy="192" r="8" className="tree-node terminal" />
+                  <circle cx="396" cy="332" r="8" className="tree-node terminal" />
+                  <circle cx="396" cy="392" r="8" className="tree-node terminal" />
+                  <rect x="414" y="120" width="90" height="24" rx="6" className="tree-payoff-bg" />
+                  <rect x="414" y="180" width="90" height="24" rx="6" className="tree-payoff-bg" />
+                  <rect x="414" y="320" width="90" height="24" rx="6" className="tree-payoff-bg" />
+                  <rect x="414" y="380" width="90" height="24" rx="6" className="tree-payoff-bg" />
+                  <text x="459" y="132" className="tree-payoff" textAnchor="middle" dominantBaseline="middle">{`(${treeEx6Game.UL[0]}, ${treeEx6Game.UL[1]})`}</text>
+                  <text x="459" y="192" className="tree-payoff" textAnchor="middle" dominantBaseline="middle">{`(${treeEx6Game.UR[0]}, ${treeEx6Game.UR[1]})`}</text>
+                  <text x="459" y="332" className="tree-payoff" textAnchor="middle" dominantBaseline="middle">{`(${treeEx6Game.DL[0]}, ${treeEx6Game.DL[1]})`}</text>
+                  <text x="459" y="392" className="tree-payoff" textAnchor="middle" dominantBaseline="middle">{`(${treeEx6Game.DR[0]}, ${treeEx6Game.DR[1]})`}</text>
+                </svg>
+              </div>
+              <div className="actions">
+                <button type="button" onClick={() => resetTreeEx6(true)}>{t("Neues Spiel", "New game")}</button>
+              </div>
+            </article>
+
+            <article className="panel nested-panel">
+              <h3>{t("Fragen", "Questions")}</h3>
+              <div className="tree-ex3-question-block">
+                <h4>{t("1) Warum repräsentiert der Baum simultanes Verhalten?", "1) Why does this tree represent simultaneous behavior?")}</h4>
+                <div className="choice-list">
+                  {treeEx6InfoOptions.map((option) => (
+                    <label key={option.id} className="choice-item">
+                      <input
+                        type="radio"
+                        name="tree-ex6-info"
+                        checked={treeEx6InfoChoice === option.id}
+                        onChange={(e) => {
+                          setTreeEx6InfoChoice(e.target.value);
+                          setTreeEx6InfoFeedback("");
+                          setTreeEx6InfoFeedbackType("neutral");
+                          setTreeEx6InfoSolved(false);
+                        }}
+                        value={option.id}
+                      />
+                      <span>{t(option.textDe, option.textEn)}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="actions">
+                  <button type="button" onClick={checkTreeEx6Info}>{t("Antwort prüfen", "Check answer")}</button>
+                </div>
+                {treeEx6InfoFeedback && (
+                  <div className={`feedback-box feedback-card ${treeEx6InfoFeedbackType}`}>
+                    <strong>{treeEx6InfoFeedbackType === "success" ? t("Richtig", "Correct") : treeEx6InfoFeedbackType === "warning" ? t("Hinweis", "Hint") : t("Nicht korrekt", "Incorrect")}</strong>
+                    <p>{treeEx6InfoFeedback}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="tree-ex3-question-block">
+                <h4>{t("2) Welche strategische Form passt zum Baum?", "2) Which strategic form matches the tree?")}</h4>
+                <div className="choice-list ex6-matrix-choice-list">
+                  {treeEx6MatrixOptions.map((option) => (
+                    <label key={option.id} className="choice-item ex6-matrix-option">
+                      <input
+                        type="radio"
+                        name="tree-ex6-matrix"
+                        checked={treeEx6MatrixChoice === option.id}
+                        onChange={(e) => {
+                          setTreeEx6MatrixChoice(e.target.value);
+                          setTreeEx6MatrixFeedback("");
+                          setTreeEx6MatrixFeedbackType("neutral");
+                          setTreeEx6MatrixSolved(false);
+                        }}
+                        value={option.id}
+                      />
+                      <div className="ex6-matrix-option-content">
+                        <StaticPayoffTable
+                          data={option.matrix}
+                          rowLabel="P1"
+                          colLabel="P2"
+                          autoScale={false}
+                        />
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                <div className="actions">
+                  <button type="button" onClick={checkTreeEx6Matrix}>{t("Antwort prüfen", "Check answer")}</button>
+                </div>
+                {treeEx6MatrixFeedback && (
+                  <div className={`feedback-box feedback-card ${treeEx6MatrixFeedbackType}`}>
+                    <strong>{treeEx6MatrixFeedbackType === "success" ? t("Richtig", "Correct") : treeEx6MatrixFeedbackType === "warning" ? t("Hinweis", "Hint") : t("Nicht korrekt", "Incorrect")}</strong>
+                    <p>{treeEx6MatrixFeedback}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="tree-ex3-question-block">
+                <h4>{t("3) Welche reinen Profile sind Nash-GG und welche sind SPE?", "3) Which pure profiles are Nash equilibria and which are SPE?")}</h4>
+                <p className="hint">
+                  {t(
+                    "Markiere alle zutreffenden Profile in beiden Listen.",
+                    "Mark all matching profiles in both lists."
+                  )}
+                </p>
+                <div className="profile-order-columns">
+                  <div>
+                    <strong>{t("Reine Nash-GG", "Pure Nash equilibria")}</strong>
+                    <div className="choice-list">
+                      {ex6ProfileOptions.map((option) => (
+                        <label key={`tree-ex6-ne-${option.id}`} className="choice-item checkbox-item">
+                          <input
+                            type="checkbox"
+                            checked={treeEx6NeChoices.includes(option.id)}
+                            onChange={() => toggleTreeEx6NeChoice(option.id)}
+                          />
+                          <span><code>{option.label}</code></span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <strong>{t("Reine SPE", "Pure SPE")}</strong>
+                    <div className="choice-list">
+                      {ex6ProfileOptions.map((option) => (
+                        <label key={`tree-ex6-spe-${option.id}`} className="choice-item checkbox-item">
+                          <input
+                            type="checkbox"
+                            checked={treeEx6SpeChoices.includes(option.id)}
+                            onChange={() => toggleTreeEx6SpeChoice(option.id)}
+                          />
+                          <span><code>{option.label}</code></span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="actions">
+                  <button type="button" onClick={checkTreeEx6Equilibria}>{t("Antwort prüfen", "Check answer")}</button>
+                </div>
+                {treeEx6EqFeedback && (
+                  <div className={`feedback-box feedback-card ${treeEx6EqFeedbackType}`}>
+                    <strong>{treeEx6EqFeedbackType === "success" ? t("Richtig", "Correct") : treeEx6EqFeedbackType === "warning" ? t("Hinweis", "Hint") : t("Nicht korrekt", "Incorrect")}</strong>
+                    <p>{treeEx6EqFeedback}</p>
+                  </div>
+                )}
+              </div>
+            </article>
+          </div>
+          <div className="actions">
+            <button type="button" className="nav-pill-btn" onClick={() => setTreePage("ex2")}>{t("Zurück", "Back")}</button>
+            <button
+              type="button"
+              className="nav-pill-btn"
+              onClick={() => {
+                resetTreeEx3();
+                setTreePage("ex3");
+              }}
+            >
+              {t("Weiter zu Teil 2 · Übung 1", "Next to Part 2 · Exercise 1")}
+            </button>
+          </div>
+        </section>
+      );
+    }
+
+    if (activeTreePage === "ex3") {
       const treeEx3AllAnswered = Boolean(treeEx3SpeFeedback && treeEx3NashFeedback && treeEx3ThreatFeedback);
       const ex3P1Label = (action) => (action === "yes" ? t("Ja", "Yes") : t("Nein", "No"));
       const ex3P2Label = (action) => (action === "fight" ? t("Kampf", "Fight") : t("Nachgeben", "Accommodate"));
@@ -5566,7 +7102,7 @@ function App() {
               <h3>{t("Fragen", "Questions")}</h3>
 
               <div className="tree-ex3-question-block">
-                <h4>{t("1) Geben Sie alle teilspielperfekten GG an.", "1) Provide all subgame-perfect equilibria.")}</h4>
+                <h4>{t("1) Gib alle teilspielperfekten GG an.", "1) Provide all subgame-perfect equilibria.")}</h4>
                 <div className="choice-list">
                   {TREE_EX3_SPE_OPTIONS.map((option) => (
                     <label key={option.id} className="choice-item checkbox-item">
@@ -5591,7 +7127,7 @@ function App() {
               </div>
 
               <div className="tree-ex3-question-block">
-                <h4>{t("2) Geben Sie alle Nash-GG an.", "2) Provide all Nash equilibria.")}</h4>
+                <h4>{t("2) Gib alle Nash-GG an.", "2) Provide all Nash equilibria.")}</h4>
                 <div className="choice-list">
                   {TREE_EX3_NASH_OPTIONS.map((option) => (
                     <label key={option.id} className="choice-item checkbox-item">
@@ -5672,7 +7208,7 @@ function App() {
             </article>
           </div>
           <div className="actions">
-            <button type="button" className="nav-pill-btn" onClick={() => setTreePage("ex2")}>{t("Zurück", "Back")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setTreePage("ex6")}>{t("Zurück", "Back")}</button>
             <button
               type="button"
               className="nav-pill-btn"
@@ -5688,13 +7224,13 @@ function App() {
       );
     }
 
-    if (treePage === "ex4") {
+    if (activeTreePage === "ex4") {
       return (
         <section className="panel">
           <h2>{t("Übung 2 – Teilspielperfektes GG und Nash-GG mit 3 Spielern", "Exercise 2 - Subgame-perfect and Nash equilibria with 3 players")}</h2>
           <p className="hint">
             {t(
-              "Geben Sie alle teilspielperfekten Gleichgewichte und alle Nash-Gleichgewichte an.",
+              "Gib alle teilspielperfekten Gleichgewichte und alle Nash-Gleichgewichte an.",
               "Provide all subgame-perfect equilibria and all Nash equilibria."
             )}
           </p>
@@ -5814,7 +7350,7 @@ function App() {
             <article className="panel nested-panel">
               <h3>{t("Fragen", "Questions")}</h3>
               <div className="tree-ex3-question-block">
-                <h4>{t("1) Geben Sie alle teilspielperfekten GG an.", "1) Provide all subgame-perfect equilibria.")}</h4>
+                <h4>{t("1) Gib alle teilspielperfekten GG an.", "1) Provide all subgame-perfect equilibria.")}</h4>
                 <div className="choice-list">
                   {treeEx4SpeEntries.map((entry, index) => (
                     <div key={`spe-entry-${index}`} className="strategy-entry-row tree-ex4-entry-row">
@@ -5863,7 +7399,7 @@ function App() {
               </div>
 
               <div className="tree-ex3-question-block">
-                <h4>{t("2) Geben Sie alle Nash-GG an.", "2) Provide all Nash equilibria.")}</h4>
+                <h4>{t("2) Gib alle Nash-GG an.", "2) Provide all Nash equilibria.")}</h4>
                 <div className="choice-list">
                   {treeEx4NashEntries.map((entry, index) => (
                     <div key={`nash-entry-${index}`} className="strategy-entry-row tree-ex4-entry-row">
@@ -5921,6 +7457,517 @@ function App() {
           </div>
           <div className="actions">
             <button type="button" className="nav-pill-btn" onClick={() => setTreePage("ex3")}>{t("Zurück", "Back")}</button>
+            <button
+              type="button"
+              className="nav-pill-btn"
+              onClick={() => {
+                setTreeEx5ActiveLevel(0);
+                resetTreeEx5();
+                setTreePage("ex5");
+              }}
+            >
+              {t("Weiter zu Teil 3 · Übung 1", "Next to Part 3 · Exercise 1")}
+            </button>
+          </div>
+        </section>
+      );
+    }
+
+    if (activeTreePage === "ex5") {
+      const isThreeStage = treeEx5ActiveLevel === 1;
+      const ex5Offers = isThreeStage ? TREE_EX5_3_OFFERS : TREE_EX5_2_OFFERS;
+      const ex5SpeOptions = isThreeStage ? TREE_EX5_3_SPE_OPTIONS : TREE_EX5_2_SPE_OPTIONS;
+      const solved2 = !!exerciseProgress.tree_ex5_2?.solved;
+      const solved3 = !!exerciseProgress.tree_ex5_3?.solved;
+      return (
+        <section className="panel">
+          <h2>
+            {t(
+              "Übung 1 – Ultimatumspiel mit vollständig rationalen Spielern und ohne Zusatzfaktoren",
+              "Exercise 1 - Ultimatum game with fully rational players and no additional factors"
+            )}
+          </h2>
+          <LevelSwitch
+            value={treeEx5ActiveLevel}
+            onChange={setTreeEx5ActiveLevel}
+            leftLabel={`${t("2-stufig", "2-stage")}${solved2 ? " ✓" : ""}`}
+            rightLabel={`${t("3-stufig", "3-stage")}${solved3 ? " ✓" : ""}`}
+            ariaLabel={t("Levelauswahl Ultimatum", "Ultimatum level switch")}
+          />
+          <p className="hint">
+            {isThreeStage
+              ? t(
+                  "3-stufig: Nach einer Ablehnung geht die Verhandlung in die nächste Runde mit einem neuen Angebot.",
+                  "3-stage: After a rejection, the negotiation continues to the next round with a new offer."
+                )
+              : t(
+                  "2-stufig: Spieler 1 wählt ein Angebot. Danach entscheidet Spieler 2 im jeweiligen Teilspiel über Annehmen (A) oder Ablehnen (R).",
+                  "2-stage: Player 1 chooses an offer. Then Player 2 decides in the corresponding subgame whether to Accept (A) or Reject (R)."
+                )}
+          </p>
+          <div className="exercise-layout tree-ex-layout">
+            <article className="panel nested-panel">
+              <h3>{t("Spiel", "Game")}</h3>
+              <div className={`tree-example-wrap tree-example-wrap-ex4 tree-example-wrap-ex5 ${isThreeStage ? "tree-example-wrap-ex5-3" : "tree-example-wrap-ex5-2"}`}>
+                {!isThreeStage ? (
+                  <svg viewBox="20 40 560 430" className="tree-example-svg tree-example-svg-large tree-example-svg-ex5 tree-example-svg-ex5-2" role="img" aria-label={t("Ultimatum-Spielbaum", "Ultimatum game tree")}>
+                    <defs>
+                      <marker id="tree-arrow-ex5" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                        <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
+                      </marker>
+                    </defs>
+                    <line x1="92" y1="260" x2="248" y2="100" className="tree-edge" markerEnd="url(#tree-arrow-ex5)" />
+                    <line x1="92" y1="260" x2="248" y2="260" className="tree-edge" markerEnd="url(#tree-arrow-ex5)" />
+                    <line x1="92" y1="260" x2="248" y2="420" className="tree-edge" markerEnd="url(#tree-arrow-ex5)" />
+                    <text x="170" y="170" className="tree-action" textAnchor="middle" dominantBaseline="middle">90/10</text>
+                    <text x="170" y="246" className="tree-action" textAnchor="middle" dominantBaseline="middle">70/30</text>
+                    <text x="170" y="352" className="tree-action" textAnchor="middle" dominantBaseline="middle">50/50</text>
+                    <line x1="276" y1="96" x2="446" y2="70" className="tree-edge" markerEnd="url(#tree-arrow-ex5)" />
+                    <line x1="276" y1="104" x2="446" y2="132" className="tree-edge" markerEnd="url(#tree-arrow-ex5)" />
+                    <line x1="276" y1="256" x2="446" y2="230" className="tree-edge" markerEnd="url(#tree-arrow-ex5)" />
+                    <line x1="276" y1="264" x2="446" y2="292" className="tree-edge" markerEnd="url(#tree-arrow-ex5)" />
+                    <line x1="276" y1="416" x2="446" y2="390" className="tree-edge" markerEnd="url(#tree-arrow-ex5)" />
+                    <line x1="276" y1="424" x2="446" y2="452" className="tree-edge" markerEnd="url(#tree-arrow-ex5)" />
+                    <text x="361" y="82" className="tree-action" textAnchor="middle" dominantBaseline="middle">A</text>
+                    <text x="361" y="124" className="tree-action" textAnchor="middle" dominantBaseline="middle">R</text>
+                    <text x="361" y="242" className="tree-action" textAnchor="middle" dominantBaseline="middle">A</text>
+                    <text x="361" y="284" className="tree-action" textAnchor="middle" dominantBaseline="middle">R</text>
+                    <text x="361" y="402" className="tree-action" textAnchor="middle" dominantBaseline="middle">A</text>
+                    <text x="361" y="444" className="tree-action" textAnchor="middle" dominantBaseline="middle">R</text>
+                    <circle cx="70" cy="260" r="20" className="tree-node decision" />
+                    <text x="70" y="260" className="tree-label" textAnchor="middle" dominantBaseline="middle">P1</text>
+                    <circle cx="258" cy="100" r="18" className="tree-node decision" />
+                    <circle cx="258" cy="260" r="18" className="tree-node decision" />
+                    <circle cx="258" cy="420" r="18" className="tree-node decision" />
+                    <text x="258" y="100" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                    <text x="258" y="260" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                    <text x="258" y="420" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                    <circle cx="456" cy="70" r="8" className="tree-node terminal" />
+                    <circle cx="456" cy="132" r="8" className="tree-node terminal" />
+                    <circle cx="456" cy="230" r="8" className="tree-node terminal" />
+                    <circle cx="456" cy="292" r="8" className="tree-node terminal" />
+                    <circle cx="456" cy="390" r="8" className="tree-node terminal" />
+                    <circle cx="456" cy="452" r="8" className="tree-node terminal" />
+                    <rect x="474" y="57" width="90" height="24" rx="6" className="tree-payoff-bg" />
+                    <rect x="474" y="119" width="90" height="24" rx="6" className="tree-payoff-bg" />
+                    <rect x="474" y="217" width="90" height="24" rx="6" className="tree-payoff-bg" />
+                    <rect x="474" y="279" width="90" height="24" rx="6" className="tree-payoff-bg" />
+                    <rect x="474" y="377" width="90" height="24" rx="6" className="tree-payoff-bg" />
+                    <rect x="474" y="439" width="90" height="24" rx="6" className="tree-payoff-bg" />
+                    <text x="519" y="69" className="tree-payoff" textAnchor="middle" dominantBaseline="middle">(9, 1)</text>
+                    <text x="519" y="131" className="tree-payoff" textAnchor="middle" dominantBaseline="middle">(0, 0)</text>
+                    <text x="519" y="229" className="tree-payoff" textAnchor="middle" dominantBaseline="middle">(7, 3)</text>
+                    <text x="519" y="291" className="tree-payoff" textAnchor="middle" dominantBaseline="middle">(0, 0)</text>
+                    <text x="519" y="389" className="tree-payoff" textAnchor="middle" dominantBaseline="middle">(5, 5)</text>
+                    <text x="519" y="451" className="tree-payoff" textAnchor="middle" dominantBaseline="middle">(0, 0)</text>
+                  </svg>
+                ) : (
+                  <svg viewBox="40 30 1120 520" className="tree-example-svg tree-example-svg-large tree-example-svg-ex5 tree-example-svg-ex5-3" role="img" aria-label={t("Dreistufiges Ultimatum-Spiel", "Three-stage ultimatum game")}>
+                    <defs>
+                      <marker id="tree-arrow-ex5-3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                        <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
+                      </marker>
+                    </defs>
+                    <circle cx="96" cy="120" r="18" className="tree-node decision" />
+                    <text x="96" y="120" className="tree-label" textAnchor="middle" dominantBaseline="middle">P1</text>
+                    <line x1="114" y1="120" x2="244" y2="120" className="tree-edge" markerEnd="url(#tree-arrow-ex5-3)" />
+                    <text x="178" y="104" className="tree-action" textAnchor="middle" dominantBaseline="middle">70/30</text>
+
+                    <circle cx="262" cy="120" r="18" className="tree-node decision" />
+                    <text x="262" y="120" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                    <line x1="280" y1="118" x2="420" y2="92" className="tree-edge" markerEnd="url(#tree-arrow-ex5-3)" />
+                    <line x1="276" y1="132" x2="416" y2="184" className="tree-edge" markerEnd="url(#tree-arrow-ex5-3)" />
+                    <text x="350" y="96" className="tree-action" textAnchor="middle" dominantBaseline="middle">A</text>
+                    <text x="346" y="163" className="tree-action" textAnchor="middle" dominantBaseline="middle">R</text>
+                    <circle cx="438" cy="90" r="8" className="tree-node terminal" />
+                    <rect x="456" y="78" width="90" height="24" rx="6" className="tree-payoff-bg" />
+                    <text x="501" y="90" className="tree-payoff" textAnchor="middle" dominantBaseline="middle">(7, 3)</text>
+
+                    <circle cx="436" cy="192" r="18" className="tree-node decision" />
+                    <text x="436" y="192" className="tree-label" textAnchor="middle" dominantBaseline="middle">P1</text>
+                    <line x1="454" y1="192" x2="584" y2="192" className="tree-edge" markerEnd="url(#tree-arrow-ex5-3)" />
+                    <text x="520" y="176" className="tree-action" textAnchor="middle" dominantBaseline="middle">60/20</text>
+
+                    <circle cx="602" cy="192" r="18" className="tree-node decision" />
+                    <text x="602" y="192" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                    <line x1="620" y1="190" x2="760" y2="164" className="tree-edge" markerEnd="url(#tree-arrow-ex5-3)" />
+                    <line x1="616" y1="204" x2="756" y2="256" className="tree-edge" markerEnd="url(#tree-arrow-ex5-3)" />
+                    <text x="690" y="168" className="tree-action" textAnchor="middle" dominantBaseline="middle">A</text>
+                    <text x="686" y="235" className="tree-action" textAnchor="middle" dominantBaseline="middle">R</text>
+                    <circle cx="778" cy="162" r="8" className="tree-node terminal" />
+                    <rect x="796" y="150" width="90" height="24" rx="6" className="tree-payoff-bg" />
+                    <text x="841" y="162" className="tree-payoff" textAnchor="middle" dominantBaseline="middle">(6, 2)</text>
+
+                    <circle cx="776" cy="264" r="18" className="tree-node decision" />
+                    <text x="776" y="264" className="tree-label" textAnchor="middle" dominantBaseline="middle">P1</text>
+                    <line x1="794" y1="264" x2="924" y2="264" className="tree-edge" markerEnd="url(#tree-arrow-ex5-3)" />
+                    <text x="860" y="248" className="tree-action" textAnchor="middle" dominantBaseline="middle">50/10</text>
+
+                    <circle cx="942" cy="264" r="18" className="tree-node decision" />
+                    <text x="942" y="264" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                    <line x1="960" y1="262" x2="1010" y2="236" className="tree-edge" markerEnd="url(#tree-arrow-ex5-3)" />
+                    <line x1="958" y1="274" x2="1010" y2="300" className="tree-edge" markerEnd="url(#tree-arrow-ex5-3)" />
+                    <text x="985" y="240" className="tree-action" textAnchor="middle" dominantBaseline="middle">A</text>
+                    <text x="985" y="293" className="tree-action" textAnchor="middle" dominantBaseline="middle">R</text>
+                    <circle cx="1026" cy="234" r="8" className="tree-node terminal" />
+                    <circle cx="1026" cy="302" r="8" className="tree-node terminal" />
+                    <rect x="1044" y="222" width="90" height="24" rx="6" className="tree-payoff-bg" />
+                    <rect x="1044" y="290" width="90" height="24" rx="6" className="tree-payoff-bg" />
+                    <text x="1089" y="234" className="tree-payoff" textAnchor="middle" dominantBaseline="middle">(5, 1)</text>
+                    <text x="1089" y="302" className="tree-payoff" textAnchor="middle" dominantBaseline="middle">(0, 0)</text>
+                  </svg>
+                )}
+              </div>
+              <div className="actions">
+                <button type="button" onClick={resetTreeEx5}>{t("Zurücksetzen", "Reset")}</button>
+              </div>
+            </article>
+
+            <article className="panel nested-panel">
+              <h3>{t("Fragen", "Questions")}</h3>
+              <div className="tree-ex3-question-block">
+                <h4>{t("1) Rückwärtsinduktion: Was ist die optimale Antwort im jeweiligen Teilspiel?", "1) Backward induction: What is the optimal response in each subgame?")}</h4>
+                <p className="hint">
+                  {isThreeStage
+                    ? t("Lege für jede Runde fest, ob der antwortende Spieler annimmt (A) oder ablehnt (R).", "For each round, decide whether the responding player accepts (A) or rejects (R).")
+                    : t("Lege für jedes Angebot fest, ob Spieler 2 annimmt (A) oder ablehnt (R).", "For each offer, decide whether Player 2 accepts (A) or rejects (R).")}
+                </p>
+                <div className="ex8-q1-list">
+                  {ex5Offers.map((offer) => (
+                    <div key={`tree-ex5-p2-${offer.id}`} className="ex8-q1-row">
+                      <div className="ex8-response-title-inline">
+                        <span>{t("Nach", "After")}</span>
+                        <code>{offer.label}</code>
+                      </div>
+                      <div className="ex8-q1-options">
+                        <label className="choice-item ex8-small-choice">
+                          <input
+                            type="radio"
+                            name={`tree-ex5-p2-${offer.id}`}
+                            checked={treeEx5P2Answers[offer.id] === "A"}
+                            onChange={() => setTreeEx5Answer(offer.id, "A")}
+                            value="A"
+                          />
+                          <span><code>A</code></span>
+                        </label>
+                        <label className="choice-item ex8-small-choice">
+                          <input
+                            type="radio"
+                            name={`tree-ex5-p2-${offer.id}`}
+                            checked={treeEx5P2Answers[offer.id] === "R"}
+                            onChange={() => setTreeEx5Answer(offer.id, "R")}
+                            value="R"
+                          />
+                          <span><code>R</code></span>
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="actions">
+                  <button type="button" onClick={checkTreeEx5Phase1}>{t("Schritt prüfen", "Check step")}</button>
+                </div>
+                {treeEx5Phase1Feedback && (
+                  <div className={`feedback-box feedback-card ${treeEx5Phase1FeedbackType}`}>
+                    <strong>{treeEx5Phase1FeedbackType === "success" ? t("Richtig", "Correct") : treeEx5Phase1FeedbackType === "warning" ? t("Hinweis", "Hint") : t("Nicht korrekt", "Incorrect")}</strong>
+                    <p>{treeEx5Phase1Feedback}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="tree-ex3-question-block">
+                <h4>{t("2) SPE-Check: Welches Profil ist teilspielperfekt?", "2) SPE check: Which profile is subgame-perfect?")}</h4>
+                <div className="choice-list">
+                  {ex5SpeOptions.map((option) => (
+                    <label key={option.id} className="choice-item">
+                      <input
+                        type="radio"
+                        name="tree-ex5-spe"
+                        checked={treeEx5SpeChoice === option.id}
+                        onChange={(e) => {
+                          setTreeEx5SpeChoice(e.target.value);
+                          setTreeEx5SpeFeedback("");
+                          setTreeEx5SpeFeedbackType("neutral");
+                        }}
+                        value={option.id}
+                      />
+                      <span>
+                        <code>
+                          {!isThreeStage
+                            ? `(${option.p1}, (${option.p2.join(", ")}))`
+                            : `(${option.p2.join(", ")})`}
+                        </code>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <div className="actions">
+                  <button type="button" onClick={checkTreeEx5Spe}>{t("SPE prüfen", "Check SPE")}</button>
+                </div>
+                {treeEx5SpeFeedback && (
+                  <div className={`feedback-box feedback-card ${treeEx5SpeFeedbackType}`}>
+                    <strong>{treeEx5SpeFeedbackType === "success" ? t("Richtig", "Correct") : treeEx5SpeFeedbackType === "warning" ? t("Hinweis", "Hint") : t("Nicht korrekt", "Incorrect")}</strong>
+                    <p>{treeEx5SpeFeedback}</p>
+                  </div>
+                )}
+              </div>
+
+              {treeEx5OverallFeedback && (
+                <div className={`feedback-box feedback-card ${treeEx5OverallFeedbackType}`}>
+                  <strong>{treeEx5OverallFeedbackType === "success" ? t("Abgeschlossen", "Completed") : t("Hinweis", "Hint")}</strong>
+                  <p>{treeEx5OverallFeedback}</p>
+                </div>
+              )}
+            </article>
+          </div>
+          <div className="actions">
+            <button type="button" className="nav-pill-btn" onClick={() => setTreePage("ex4")}>{t("Zurück", "Back")}</button>
+            <button
+              type="button"
+              className="nav-pill-btn"
+              onClick={() => {
+                resetTreeEx8(true);
+                setTreePage("ex8");
+              }}
+            >
+              {t("Weiter zu Übung 2", "Next to Exercise 2")}
+            </button>
+          </div>
+        </section>
+      );
+    }
+
+    if (activeTreePage === "ex8") {
+      const stepOneSolved = treeEx8P2Solved;
+      const highBest = treeEx8Solution.p2BestByOffer["q1-high"];
+      const lowBest = treeEx8Solution.p2BestByOffer["q1-low"];
+      const highQ21Active = stepOneSolved && highBest === "q2=1";
+      const highQ23Active = stepOneSolved && highBest === "q2=3";
+      const lowQ21Active = stepOneSolved && lowBest === "q2=1";
+      const lowQ23Active = stepOneSolved && lowBest === "q2=3";
+      const edgeStateClass = (isActive) => (stepOneSolved ? (isActive ? "bi-active" : "bi-muted") : "");
+      const terminalStateClass = (isActive) => (stepOneSolved ? (isActive ? "bi-selected-terminal" : "bi-muted-node") : "");
+      const textStateClass = (isActive) => (stepOneSolved ? (isActive ? "bi-active" : "bi-muted") : "");
+      return (
+        <section className="panel">
+          <h2>{t("Übung 2 – Stackelberg light", "Exercise 2 - Stackelberg light")}</h2>
+          <p className="hint">
+            {t(
+              "Spieler 1 (Leader) wählt zuerst die Menge q1, dann reagiert Spieler 2 (Follower) mit q2.",
+              "Player 1 (leader) chooses quantity q1 first, then Player 2 (follower) responds with q2."
+            )}
+          </p>
+          <div className="exercise-layout tree-ex-layout">
+            <article className="panel nested-panel">
+              <h3>{t("Spiel", "Game")}</h3>
+              <div className="tree-example-wrap tree-example-wrap-ex4">
+                <svg viewBox="24 108 530 360" className="tree-example-svg tree-example-svg-large tree-example-svg-ex4" role="img" aria-label={t("Stackelberg-Spielbaum", "Stackelberg game tree")}>
+                  <defs>
+                    <marker id="tree-arrow-ex8" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                      <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
+                    </marker>
+                  </defs>
+                  <line x1="70" y1="276" x2="214" y2="178" className="tree-edge" markerEnd="url(#tree-arrow-ex8)" />
+                  <line x1="70" y1="276" x2="214" y2="370" className="tree-edge" markerEnd="url(#tree-arrow-ex8)" />
+                  <text x="146" y="216" className="tree-action" textAnchor="middle" dominantBaseline="middle">q1=4</text>
+                  <text x="146" y="338" className="tree-action" textAnchor="middle" dominantBaseline="middle">q1=2</text>
+
+                  <line x1="244" y1="174" x2="404" y2="142" className={`tree-edge ${edgeStateClass(highQ21Active)}`} markerEnd="url(#tree-arrow-ex8)" />
+                  <line x1="244" y1="174" x2="404" y2="206" className={`tree-edge ${edgeStateClass(highQ23Active)}`} markerEnd="url(#tree-arrow-ex8)" />
+                  <text x="324" y="144" className={`tree-action ${textStateClass(highQ21Active)}`} textAnchor="middle" dominantBaseline="middle">q2=1</text>
+                  <text x="324" y="202" className={`tree-action ${textStateClass(highQ23Active)}`} textAnchor="middle" dominantBaseline="middle">q2=3</text>
+
+                  <line x1="244" y1="374" x2="404" y2="342" className={`tree-edge ${edgeStateClass(lowQ21Active)}`} markerEnd="url(#tree-arrow-ex8)" />
+                  <line x1="244" y1="374" x2="404" y2="406" className={`tree-edge ${edgeStateClass(lowQ23Active)}`} markerEnd="url(#tree-arrow-ex8)" />
+                  <text x="324" y="344" className={`tree-action ${textStateClass(lowQ21Active)}`} textAnchor="middle" dominantBaseline="middle">q2=1</text>
+                  <text x="324" y="402" className={`tree-action ${textStateClass(lowQ23Active)}`} textAnchor="middle" dominantBaseline="middle">q2=3</text>
+
+                  <circle cx="54" cy="276" r="20" className="tree-node decision" />
+                  <text x="54" y="276" className="tree-label" textAnchor="middle" dominantBaseline="middle">P1</text>
+                  <circle cx="228" cy="174" r="18" className="tree-node decision" />
+                  <circle cx="228" cy="374" r="18" className="tree-node decision" />
+                  <text x="228" y="174" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                  <text x="228" y="374" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+
+                  <circle cx="414" cy="142" r="8" className={`tree-node terminal ${terminalStateClass(highQ21Active)}`} />
+                  <circle cx="414" cy="206" r="8" className={`tree-node terminal ${terminalStateClass(highQ23Active)}`} />
+                  <circle cx="414" cy="342" r="8" className={`tree-node terminal ${terminalStateClass(lowQ21Active)}`} />
+                  <circle cx="414" cy="406" r="8" className={`tree-node terminal ${terminalStateClass(lowQ23Active)}`} />
+                  <rect x="430" y="130" width="90" height="24" rx="6" className={`tree-payoff-bg ${textStateClass(highQ21Active)}`} />
+                  <rect x="430" y="194" width="90" height="24" rx="6" className={`tree-payoff-bg ${textStateClass(highQ23Active)}`} />
+                  <rect x="430" y="330" width="90" height="24" rx="6" className={`tree-payoff-bg ${textStateClass(lowQ21Active)}`} />
+                  <rect x="430" y="394" width="90" height="24" rx="6" className={`tree-payoff-bg ${textStateClass(lowQ23Active)}`} />
+                  <text x="475" y="142" className={`tree-payoff ${textStateClass(highQ21Active)}`} textAnchor="middle" dominantBaseline="middle">{`(${treeEx8SafeGame.offers[0].outcomes["q2=1"][0]}, ${treeEx8SafeGame.offers[0].outcomes["q2=1"][1]})`}</text>
+                  <text x="475" y="206" className={`tree-payoff ${textStateClass(highQ23Active)}`} textAnchor="middle" dominantBaseline="middle">{`(${treeEx8SafeGame.offers[0].outcomes["q2=3"][0]}, ${treeEx8SafeGame.offers[0].outcomes["q2=3"][1]})`}</text>
+                  <text x="475" y="342" className={`tree-payoff ${textStateClass(lowQ21Active)}`} textAnchor="middle" dominantBaseline="middle">{`(${treeEx8SafeGame.offers[1].outcomes["q2=1"][0]}, ${treeEx8SafeGame.offers[1].outcomes["q2=1"][1]})`}</text>
+                  <text x="475" y="406" className={`tree-payoff ${textStateClass(lowQ23Active)}`} textAnchor="middle" dominantBaseline="middle">{`(${treeEx8SafeGame.offers[1].outcomes["q2=3"][0]}, ${treeEx8SafeGame.offers[1].outcomes["q2=3"][1]})`}</text>
+                </svg>
+              </div>
+              <div className="actions">
+                <button type="button" onClick={() => resetTreeEx8(true)}>{t("Neues Spiel", "New game")}</button>
+                <button type="button" onClick={() => setShowHelpTreeEx8((v) => !v)}>{t("Hilfe", "Help")}</button>
+              </div>
+              {showHelpTreeEx8 && (
+                <section className="panel nested-panel">
+                  <h4>{t("Hilfe", "Help")}</h4>
+                  <ul className="intro-list">
+                    <li>
+                      {t(
+                        "Wichtig: q1 und q2 sind Mengenentscheidungen (Output), nicht Auszahlungen. Die Auszahlungen stehen nur in den Endknoten als (u1, u2).",
+                        "Important: q1 and q2 are quantity choices (output), not payoffs. Payoffs only appear at terminal nodes as (u1, u2)."
+                      )}
+                    </li>
+                    <li>
+                      {t(
+                        "Mehr produzieren ist nicht automatisch besser. Je nach Reaktion des Gegners kann eine kleinere Menge für den Leader profitabler sein.",
+                        "Producing more is not automatically better. Depending on the opponent's response, a smaller quantity can be more profitable for the leader."
+                      )}
+                    </li>
+                    <li>
+                      {t(
+                        "Schritt 1: Löse zuerst die beiden P2-Teilspiele. P2 nimmt jeweils die Aktion mit höherem eigenem Payoff.",
+                        "Step 1: Solve the two P2 subgames first. In each subgame, P2 chooses the action with higher own payoff."
+                      )}
+                    </li>
+                    <li>
+                      {t(
+                        "Schritt 2: Setze diese Antworten in den Startknoten ein und vergleiche die resultierenden P1-Auszahlungen.",
+                        "Step 2: Plug those responses into the root node and compare resulting P1 payoffs."
+                      )}
+                    </li>
+                    <li>
+                      {t(
+                        "Schritt 3: Ein SPE enthält die optimale Startaktion von P1 und optimale Reaktionen von P2 in allen Teilspielen.",
+                        "Step 3: An SPE includes P1's optimal initial action and P2's optimal responses in all subgames."
+                      )}
+                    </li>
+                  </ul>
+                </section>
+              )}
+            </article>
+
+            <article className="panel nested-panel">
+              <h3>{t("Fragen", "Questions")}</h3>
+              <div className="tree-ex3-question-block">
+                <h4>{t("1) Rückwärtsinduktion: Wie reagiert Spieler 2?", "1) Backward induction: How does Player 2 respond?")}</h4>
+                <div className="ex8-q1-list">
+                  {treeEx8SafeGame.offers.map((offer) => (
+                    <div key={offer.id} className="ex8-q1-row">
+                      <div className="ex8-response-title-inline">
+                        <span>{t("Nach", "After")}</span>
+                        <code>{offer.p1Action}</code>
+                      </div>
+                      <div className="ex8-q1-options">
+                        <label className="choice-item ex8-small-choice">
+                          <input
+                            type="radio"
+                            name={`tree-ex8-p2-${offer.id}`}
+                            checked={treeEx8P2Answers[offer.id] === "q2=1"}
+                            onChange={() => setTreeEx8P2Answer(offer.id, "q2=1")}
+                            value="q2=1"
+                          />
+                          <span><code>q2=1</code></span>
+                        </label>
+                        <label className="choice-item ex8-small-choice">
+                          <input
+                            type="radio"
+                            name={`tree-ex8-p2-${offer.id}`}
+                            checked={treeEx8P2Answers[offer.id] === "q2=3"}
+                            onChange={() => setTreeEx8P2Answer(offer.id, "q2=3")}
+                            value="q2=3"
+                          />
+                          <span><code>q2=3</code></span>
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="actions">
+                  <button type="button" onClick={checkTreeEx8P2}>{t("Schritt prüfen", "Check step")}</button>
+                </div>
+                {treeEx8P2Feedback && (
+                  <div className={`feedback-box feedback-card ${treeEx8P2FeedbackType}`}>
+                    <strong>{treeEx8P2FeedbackType === "success" ? t("Richtig", "Correct") : treeEx8P2FeedbackType === "warning" ? t("Hinweis", "Hint") : t("Nicht korrekt", "Incorrect")}</strong>
+                    <p>{treeEx8P2Feedback}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="tree-ex3-question-block">
+                <h4>{t("2) Antizipation: Was wählt Spieler 1?", "2) Anticipation: What does Player 1 choose?")}</h4>
+                <div className="choice-list ex8-q2-inline">
+                  {TREE_EX8_Q1_ACTIONS.map((choice) => (
+                    <label key={`tree-ex8-p1-${choice}`} className="choice-item">
+                      <input
+                        type="radio"
+                        name="tree-ex8-p1"
+                        checked={treeEx8P1Choice === choice}
+                        onChange={(e) => {
+                          setTreeEx8P1Choice(e.target.value);
+                          setTreeEx8P1Feedback("");
+                          setTreeEx8P1FeedbackType("neutral");
+                          setTreeEx8P1Solved(false);
+                        }}
+                        value={choice}
+                      />
+                      <span><code>{choice}</code></span>
+                    </label>
+                  ))}
+                </div>
+                <div className="actions">
+                  <button type="button" onClick={checkTreeEx8P1}>{t("Schritt prüfen", "Check step")}</button>
+                </div>
+                {treeEx8P1Feedback && (
+                  <div className={`feedback-box feedback-card ${treeEx8P1FeedbackType}`}>
+                    <strong>{treeEx8P1FeedbackType === "success" ? t("Richtig", "Correct") : treeEx8P1FeedbackType === "warning" ? t("Hinweis", "Hint") : t("Nicht korrekt", "Incorrect")}</strong>
+                    <p>{treeEx8P1Feedback}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="tree-ex3-question-block">
+                <h4>{t("3) SPE-Check", "3) SPE check")}</h4>
+                <div className="choice-list">
+                  {treeEx8SpeOptions.map((option) => (
+                    <label key={option.id} className="choice-item">
+                      <input
+                        type="radio"
+                        name="tree-ex8-spe"
+                        checked={treeEx8SpeChoice === option.id}
+                        onChange={(e) => {
+                          setTreeEx8SpeChoice(e.target.value);
+                          setTreeEx8SpeFeedback("");
+                          setTreeEx8SpeFeedbackType("neutral");
+                          setTreeEx8SpeSolved(false);
+                        }}
+                        value={option.id}
+                      />
+                      <span><code>{option.text}</code></span>
+                    </label>
+                  ))}
+                </div>
+                <div className="actions">
+                  <button type="button" onClick={checkTreeEx8Spe}>{t("SPE prüfen", "Check SPE")}</button>
+                </div>
+                {treeEx8SpeFeedback && (
+                  <div className={`feedback-box feedback-card ${treeEx8SpeFeedbackType}`}>
+                    <strong>{treeEx8SpeFeedbackType === "success" ? t("Richtig", "Correct") : treeEx8SpeFeedbackType === "warning" ? t("Hinweis", "Hint") : t("Nicht korrekt", "Incorrect")}</strong>
+                    <p>{treeEx8SpeFeedback}</p>
+                  </div>
+                )}
+              </div>
+
+              {treeEx8OverallFeedback && (
+                <div className={`feedback-box feedback-card ${treeEx8OverallFeedbackType}`}>
+                  <strong>{treeEx8OverallFeedbackType === "success" ? t("Abgeschlossen", "Completed") : t("Hinweis", "Hint")}</strong>
+                  <p>{treeEx8OverallFeedback}</p>
+                </div>
+              )}
+            </article>
+          </div>
+          <div className="actions">
+            <button type="button" className="nav-pill-btn" onClick={() => setTreePage("ex5")}>{t("Zurück", "Back")}</button>
+            <button type="button" className="nav-pill-btn" onClick={() => setTreePage("toc")}>{t("Zur Übersicht", "Back to overview")}</button>
           </div>
         </section>
       );
@@ -6160,6 +8207,7 @@ function App() {
   }
 
   function renderNormalExercises() {
+    const activeNormalPage = normalRenderPage;
     const exLinksTeil1 = [
       { key: "ex1", progressKey: "normal_ex1", label: t("Übung 1 – Beste Antworten", "Exercise 1 - Best responses") },
       { key: "ex2", progressKey: "normal_ex2", label: t("Übung 2 – Strikt dominante Strategien", "Exercise 2 - Strictly dominant strategies") },
@@ -6176,7 +8224,7 @@ function App() {
       { key: "ex9", progressKey: "normal_ex9", label: t("Übung 1 – Gemischtes Nash-Gleichgewicht im Marktauswahlspiel", "Exercise 1 - Mixed Nash equilibrium in the market selection game") }
     ];
 
-    if (normalPage === "toc") {
+    if (activeNormalPage === "toc") {
       return (
         <section className="panel">
           <h2>{t("Trainiere Simultane Spiele (Normalform)", "Train simultaneous games (normal form)")}</h2>
@@ -6226,7 +8274,7 @@ function App() {
       );
     }
 
-    if (normalPage === "ex1") {
+    if (activeNormalPage === "ex1") {
       return (
         <section className="panel">
           <h2>{t("Übung 1: Beste Antworten", "Exercise 1: Best responses")}</h2>
@@ -6310,7 +8358,7 @@ function App() {
       );
     }
 
-    if (normalPage === "ex2") {
+    if (activeNormalPage === "ex2") {
       return (
         <section className="panel">
           <h2>{t("Übung 2: Strikt dominante Strategien", "Exercise 2: Strictly dominant strategies")}</h2>
@@ -6385,7 +8433,7 @@ function App() {
       );
     }
 
-    if (normalPage === "ex3") {
+    if (activeNormalPage === "ex3") {
       return (
         <section className="panel">
           <h2>{t("Übung 3: Dominante Strategien (schwach oder strikt)", "Exercise 3: Dominant strategies (weak or strict)")}</h2>
@@ -6460,7 +8508,7 @@ function App() {
       );
     }
 
-    if (normalPage === "ex4") {
+    if (activeNormalPage === "ex4") {
       return (
         <section className="panel">
           <h2>{t("Übung 4: Nash-Gleichgewichte in reinen Strategien", "Exercise 4: Nash equilibria in pure strategies")}</h2>
@@ -6498,7 +8546,7 @@ function App() {
             </article>
             <article className="panel nested-panel">
               <h3>{t("Frage", "Question")}</h3>
-              <p className="hint">{t("Finden Sie alle Strategiekombinationen, die ein Nash-Gleichgewicht in reinen Strategien bilden.", "Find all strategy combinations that form a Nash equilibrium in pure strategies.")}</p>
+              <p className="hint">{t("Finde alle Strategiekombinationen, die ein Nash-Gleichgewicht in reinen Strategien bilden.", "Find all strategy combinations that form a Nash equilibrium in pure strategies.")}</p>
               {ex4Data && (
                 <>
                   <div className="choice-list combo-grid">
@@ -6540,7 +8588,7 @@ function App() {
       );
     }
 
-    if (normalPage === "ex5") {
+    if (activeNormalPage === "ex5") {
       return (
         <section className="panel">
           <h2>{t("Übung 5: Nash-Gleichgewichte in reinen Strategien (strikt)", "Exercise 5: Nash equilibria in pure strategies (strict)")}</h2>
@@ -6578,7 +8626,7 @@ function App() {
             </article>
             <article className="panel nested-panel">
               <h3>{t("Frage", "Question")}</h3>
-              <p className="hint">{t("Wählen Sie für jede Strategiekombination, ob es sich dabei um ein striktes oder nicht striktes Nash GG handelt.", "For each strategy combination, choose whether it is a strict or non-strict Nash equilibrium.")}</p>
+              <p className="hint">{t("Wähle für jede Strategiekombination, ob es sich dabei um ein striktes oder nicht striktes Nash GG handelt.", "For each strategy combination, choose whether it is a strict or non-strict Nash equilibrium.")}</p>
               {ex5Data && (
                 <>
                   <Ex5AnswerTable
@@ -6608,7 +8656,7 @@ function App() {
       );
     }
 
-    if (normalPage === "ex6") {
+    if (activeNormalPage === "ex6") {
       return (
         <section className="panel">
           <h2>{t("Übung 6: Nash-Gleichgewicht in gemischten Strategien", "Exercise 6: Nash equilibrium in mixed strategies")}</h2>
@@ -6647,7 +8695,7 @@ function App() {
             <article className="panel nested-panel">
               <h3>{t("Frage", "Question")}</h3>
               <p className="hint">
-                {t("Finden Sie ein Nash-Gleichgewicht in gemischten Strategien, in dem Spieler 1 mit Wahrscheinlichkeit p Strategie A wählt. Wie groß ist p?", "Find a Nash equilibrium in mixed strategies where Player 1 plays strategy A with probability p. What is p?")}
+                {t("Finde ein Nash-Gleichgewicht in gemischten Strategien, in dem Spieler 1 mit Wahrscheinlichkeit p Strategie A wählt. Wie groß ist p?", "Find a Nash equilibrium in mixed strategies where Player 1 plays strategy A with probability p. What is p?")}
               </p>
               {ex6Data && (
                 <>
@@ -6684,7 +8732,7 @@ function App() {
       );
     }
 
-    if (normalPage === "ex7") {
+    if (activeNormalPage === "ex7") {
       return (
         <section className="panel">
           <h2>{t("Übung 1: Trembling-Hand-perfekte Gleichgewichte (reine Strategien)", "Exercise 1: Trembling-hand perfect equilibria (pure strategies)")}</h2>
@@ -6724,7 +8772,7 @@ function App() {
             </article>
             <article className="panel nested-panel">
               <h3>{t("Frage", "Question")}</h3>
-              <p className="hint">{t("Bestimmen Sie die Trembling-hand-perfekten Gleichgewichte in reinen Strategien.", "Determine the trembling-hand perfect equilibria in pure strategies.")}</p>
+              <p className="hint">{t("Bestimme die Trembling-hand-perfekten Gleichgewichte in reinen Strategien.", "Determine the trembling-hand perfect equilibria in pure strategies.")}</p>
               <p className="hint">{t("Nicht-exklusive Antworten (mehrere können richtig sein).", "Non-exclusive answers (multiple can be correct).")}</p>
               {ex7Data && (
                 <>
@@ -6767,7 +8815,7 @@ function App() {
       );
     }
 
-    if (normalPage === "ex8") {
+    if (activeNormalPage === "ex8") {
       return (
         <section className="panel">
           <h2>{t("Übung 2: Evolutionär stabile Strategien", "Exercise 2: Evolutionarily stable strategies")}</h2>
@@ -6807,7 +8855,7 @@ function App() {
             </article>
             <article className="panel nested-panel">
               <h3>{t("Frage", "Question")}</h3>
-              <p className="hint">{t("Bestimmen Sie die Gleichgewichte in evolutionär stabilen Strategien (ESS), in reinen Strategien.", "Determine equilibria in evolutionarily stable strategies (ESS), in pure strategies.")}</p>
+              <p className="hint">{t("Bestimme die Gleichgewichte in evolutionär stabilen Strategien (ESS), in reinen Strategien.", "Determine equilibria in evolutionarily stable strategies (ESS), in pure strategies.")}</p>
               <p className="hint">{t("Nicht-exklusive Antworten (mehrere können richtig sein).", "Non-exclusive answers (multiple can be correct).")}</p>
               {ex8Data && (
                 <>
@@ -6850,7 +8898,7 @@ function App() {
       );
     }
 
-    if (normalPage === "ex9") {
+    if (activeNormalPage === "ex9") {
       return (
         <section className="panel">
           <h2>{t("Übung 1 – Gemischtes Nash-Gleichgewicht im Marktauswahlspiel", "Exercise 1 - Mixed Nash equilibrium in the market selection game")}</h2>
@@ -7901,6 +9949,146 @@ function App() {
           </section>
         </div>
       </section>
+      <section className="panel">
+        <h2>{t("Informationsmengen & simultane Züge", "Information Sets & Simultaneous Moves")}</h2>
+        <p className="hint">
+          {t(
+            "Wenn ein Spieler beim Zug nicht unterscheiden kann, welcher Knoten erreicht wurde, liegen diese Knoten in derselben Informationsmenge.",
+            "If a player cannot distinguish which node was reached when moving, those nodes belong to the same information set."
+          )}
+        </p>
+        <p className="hint">
+          {t(
+            "Simultane Züge in Extensivform werden oft so modelliert: Ein Spieler zieht zuerst, der andere beobachtet den Zug aber nicht.",
+            "Simultaneous moves in extensive form are often modeled this way: one player moves first, but the other does not observe that move."
+          )}
+        </p>
+        <div className="profile-notation-grid">
+          <article className="panel nested-panel">
+            <h4>{t("Baum", "Tree")}</h4>
+            <div className="tree-example-wrap tree-example-wrap-compact">
+              <svg viewBox="0 0 560 280" className="tree-example-svg tree-example-svg-compact" role="img" aria-label={t("Spielbaum mit Informationsmenge", "Game tree with an information set")}>
+                <defs>
+                  <marker id="infoset-arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                    <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
+                  </marker>
+                </defs>
+
+                <line x1="68" y1="140" x2="220" y2="80" className="tree-edge" markerEnd="url(#infoset-arrow)" />
+                <line x1="68" y1="140" x2="220" y2="200" className="tree-edge" markerEnd="url(#infoset-arrow)" />
+                <line x1="248" y1="80" x2="420" y2="48" className="tree-edge" markerEnd="url(#infoset-arrow)" />
+                <line x1="248" y1="80" x2="420" y2="112" className="tree-edge" markerEnd="url(#infoset-arrow)" />
+                <line x1="248" y1="200" x2="420" y2="168" className="tree-edge" markerEnd="url(#infoset-arrow)" />
+                <line x1="248" y1="200" x2="420" y2="232" className="tree-edge" markerEnd="url(#infoset-arrow)" />
+
+                <path d="M220 80 Q 190 140 220 200" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="6 6" />
+
+                <text x="145" y="100" className="tree-action" textAnchor="middle" dominantBaseline="middle">L</text>
+                <text x="145" y="182" className="tree-action" textAnchor="middle" dominantBaseline="middle">R</text>
+                <text x="333" y="60" className="tree-action" textAnchor="middle" dominantBaseline="middle">U</text>
+                <text x="333" y="102" className="tree-action" textAnchor="middle" dominantBaseline="middle">D</text>
+                <text x="333" y="178" className="tree-action" textAnchor="middle" dominantBaseline="middle">U</text>
+                <text x="333" y="220" className="tree-action" textAnchor="middle" dominantBaseline="middle">D</text>
+
+                <circle cx="50" cy="140" r="18" className="tree-node decision" />
+                <circle cx="230" cy="80" r="18" className="tree-node decision" />
+                <circle cx="230" cy="200" r="18" className="tree-node decision" />
+                <circle cx="430" cy="48" r="8" className="tree-node terminal" />
+                <circle cx="430" cy="112" r="8" className="tree-node terminal" />
+                <circle cx="430" cy="168" r="8" className="tree-node terminal" />
+                <circle cx="430" cy="232" r="8" className="tree-node terminal" />
+
+                <text x="50" y="140" className="tree-label" textAnchor="middle" dominantBaseline="middle">P1</text>
+                <text x="230" y="80" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                <text x="230" y="200" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                <text x="175" y="142" className="tree-action" textAnchor="middle" dominantBaseline="middle">
+                  {t("Informationsmenge", "Information set")}
+                </text>
+              </svg>
+            </div>
+          </article>
+
+          <section className="panel nested-panel profile-quiz">
+            <h4>{t("Mini-Quiz", "Mini quiz")}</h4>
+            <p className="hint">
+              {t(
+                "Was bedeutet die gestrichelte Verbindung zwischen den beiden P2-Knoten?",
+                "What does the dashed link between the two P2 nodes mean?"
+              )}
+            </p>
+            <div className="choice-list">
+              <label className="choice-item">
+                <input
+                  type="radio"
+                  name="info-set-quiz"
+                  value="perfect-observation"
+                  checked={infoSetQuizAnswer === "perfect-observation"}
+                  onChange={(e) => {
+                    setInfoSetQuizAnswer(e.target.value);
+                    setInfoSetQuizFeedback("");
+                    setInfoSetQuizType("neutral");
+                  }}
+                />
+                <span>
+                  {t(
+                    "Spieler 2 beobachtet perfekt, ob L oder R gespielt wurde.",
+                    "Player 2 perfectly observes whether L or R was played."
+                  )}
+                </span>
+              </label>
+              <label className="choice-item">
+                <input
+                  type="radio"
+                  name="info-set-quiz"
+                  value="same-info-set"
+                  checked={infoSetQuizAnswer === "same-info-set"}
+                  onChange={(e) => {
+                    setInfoSetQuizAnswer(e.target.value);
+                    setInfoSetQuizFeedback("");
+                    setInfoSetQuizType("neutral");
+                  }}
+                />
+                <span>
+                  {t(
+                    "Die beiden Knoten gehören zur selben Informationsmenge; Spieler 2 kennt den zuvor erreichten Knoten nicht.",
+                    "The two nodes are in the same information set; Player 2 does not know which previous node was reached."
+                  )}
+                </span>
+              </label>
+              <label className="choice-item">
+                <input
+                  type="radio"
+                  name="info-set-quiz"
+                  value="forced-randomization"
+                  checked={infoSetQuizAnswer === "forced-randomization"}
+                  onChange={(e) => {
+                    setInfoSetQuizAnswer(e.target.value);
+                    setInfoSetQuizFeedback("");
+                    setInfoSetQuizType("neutral");
+                  }}
+                />
+                <span>
+                  {t(
+                    "Spieler 2 muss zwischen U und D zwingend zufällig mischen.",
+                    "Player 2 is forced to randomize between U and D."
+                  )}
+                </span>
+              </label>
+            </div>
+            <div className="actions">
+              <button type="button" onClick={checkInfoSetQuiz}>{t("Antwort prüfen", "Check answer")}</button>
+            </div>
+            {infoSetQuizFeedback && (
+              <div className={`feedback-box feedback-card ${infoSetQuizType}`}>
+                <strong>
+                  {infoSetQuizType === "success" ? t("Richtig", "Correct") : infoSetQuizType === "warning" ? t("Hinweis", "Hint") : t("Nicht korrekt", "Incorrect")}
+                </strong>
+                <p>{infoSetQuizFeedback}</p>
+              </div>
+            )}
+          </section>
+        </div>
+      </section>
       <div className="actions">
         <button
           type="button"
@@ -7927,6 +10115,7 @@ function App() {
     ];
     const currentSpecialGame = SPECIAL_GAMES[specialCardIndex];
     const currentSpecialTranslation = SPECIAL_GAME_TRANSLATIONS[currentSpecialGame?.title] || null;
+    const specialStrategyLabels = uiLang === "en" ? SPECIAL_GAME_STRATEGY_LABELS_EN : null;
     const isPrisonersDilemmaCard = currentSpecialGame?.title === PRISONERS_DILEMMA_TITLE;
     const isChickenCard = currentSpecialGame?.title === CHICKEN_GAME_TITLE;
     const isStagCard = currentSpecialGame?.title === STAG_HUNT_TITLE;
@@ -8016,6 +10205,8 @@ function App() {
                         rowLabel={t("Spieler 1", "Player 1")}
                         colLabel={t("Spieler 2", "Player 2")}
                         autoScale
+                        rowDisplayMap={specialStrategyLabels}
+                        colDisplayMap={specialStrategyLabels}
                         getCellClassName={(row, col) => prisonerCellClasses[`${row}|${col}`] || ""}
                       />
                     </div>
@@ -8163,6 +10354,8 @@ function App() {
                         rowLabel={t("Spieler 1", "Player 1")}
                         colLabel={t("Spieler 2", "Player 2")}
                         autoScale
+                        rowDisplayMap={specialStrategyLabels}
+                        colDisplayMap={specialStrategyLabels}
                         getCellClassName={(row, col) => chickenCellClasses[`${row}|${col}`] || ""}
                       />
                     </div>
@@ -8308,6 +10501,8 @@ function App() {
                         rowLabel={t("Spieler 1", "Player 1")}
                         colLabel={t("Spieler 2", "Player 2")}
                         autoScale
+                        rowDisplayMap={specialStrategyLabels}
+                        colDisplayMap={specialStrategyLabels}
                         getCellClassName={(row, col) => stagCellClasses[`${row}|${col}`] || ""}
                       />
                     </div>
@@ -8453,6 +10648,8 @@ function App() {
                         rowLabel={t("Spieler 1", "Player 1")}
                         colLabel={t("Spieler 2", "Player 2")}
                         autoScale
+                        rowDisplayMap={specialStrategyLabels}
+                        colDisplayMap={specialStrategyLabels}
                         getCellClassName={(row, col) => bosCellClasses[`${row}|${col}`] || ""}
                       />
                     </div>
@@ -8598,6 +10795,8 @@ function App() {
                         rowLabel={t("Spieler 1", "Player 1")}
                         colLabel={t("Spieler 2", "Player 2")}
                         autoScale
+                        rowDisplayMap={specialStrategyLabels}
+                        colDisplayMap={specialStrategyLabels}
                         getCellClassName={(row, col) => ultimatumCellClasses[`${row}|${col}`] || ""}
                       />
                     </div>
@@ -8711,7 +10910,14 @@ function App() {
                   <article className="special-block">
                     <h4>{t("Beispielspiel", "Sample game")}</h4>
                     <p className="hint">{uiLang === "en" ? (currentSpecialTranslation?.intro || currentSpecialGame.intro) : currentSpecialGame.intro}</p>
-                    <StaticPayoffTable data={currentSpecialGame.table} rowLabel={t("Spieler 1", "Player 1")} colLabel={t("Spieler 2", "Player 2")} autoScale />
+                    <StaticPayoffTable
+                      data={currentSpecialGame.table}
+                      rowLabel={t("Spieler 1", "Player 1")}
+                      colLabel={t("Spieler 2", "Player 2")}
+                      autoScale
+                      rowDisplayMap={specialStrategyLabels}
+                      colDisplayMap={specialStrategyLabels}
+                    />
                   </article>
                   <article className="special-block">
                     <h4>{t("Erklärung", "Explanation")}</h4>
@@ -8776,7 +10982,14 @@ function App() {
                   "Identify which of the five special games is shown based on the matrix."
                 )}
               </p>
-              <StaticPayoffTable data={specialQuizData.table} rowLabel={t("Spieler 1", "Player 1")} colLabel={t("Spieler 2", "Player 2")} autoScale />
+              <StaticPayoffTable
+                data={specialQuizData.table}
+                rowLabel={t("Spieler 1", "Player 1")}
+                colLabel={t("Spieler 2", "Player 2")}
+                autoScale
+                rowDisplayMap={specialStrategyLabels}
+                colDisplayMap={specialStrategyLabels}
+              />
             </article>
             <article className="special-block">
               <h4>{t("Frage", "Question")}</h4>
@@ -8844,7 +11057,8 @@ function App() {
   }
 
   function renderBayesianExercises() {
-    if (bayesPage === "toc") {
+    const activeBayesPage = bayesRenderPage;
+    if (activeBayesPage === "toc") {
       return (
         <section className="panel">
           <h2>{t("Trainiere Spiele mit privaten Informationen (Bayes)", "Train games with private information (Bayesian)")}</h2>
@@ -8873,7 +11087,7 @@ function App() {
       );
     }
 
-    if (bayesPage === "ex1") {
+    if (activeBayesPage === "ex1") {
       return (
         <section className="panel">
           <h2>{t("Übung 1 – Bayes-Spiel mit einseitiger privater Information", "Exercise 1 - Bayesian game with one-sided private information")}</h2>
@@ -8955,7 +11169,7 @@ function App() {
       );
     }
 
-    if (bayesPage === "ex2a") {
+    if (activeBayesPage === "ex2a") {
       return (
         <section className="panel">
           <h2>{t("Übung 2a – A-posteriori Wahrscheinlichkeiten in Bayes-Spielen", "Exercise 2a - Posterior probabilities in Bayesian games")}</h2>
@@ -9204,7 +11418,7 @@ function App() {
                 }}
               >
                 <span>{t("Sequenzielle Spiele (Extensivform)", "Sequential games (extensive form)")}</span>
-                <span className="home-link-count">{solvedCountLabel(["tree_ex1_easy", "tree_ex1_hard", "tree_ex2_easy", "tree_ex2_hard", "tree_ex3", "tree_ex4"])}</span>
+                <span className="home-link-count">{solvedCountLabel(["tree_ex1_easy", "tree_ex1_hard", "tree_ex2_easy", "tree_ex2_hard", "tree_ex6", "tree_ex3", "tree_ex4", "tree_ex5_2", "tree_ex5_3", "tree_ex8"])}</span>
               </button>
               <button
                 type="button"
@@ -9244,7 +11458,13 @@ function App() {
     }
 
     if (activePage === "solve-normal") {
-      return renderNormalExercises();
+      return (
+        <div
+          className={`exercise-page-transition ${normalPageAnimDirection === "next" ? "dir-next" : "dir-prev"} ${normalPageAnimPhase === "exit" ? "is-exiting" : normalPageAnimPhase === "enter" ? "is-entering" : ""}`}
+        >
+          {renderNormalExercises()}
+        </div>
+      );
     }
 
     if (activePage === "learn-sequential") {
@@ -9252,7 +11472,13 @@ function App() {
     }
 
     if (activePage === "solve-tree") {
-      return renderTreeExercises();
+      return (
+        <div
+          className={`exercise-page-transition ${treePageAnimDirection === "next" ? "dir-next" : "dir-prev"} ${treePageAnimPhase === "exit" ? "is-exiting" : treePageAnimPhase === "enter" ? "is-entering" : ""}`}
+        >
+          {renderTreeExercises()}
+        </div>
+      );
     }
 
     if (activePage === "learn-private") {
@@ -9260,7 +11486,13 @@ function App() {
     }
 
     if (activePage === "solve-bayesian") {
-      return renderBayesianExercises();
+      return (
+        <div
+          className={`exercise-page-transition ${bayesPageAnimDirection === "next" ? "dir-next" : "dir-prev"} ${bayesPageAnimPhase === "exit" ? "is-exiting" : bayesPageAnimPhase === "enter" ? "is-entering" : ""}`}
+        >
+          {renderBayesianExercises()}
+        </div>
+      );
     }
 
     if (activePage === "impressum") {
@@ -9440,8 +11672,35 @@ function App() {
           </div>
         </aside>
 
-        <section className="content-area">
+        <section
+          ref={contentAreaRef}
+          className="content-area"
+        >
           {renderContent()}
+
+          {exerciseSideNav && exerciseSideNav.prev && (
+            <button
+              type="button"
+              className={`exercise-side-nav-btn left ${showLeftExerciseNav ? "visible" : ""}`}
+              aria-label={t("Vorherige Übung", "Previous exercise")}
+              style={{ left: `${leftNavX}px` }}
+              onClick={() => exerciseSideNav.go(exerciseSideNav.prev)}
+            >
+              &#8249;
+            </button>
+          )}
+
+          {exerciseSideNav && exerciseSideNav.next && (
+            <button
+              type="button"
+              className={`exercise-side-nav-btn right ${showRightExerciseNav ? "visible" : ""}`}
+              aria-label={t("Nächste Übung", "Next exercise")}
+              style={{ left: `${rightNavX}px` }}
+              onClick={() => exerciseSideNav.go(exerciseSideNav.next)}
+            >
+              &#8250;
+            </button>
+          )}
 
           {error && (
             <section className="panel error">
