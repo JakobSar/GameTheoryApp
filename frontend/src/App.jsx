@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 const NODE_W = 170;
 const NODE_H = 88;
@@ -104,6 +104,132 @@ const EXERCISE_PROGRESS_KEY = "gt-exercise-progress-v1";
 const EXERCISE_RECENT_ATTEMPTS_LIMIT = 12;
 const THEME_MODE_KEY = "gt-theme-mode-v1";
 const THEME_MODES = ["light", "dark", "jlu"];
+const TREE_EDGE_NODE_SNAP_DISTANCE = 42;
+const TREE_ARROW_BASE_WIDTH = 14.4;
+const TREE_ARROW_BASE_HEIGHT = 12;
+const TREE_ARROW_BASE_REF_X = 10.8;
+const TREE_ARROW_BASE_REF_Y = 6;
+const TREE_EDGE_BASE_STROKE_WIDTH = 3;
+let treeAutoMarkerScopeSerial = 0;
+
+function parseSvgNumber(value) {
+  const parsed = Number.parseFloat(value ?? "");
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function findNearestNode(nodes, x, y, excludedNode = null) {
+  let best = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  nodes.forEach((node) => {
+    if (excludedNode && node.element === excludedNode.element) return;
+    const dx = node.x - x;
+    const dy = node.y - y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = node;
+    }
+  });
+  if (!best || bestDist > TREE_EDGE_NODE_SNAP_DISTANCE) {
+    return null;
+  }
+  return best;
+}
+
+function normalizeTreeSvgEdges(svgElement) {
+  if (!svgElement) return;
+  const edgeElements = Array.from(svgElement.querySelectorAll("line.tree-edge"));
+  if (!edgeElements.length) return;
+  const nodeElements = Array.from(svgElement.querySelectorAll("circle.tree-node"));
+  const nodes = nodeElements
+    .map((node) => {
+      const x = parseSvgNumber(node.getAttribute("cx"));
+      const y = parseSvgNumber(node.getAttribute("cy"));
+      const r = parseSvgNumber(node.getAttribute("r"));
+      if (x === null || y === null || r === null) return null;
+      return { element: node, x, y, r };
+    })
+    .filter(Boolean);
+
+  const svgNs = "http://www.w3.org/2000/svg";
+  let defs = svgElement.querySelector("defs");
+  if (!defs) {
+    defs = document.createElementNS(svgNs, "defs");
+    svgElement.insertBefore(defs, svgElement.firstChild);
+  }
+  if (!svgElement.dataset.treeAutoMarkerScope) {
+    treeAutoMarkerScopeSerial += 1;
+    svgElement.dataset.treeAutoMarkerScope = `scope-${treeAutoMarkerScopeSerial}`;
+  }
+  const scopeId = svgElement.dataset.treeAutoMarkerScope;
+  defs.querySelectorAll(`marker[data-auto-tree-marker='1'][data-auto-tree-marker-scope='${scopeId}']`).forEach((marker) => marker.remove());
+  const markerCache = new Map();
+  let markerSerial = 0;
+
+  edgeElements.forEach((edge) => {
+    const rawX1 = parseSvgNumber(edge.getAttribute("x1"));
+    const rawY1 = parseSvgNumber(edge.getAttribute("y1"));
+    const rawX2 = parseSvgNumber(edge.getAttribute("x2"));
+    const rawY2 = parseSvgNumber(edge.getAttribute("y2"));
+    if (rawX1 === null || rawY1 === null || rawX2 === null || rawY2 === null) return;
+
+    const computedStyle = window.getComputedStyle(edge);
+    const rawStrokeColor = computedStyle.stroke || edge.getAttribute("stroke") || "#577366";
+    const strokeColor = rawStrokeColor === "none" ? "#577366" : rawStrokeColor;
+    const strokeWidth = Math.max(parseSvgNumber(computedStyle.strokeWidth) || TREE_EDGE_BASE_STROKE_WIDTH, 0.1);
+    const markerScale = strokeWidth / TREE_EDGE_BASE_STROKE_WIDTH;
+
+    const markerKey = `${strokeColor}|${strokeWidth.toFixed(3)}`;
+    let markerId = markerCache.get(markerKey);
+    if (!markerId) {
+      markerId = `tree-auto-arrow-${scopeId}-${markerSerial}`;
+      markerSerial += 1;
+      const marker = document.createElementNS(svgNs, "marker");
+      marker.setAttribute("id", markerId);
+      marker.setAttribute("markerWidth", String(TREE_ARROW_BASE_WIDTH * markerScale));
+      marker.setAttribute("markerHeight", String(TREE_ARROW_BASE_HEIGHT * markerScale));
+      marker.setAttribute("refX", String(TREE_ARROW_BASE_REF_X * markerScale));
+      marker.setAttribute("refY", String(TREE_ARROW_BASE_REF_Y * markerScale));
+      marker.setAttribute("orient", "auto");
+      marker.setAttribute("markerUnits", "userSpaceOnUse");
+      marker.setAttribute("data-auto-tree-marker", "1");
+      marker.setAttribute("data-auto-tree-marker-scope", scopeId);
+
+      const path = document.createElementNS(svgNs, "path");
+      path.setAttribute("d", `M0,0 L${TREE_ARROW_BASE_WIDTH * markerScale},${TREE_ARROW_BASE_REF_Y * markerScale} L0,${TREE_ARROW_BASE_HEIGHT * markerScale} Z`);
+      path.setAttribute("fill", strokeColor);
+      path.setAttribute("stroke", strokeColor);
+      marker.appendChild(path);
+      defs.appendChild(marker);
+      markerCache.set(markerKey, markerId);
+    }
+    edge.setAttribute("marker-end", `url(#${markerId})`);
+    edge.style.markerEnd = `url("#${markerId}")`;
+
+    if (!nodes.length) return;
+    const startNode = findNearestNode(nodes, rawX1, rawY1);
+    const endNode = findNearestNode(nodes, rawX2, rawY2, startNode);
+    if (!startNode || !endNode) return;
+
+    const dx = endNode.x - startNode.x;
+    const dy = endNode.y - startNode.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-6) return;
+    const markerOverhang = (TREE_ARROW_BASE_WIDTH - TREE_ARROW_BASE_REF_X) * markerScale;
+    const ux = dx / len;
+    const uy = dy / len;
+
+    const targetTrim = endNode.r + markerOverhang;
+    const clampedLen = Math.max(len - targetTrim, 0);
+    const endX = startNode.x + ux * clampedLen;
+    const endY = startNode.y + uy * clampedLen;
+
+    edge.setAttribute("x1", String(startNode.x));
+    edge.setAttribute("y1", String(startNode.y));
+    edge.setAttribute("x2", String(endX));
+    edge.setAttribute("y2", String(endY));
+  });
+}
 
 const INTRO_BAYES_T1 = {
   rows: ["A", "B"],
@@ -340,7 +466,7 @@ const EXERCISE_PAGE_TRANSITION_MS = 300;
 const NORMAL_PAGE_ORDER = ["toc", "ex1", "ex2", "ex3", "ex4", "ex5", "ex6", "ex7", "ex8", "ex9"];
 const BAYES_PAGE_ORDER = ["toc", "ex1", "ex2a", "ex2b"];
 const TREE_PAGE_TRANSITION_MS = 300;
-const TREE_PAGE_ORDER = ["toc", "ex1", "ex2", "ex6", "ex3", "ex4", "ex5", "ex8"];
+const TREE_PAGE_ORDER = ["toc", "ex1", "ex2", "ex6", "ex3", "ex4", "ex5", "ex8", "ex9"];
 const PRISONERS_DILEMMA_TITLE = "Gefangenendilemma";
 const CHICKEN_GAME_TITLE = "Feiglingsspiel (Chicken)";
 const STAG_HUNT_TITLE = "Jagdspiel (Stag Hunt)";
@@ -878,6 +1004,7 @@ const TREE_EX5_3_OFFERS = [
 ];
 const TREE_EX5_3_SPE_OPTIONS = [
   { id: "spe3-aaa", p2: ["A", "A", "A"] },
+  { id: "spe3-arr", p2: ["A", "R", "R"] },
   { id: "spe3-raa", p2: ["R", "A", "A"] },
   { id: "spe3-rra", p2: ["R", "R", "A"] }
 ];
@@ -923,28 +1050,60 @@ function normalizeTreeEx8Game(game) {
 }
 
 function buildTreeEx8Game() {
+  const q1ByOffer = { "q1-high": 4, "q1-low": 2 };
+  const q2ByAction = { "q2=1": 1, "q2=3": 3 };
+  const computeProfit = (qOwn, qOther, demandIntercept, unitCost) => {
+    const marketPrice = demandIntercept - (qOwn + qOther);
+    const margin = Math.max(0, marketPrice - unitCost);
+    return qOwn * margin;
+  };
+
   while (true) {
+    // Linear-demand Stackelberg style generator:
+    // P = a - (q1 + q2), u_i = q_i * max(P - c_i, 0)
+    const demandIntercept = randomInt(9, 14);
+    const p1UnitCost = randomInt(0, 4);
+    const p2UnitCost = randomInt(0, 4);
+
+    const highOutcomes = {
+      "q2=1": [
+        computeProfit(q1ByOffer["q1-high"], q2ByAction["q2=1"], demandIntercept, p1UnitCost),
+        computeProfit(q2ByAction["q2=1"], q1ByOffer["q1-high"], demandIntercept, p2UnitCost)
+      ],
+      "q2=3": [
+        computeProfit(q1ByOffer["q1-high"], q2ByAction["q2=3"], demandIntercept, p1UnitCost),
+        computeProfit(q2ByAction["q2=3"], q1ByOffer["q1-high"], demandIntercept, p2UnitCost)
+      ]
+    };
+    const lowOutcomes = {
+      "q2=1": [
+        computeProfit(q1ByOffer["q1-low"], q2ByAction["q2=1"], demandIntercept, p1UnitCost),
+        computeProfit(q2ByAction["q2=1"], q1ByOffer["q1-low"], demandIntercept, p2UnitCost)
+      ],
+      "q2=3": [
+        computeProfit(q1ByOffer["q1-low"], q2ByAction["q2=3"], demandIntercept, p1UnitCost),
+        computeProfit(q2ByAction["q2=3"], q1ByOffer["q1-low"], demandIntercept, p2UnitCost)
+      ]
+    };
+
     const high = {
       id: "q1-high",
       p1Action: "q1=4",
-      outcomes: {
-        "q2=1": [randomInt(2, 11), randomInt(1, 9)],
-        "q2=3": [randomInt(2, 11), randomInt(1, 9)]
-      }
+      outcomes: highOutcomes
     };
     const low = {
       id: "q1-low",
       p1Action: "q1=2",
-      outcomes: {
-        "q2=1": [randomInt(2, 11), randomInt(1, 9)],
-        "q2=3": [randomInt(2, 11), randomInt(1, 9)]
-      }
+      outcomes: lowOutcomes
     };
 
     const bestHigh = high.outcomes["q2=1"][1] > high.outcomes["q2=3"][1] ? "q2=1" : "q2=3";
     const bestLow = low.outcomes["q2=1"][1] > low.outcomes["q2=3"][1] ? "q2=1" : "q2=3";
     if (high.outcomes["q2=1"][1] === high.outcomes["q2=3"][1]) continue;
     if (low.outcomes["q2=1"][1] === low.outcomes["q2=3"][1]) continue;
+    // Keep a meaningful Stackelberg-reaction pattern:
+    // higher q1 should induce weaker follower output.
+    if (bestHigh !== "q2=1" || bestLow !== "q2=3") continue;
 
     const p1High = high.outcomes[bestHigh][0];
     const p1Low = low.outcomes[bestLow][0];
@@ -984,21 +1143,182 @@ function buildTreeEx8SpeOptions(solution) {
   const lowBest = solution.p2BestByOffer["q1-low"];
   const highWrong = highBest === "q2=1" ? "q2=3" : "q2=1";
   const lowWrong = lowBest === "q2=1" ? "q2=3" : "q2=1";
-
-  return [
+  const options = [
     {
       id: "spe-s8-1",
-      text: `(${p1Correct}, (${highBest}, ${lowBest}))`
+      text: `(${p1Correct}, (${highBest}, ${lowBest}))`,
+      isCorrect: true
     },
     {
       id: "spe-s8-2",
-      text: `(${p1Wrong}, (${highBest}, ${lowBest}))`
+      text: `(${p1Wrong}, (${highBest}, ${lowBest}))`,
+      isCorrect: false
     },
     {
       id: "spe-s8-3",
-      text: `(${p1Correct}, (${highWrong}, ${lowWrong}))`
+      text: `(${p1Correct}, (${highWrong}, ${lowWrong}))`,
+      isCorrect: false
+    },
+    {
+      id: "spe-s8-4",
+      text: `(${p1Wrong}, (${highWrong}, ${lowWrong}))`,
+      isCorrect: false
     }
   ];
+
+  // Randomize display order so the correct option is not always in the same position.
+  for (let i = options.length - 1; i > 0; i -= 1) {
+    const j = randomInt(0, i);
+    [options[i], options[j]] = [options[j], options[i]];
+  }
+  return options;
+}
+
+function formatTreeEx8SpeEntry(entry) {
+  const p1 = entry.p1 || "-";
+  const high = entry.high || "-";
+  const low = entry.low || "-";
+  return `(${p1}, (${high}, ${low}))`;
+}
+
+function buildTreeEx9Game() {
+  while (true) {
+    const tough = [randomInt(7, 9), randomInt(1, 3)];
+    const fair = [randomInt(4, 6), randomInt(5, 7)];
+    if (tough[1] + 1 > fair[1] - 1) continue;
+
+    const continuationP2 = randomInt(tough[1] + 1, fair[1] - 1);
+    const continuationP1Max = Math.min(4, fair[0] - 1);
+    if (continuationP1Max < 1) continue;
+    const continuationP1 = randomInt(1, continuationP1Max);
+
+    const altP1 = randomInt(1, 5);
+    const altP2 = randomInt(0, Math.max(0, continuationP2 - 1));
+
+    const p2AfterTough = tough[1] >= continuationP2 ? "A" : "R";
+    const p2AfterFair = fair[1] >= continuationP2 ? "A" : "R";
+    if (!(p2AfterTough === "R" && p2AfterFair === "A")) continue;
+
+    const p1IfTough = p2AfterTough === "A" ? tough[0] : continuationP1;
+    const p1IfFair = p2AfterFair === "A" ? fair[0] : continuationP1;
+    if (p1IfTough === p1IfFair) continue;
+
+    return {
+      period1Offers: [
+        { id: "o1", label: `${tough[0]}/${tough[1]}`, payoff: tough },
+        { id: "o2", label: `${fair[0]}/${fair[1]}`, payoff: fair }
+      ],
+      period2Offers: [
+        { id: "x", label: `${continuationP1}/${continuationP2}`, payoff: [continuationP1, continuationP2] },
+        { id: "y", label: `${altP1}/${altP2}`, payoff: [altP1, altP2] }
+      ]
+    };
+  }
+}
+
+function buildTreeEx9Solution(game) {
+  const period2BestOffer = game.period2Offers[0].payoff[1] > game.period2Offers[1].payoff[1] ? "x" : "y";
+  const continuation = game.period2Offers.find((offer) => offer.id === period2BestOffer).payoff;
+  const continuationP2 = continuation[1];
+  const continuationP1 = continuation[0];
+
+  const p2Responses = {};
+  game.period1Offers.forEach((offer) => {
+    p2Responses[offer.id] = offer.payoff[1] >= continuationP2 ? "A" : "R";
+  });
+
+  const p1Payoffs = {};
+  game.period1Offers.forEach((offer) => {
+    p1Payoffs[offer.id] = p2Responses[offer.id] === "A" ? offer.payoff[0] : continuationP1;
+  });
+  const p1Choice = p1Payoffs.o1 > p1Payoffs.o2 ? "o1" : "o2";
+
+  return {
+    period2BestOffer,
+    continuation,
+    p2Responses,
+    p1Choice
+  };
+}
+
+function buildTreeEx9SpeOptions(game, solution) {
+  const wrongPeriod2 = solution.period2BestOffer === "x" ? "y" : "x";
+  const wrongP1 = solution.p1Choice === "o1" ? "o2" : "o1";
+  const flippedResponses = {
+    o1: solution.p2Responses.o1 === "A" ? "R" : "A",
+    o2: solution.p2Responses.o2 === "A" ? "R" : "A"
+  };
+
+  const optionToText = (p1Choice, responses, p2Period2Choice) => {
+    const p1Label = game.period1Offers.find((offer) => offer.id === p1Choice)?.label || "?";
+    const p2Period2Label = game.period2Offers.find((offer) => offer.id === p2Period2Choice)?.label || "?";
+    return `(${p1Label}, (${responses.o1}, ${responses.o2}), ${p2Period2Label})`;
+  };
+
+  const options = [
+    {
+      id: "bargain-spe-1",
+      text: optionToText(solution.p1Choice, solution.p2Responses, solution.period2BestOffer),
+      isCorrect: true
+    },
+    {
+      id: "bargain-spe-2",
+      text: optionToText(wrongP1, solution.p2Responses, solution.period2BestOffer),
+      isCorrect: false
+    },
+    {
+      id: "bargain-spe-3",
+      text: optionToText(solution.p1Choice, flippedResponses, solution.period2BestOffer),
+      isCorrect: false
+    },
+    {
+      id: "bargain-spe-4",
+      text: optionToText(solution.p1Choice, solution.p2Responses, wrongPeriod2),
+      isCorrect: false
+    }
+  ];
+
+  for (let i = options.length - 1; i > 0; i -= 1) {
+    const j = randomInt(0, i);
+    [options[i], options[j]] = [options[j], options[i]];
+  }
+  return options;
+}
+
+function formatTreeEx9SpeEntry(game, entry) {
+  const p1Label = game.period1Offers.find((offer) => offer.id === entry.p1)?.label || "-";
+  const p2Period2Label = game.period2Offers.find((offer) => offer.id === entry.p2)?.label || "-";
+  const o1 = entry.o1 || "-";
+  const o2 = entry.o2 || "-";
+  return `(${p1Label}, (${o1}, ${o2}), ${p2Period2Label})`;
+}
+
+function formatTreeEx5SpeOption(option, isThreeStage) {
+  if (!isThreeStage) {
+    return `(${option.p1}, (${option.p2.join(", ")}))`;
+  }
+  const p1Actions = TREE_EX5_3_OFFERS.map((offer) => offer.label.replace(/^R\d+:\s*/, ""));
+  const sequence = [
+    p1Actions[0], option.p2[0],
+    p1Actions[1], option.p2[1],
+    p1Actions[2], option.p2[2]
+  ];
+  return `(${sequence.join(", ")})`;
+}
+
+function formatTreeEx5SpeEntry(entry, offers, isThreeStage) {
+  const offerLabel = offers.find((offer) => offer.id === entry.p1)?.label?.replace(/^R\d+:\s*/, "") || "-";
+  const actions = offers.map((offer) => entry.responses?.[offer.id] || "-");
+  if (!isThreeStage) {
+    return `(${offerLabel}, (${actions.join(", ")}))`;
+  }
+  const p1Actions = offers.map((offer) => offer.label.replace(/^R\d+:\s*/, ""));
+  const sequence = [
+    p1Actions[0], actions[0],
+    p1Actions[1], actions[1],
+    p1Actions[2], actions[2]
+  ];
+  return `(${sequence.join(", ")})`;
 }
 const TREE_EX6_INFO_OPTIONS = [
   { id: "info-1", textDe: "P2 beobachtet den Zug von P1 vollständig, daher ist es ein perfektes Informationsspiel.", textEn: "P2 fully observes P1's move, so this is a perfect-information game." },
@@ -2206,7 +2526,7 @@ function App() {
   const [treeEx5P2Answers, setTreeEx5P2Answers] = useState(() => ({}));
   const [treeEx5Phase1Feedback, setTreeEx5Phase1Feedback] = useState("");
   const [treeEx5Phase1FeedbackType, setTreeEx5Phase1FeedbackType] = useState("neutral");
-  const [treeEx5SpeChoice, setTreeEx5SpeChoice] = useState("");
+  const [treeEx5SpeEntry, setTreeEx5SpeEntry] = useState(() => ({ p1: "", responses: {} }));
   const [treeEx5SpeFeedback, setTreeEx5SpeFeedback] = useState("");
   const [treeEx5SpeFeedbackType, setTreeEx5SpeFeedbackType] = useState("neutral");
   const [treeEx5Phase1Solved, setTreeEx5Phase1Solved] = useState(false);
@@ -2217,7 +2537,7 @@ function App() {
   const [treeEx8Game, setTreeEx8Game] = useState(() => normalizeTreeEx8Game(buildTreeEx8Game()));
   const [treeEx8P2Answers, setTreeEx8P2Answers] = useState(() => ({ "q1-high": "", "q1-low": "" }));
   const [treeEx8P1Choice, setTreeEx8P1Choice] = useState("");
-  const [treeEx8SpeChoice, setTreeEx8SpeChoice] = useState("");
+  const [treeEx8SpeEntry, setTreeEx8SpeEntry] = useState(() => ({ p1: "", high: "", low: "" }));
   const [treeEx8P2Feedback, setTreeEx8P2Feedback] = useState("");
   const [treeEx8P2FeedbackType, setTreeEx8P2FeedbackType] = useState("neutral");
   const [treeEx8P1Feedback, setTreeEx8P1Feedback] = useState("");
@@ -2231,6 +2551,27 @@ function App() {
   const [treeEx8OverallFeedback, setTreeEx8OverallFeedback] = useState("");
   const [treeEx8OverallFeedbackType, setTreeEx8OverallFeedbackType] = useState("neutral");
   const [showHelpTreeEx8, setShowHelpTreeEx8] = useState(false);
+  const [showHelpTreeEx9, setShowHelpTreeEx9] = useState(false);
+  const [treeEx9Game, setTreeEx9Game] = useState(() => buildTreeEx9Game());
+  const [treeEx9Period2Choice, setTreeEx9Period2Choice] = useState("");
+  const [treeEx9P2Responses, setTreeEx9P2Responses] = useState(() => ({ o1: "", o2: "" }));
+  const [treeEx9P1Choice, setTreeEx9P1Choice] = useState("");
+  const [treeEx9SpeEntry, setTreeEx9SpeEntry] = useState(() => ({ p1: "", o1: "", o2: "", p2: "" }));
+  const [treeEx9Period2Feedback, setTreeEx9Period2Feedback] = useState("");
+  const [treeEx9Period2FeedbackType, setTreeEx9Period2FeedbackType] = useState("neutral");
+  const [treeEx9P2Feedback, setTreeEx9P2Feedback] = useState("");
+  const [treeEx9P2FeedbackType, setTreeEx9P2FeedbackType] = useState("neutral");
+  const [treeEx9P1Feedback, setTreeEx9P1Feedback] = useState("");
+  const [treeEx9P1FeedbackType, setTreeEx9P1FeedbackType] = useState("neutral");
+  const [treeEx9SpeFeedback, setTreeEx9SpeFeedback] = useState("");
+  const [treeEx9SpeFeedbackType, setTreeEx9SpeFeedbackType] = useState("neutral");
+  const [treeEx9Period2Solved, setTreeEx9Period2Solved] = useState(false);
+  const [treeEx9P2Solved, setTreeEx9P2Solved] = useState(false);
+  const [treeEx9P1Solved, setTreeEx9P1Solved] = useState(false);
+  const [treeEx9SpeSolved, setTreeEx9SpeSolved] = useState(false);
+  const [treeEx9Completed, setTreeEx9Completed] = useState(false);
+  const [treeEx9OverallFeedback, setTreeEx9OverallFeedback] = useState("");
+  const [treeEx9OverallFeedbackType, setTreeEx9OverallFeedbackType] = useState("neutral");
   const [treeEx6Game, setTreeEx6Game] = useState(() => buildTreeEx6Game());
   const [treeEx6InfoChoice, setTreeEx6InfoChoice] = useState("");
   const [treeEx6MatrixChoice, setTreeEx6MatrixChoice] = useState("");
@@ -2286,10 +2627,7 @@ function App() {
   const treePageEnterTimerRef = useRef(null);
   const treeEx8SafeGame = useMemo(() => normalizeTreeEx8Game(treeEx8Game), [treeEx8Game]);
   const treeEx8Solution = useMemo(() => buildTreeEx8Solution(treeEx8SafeGame), [treeEx8SafeGame]);
-  const treeEx8SpeOptions = useMemo(
-    () => buildTreeEx8SpeOptions(treeEx8Solution),
-    [treeEx8Solution]
-  );
+  const treeEx9Solution = useMemo(() => buildTreeEx9Solution(treeEx9Game), [treeEx9Game]);
   const treeEx6InfoOptions = useMemo(() => shuffleArray(TREE_EX6_INFO_OPTIONS), [treeEx6Game]);
   const treeEx6MatrixOptions = useMemo(() => buildTreeEx6MatrixOptions(treeEx6Game), [treeEx6Game]);
   const treeEx6PureNeIds = useMemo(() => buildTreeEx6PureNeIds(treeEx6Game), [treeEx6Game]);
@@ -2364,6 +2702,46 @@ function App() {
       ),
     [eliminatorGame, eliminatorChecks, eliminatorCheckIndex, eliminatorActiveRows, eliminatorActiveCols]
   );
+
+  useLayoutEffect(() => {
+    if (typeof document === "undefined") return;
+    const apply = () => {
+      const svgElements = Array.from(document.querySelectorAll("svg"));
+      svgElements.forEach((svgElement) => normalizeTreeSvgEdges(svgElement));
+    };
+    apply();
+    const rafId = window.requestAnimationFrame(apply);
+    return () => window.cancelAnimationFrame(rafId);
+  });
+
+  useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    let rafId = 0;
+    const scheduleApply = () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = 0;
+        const svgElements = Array.from(document.querySelectorAll("svg"));
+        svgElements.forEach((svgElement) => normalizeTreeSvgEdges(svgElement));
+      });
+    };
+    scheduleApply();
+    const observer = new MutationObserver(() => {
+      scheduleApply();
+    });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class", "style", "marker-end", "markerEnd", "x1", "y1", "x2", "y2"]
+    });
+    return () => {
+      if (rafId) {
+        window.cancelAnimationFrame(rafId);
+      }
+      observer.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     const enteringSolveNormal = activePage === "solve-normal" && previousActivePageRef.current !== "solve-normal";
@@ -2933,6 +3311,24 @@ function App() {
   }, [treeEx8P2Solved, treeEx8P1Solved, treeEx8SpeSolved, treeEx8Completed, uiLang]);
 
   useEffect(() => {
+    if (treeEx9Completed) return;
+    if (!(treeEx9Period2Solved && treeEx9P2Solved && treeEx9P1Solved && treeEx9SpeSolved)) return;
+    setTreeEx9Completed(true);
+    setTreeEx9OverallFeedbackType("success");
+    setTreeEx9OverallFeedback(
+      t(
+        "Sehr gut. Du hast die 2-Perioden-Verhandlung per Rückwärtsinduktion und SPE-Check korrekt gelöst.",
+        "Great. You solved the 2-period bargaining game via backward induction and SPE check."
+      )
+    );
+    recordExerciseAttempt("tree_ex9", {
+      correct: true,
+      solved: true,
+      lastState: "all-correct"
+    });
+  }, [treeEx9Period2Solved, treeEx9P2Solved, treeEx9P1Solved, treeEx9SpeSolved, treeEx9Completed, uiLang]);
+
+  useEffect(() => {
     resetTreeEx5();
   }, [treeEx5ActiveLevel]);
 
@@ -3013,8 +3409,6 @@ function App() {
     if (attempts === 0) {
       return t("Offen", "Open");
     }
-    const correct = entries.reduce((sum, entry) => sum + (entry.correct || 0), 0);
-    const errorRate = Math.round(((attempts - correct) / attempts) * 100);
     const mergedRecent = entries
       .flatMap((entry) => {
         if (Array.isArray(entry.recentAttempts) && entry.recentAttempts.length) {
@@ -3028,17 +3422,11 @@ function App() {
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, 3)
       .reverse();
-    let symbolText = mergedRecent.map((item) => (item.correct ? "✓" : "✗")).join(" ");
-    if (!symbolText) {
-      const syntheticLength = Math.min(attempts, 3);
-      const syntheticCorrect = Math.min(correct, syntheticLength);
-      const syntheticIncorrect = Math.max(0, syntheticLength - syntheticCorrect);
-      symbolText = `${"✓ ".repeat(syntheticCorrect)}${"✗ ".repeat(syntheticIncorrect)}`.trim() || "–";
+
+    if (!mergedRecent.length) {
+      return t("Offen", "Open");
     }
-    return t(
-      `${symbolText} · Fehlerquote: ${errorRate}%`,
-      `${symbolText} · Error rate: ${errorRate}%`
-    );
+    return mergedRecent.map((item) => (item.correct ? "✓" : "✗")).join(" ");
   }
 
   function solvedCountLabel(progressKeys) {
@@ -4840,10 +5228,14 @@ function App() {
     cfg.offers.forEach((offer) => {
       emptyAnswers[offer.id] = "";
     });
+    const emptySpeResponses = {};
+    cfg.offers.forEach((offer) => {
+      emptySpeResponses[offer.id] = "";
+    });
     setTreeEx5P2Answers(emptyAnswers);
     setTreeEx5Phase1Feedback("");
     setTreeEx5Phase1FeedbackType("neutral");
-    setTreeEx5SpeChoice("");
+    setTreeEx5SpeEntry({ p1: "", responses: emptySpeResponses });
     setTreeEx5SpeFeedback("");
     setTreeEx5SpeFeedbackType("neutral");
     setTreeEx5Phase1Solved(false);
@@ -4857,6 +5249,7 @@ function App() {
     setTreeEx5P2Answers((prev) => ({ ...prev, [offerId]: action }));
     setTreeEx5Phase1Feedback("");
     setTreeEx5Phase1FeedbackType("neutral");
+    setTreeEx5Phase1Solved(false);
   }
 
   function resetTreeEx8(newGame = false) {
@@ -4865,7 +5258,7 @@ function App() {
     }
     setTreeEx8P2Answers({ "q1-high": "", "q1-low": "" });
     setTreeEx8P1Choice("");
-    setTreeEx8SpeChoice("");
+    setTreeEx8SpeEntry({ p1: "", high: "", low: "" });
     setTreeEx8P2Feedback("");
     setTreeEx8P2FeedbackType("neutral");
     setTreeEx8P1Feedback("");
@@ -4971,42 +5364,232 @@ function App() {
   }
 
   function checkTreeEx8Spe() {
-    if (!treeEx8SpeChoice) {
+    if (!treeEx8SpeEntry.p1 || !treeEx8SpeEntry.high || !treeEx8SpeEntry.low) {
       setTreeEx8SpeFeedbackType("warning");
       setTreeEx8SpeFeedback(
-        t("Bitte wähle zuerst ein SPE-Profil.", "Please select an SPE profile first.")
+        t("Bitte vervollständige zuerst das SPE-Profil.", "Please complete the SPE profile first.")
       );
-      recordExerciseAttempt("tree_ex8", { correct: false, solved: false, lastState: "spe-missing" });
+      recordExerciseAttempt("tree_ex8", { correct: false, solved: false, lastState: "spe-incomplete" });
       return;
     }
-    if (treeEx8SpeChoice !== "spe-s8-1") {
+    const isCorrect =
+      treeEx8SpeEntry.p1 === treeEx8Solution.p1Best &&
+      treeEx8SpeEntry.high === treeEx8Solution.p2BestByOffer["q1-high"] &&
+      treeEx8SpeEntry.low === treeEx8Solution.p2BestByOffer["q1-low"];
+    if (!isCorrect) {
+      const correctEntry = {
+        p1: treeEx8Solution.p1Best,
+        high: treeEx8Solution.p2BestByOffer["q1-high"],
+        low: treeEx8Solution.p2BestByOffer["q1-low"]
+      };
       setTreeEx8SpeFeedbackType("error");
       setTreeEx8SpeFeedback(
         t(
-          "Nicht korrekt. Im SPE muss Spieler 2 an beiden Knoten optimal reagieren und Spieler 1 diese Antworten antizipieren.",
-          "Not correct. In SPE, Player 2 must respond optimally at both nodes and Player 1 anticipates those responses."
+          `Nicht korrekt. Das korrekte SPE ist ${formatTreeEx8SpeEntry(correctEntry)}.`,
+          `Not correct. The correct SPE is ${formatTreeEx8SpeEntry(correctEntry)}.`
         )
       );
       setTreeEx8SpeSolved(false);
       recordExerciseAttempt("tree_ex8", {
         correct: false,
         solved: false,
-        lastState: `spe:${treeEx8SpeChoice}`
+        lastState: `spe:${treeEx8SpeEntry.p1},${treeEx8SpeEntry.high},${treeEx8SpeEntry.low}`
       });
       return;
     }
     setTreeEx8SpeFeedbackType("success");
     setTreeEx8SpeFeedback(
       t(
-        `Richtig. Das SPE-Profil ist ${treeEx8SpeOptions[0].text}.`,
-        `Correct. The SPE profile is ${treeEx8SpeOptions[0].text}.`
+        `Richtig. Das SPE-Profil ist ${formatTreeEx8SpeEntry(treeEx8SpeEntry)}.`,
+        `Correct. The SPE profile is ${formatTreeEx8SpeEntry(treeEx8SpeEntry)}.`
       )
     );
     setTreeEx8SpeSolved(true);
     recordExerciseAttempt("tree_ex8", {
       correct: true,
       solved: treeEx8P2Solved && treeEx8P1Solved,
-      lastState: `spe:${treeEx8SpeChoice}`
+      lastState: `spe:${treeEx8SpeEntry.p1},${treeEx8SpeEntry.high},${treeEx8SpeEntry.low}`
+    });
+  }
+
+  function resetTreeEx9(newGame = false) {
+    if (newGame) {
+      setTreeEx9Game(buildTreeEx9Game());
+    }
+    setTreeEx9Period2Choice("");
+    setTreeEx9P2Responses({ o1: "", o2: "" });
+    setTreeEx9P1Choice("");
+    setTreeEx9SpeEntry({ p1: "", o1: "", o2: "", p2: "" });
+    setTreeEx9Period2Feedback("");
+    setTreeEx9Period2FeedbackType("neutral");
+    setTreeEx9P2Feedback("");
+    setTreeEx9P2FeedbackType("neutral");
+    setTreeEx9P1Feedback("");
+    setTreeEx9P1FeedbackType("neutral");
+    setTreeEx9SpeFeedback("");
+    setTreeEx9SpeFeedbackType("neutral");
+    setTreeEx9Period2Solved(false);
+    setTreeEx9P2Solved(false);
+    setTreeEx9P1Solved(false);
+    setTreeEx9SpeSolved(false);
+    setTreeEx9Completed(false);
+    setTreeEx9OverallFeedback("");
+    setTreeEx9OverallFeedbackType("neutral");
+    setShowHelpTreeEx9(false);
+  }
+
+  function checkTreeEx9Period2() {
+    if (!treeEx9Period2Choice) {
+      setTreeEx9Period2FeedbackType("warning");
+      setTreeEx9Period2Feedback(
+        t("Bitte wähle zuerst das Angebot von Spieler 2 in Periode 2.", "Please select Player 2's period-2 offer first.")
+      );
+      recordExerciseAttempt("tree_ex9", { correct: false, solved: false, lastState: "p2offer-missing" });
+      return;
+    }
+    if (treeEx9Period2Choice !== treeEx9Solution.period2BestOffer) {
+      setTreeEx9Period2FeedbackType("error");
+      setTreeEx9Period2Feedback(
+        t(
+          "Nicht korrekt. In Periode 2 wählt Spieler 2 das Angebot mit höherer eigener Auszahlung.",
+          "Not correct. In period 2, Player 2 chooses the offer with higher own payoff."
+        )
+      );
+      setTreeEx9Period2Solved(false);
+      recordExerciseAttempt("tree_ex9", { correct: false, solved: false, lastState: `p2offer:${treeEx9Period2Choice}` });
+      return;
+    }
+    setTreeEx9Period2FeedbackType("success");
+    setTreeEx9Period2Feedback(
+      t("Richtig. Dieses Angebot maximiert den Nutzen von Spieler 2 in Periode 2.", "Correct. This offer maximizes Player 2's payoff in period 2.")
+    );
+    setTreeEx9Period2Solved(true);
+    recordExerciseAttempt("tree_ex9", {
+      correct: true,
+      solved: treeEx9P2Solved && treeEx9P1Solved && treeEx9SpeSolved,
+      lastState: `p2offer:${treeEx9Period2Choice}`
+    });
+  }
+
+  function checkTreeEx9P2() {
+    if (!treeEx9P2Responses.o1 || !treeEx9P2Responses.o2) {
+      setTreeEx9P2FeedbackType("warning");
+      setTreeEx9P2Feedback(
+        t("Bitte entscheide für beide Angebote aus Periode 1 über Annehmen oder Ablehnen.", "Please decide accept/reject for both period-1 offers.")
+      );
+      recordExerciseAttempt("tree_ex9", { correct: false, solved: false, lastState: "p2resp-missing" });
+      return;
+    }
+    const wrong = ["o1", "o2"].some((id) => treeEx9P2Responses[id] !== treeEx9Solution.p2Responses[id]);
+    if (wrong) {
+      setTreeEx9P2FeedbackType("error");
+      setTreeEx9P2Feedback(
+        t(
+          "Nicht korrekt. Vergleiche jeweils den Perioden-1-Nutzen von Spieler 2 mit seinem Fortsetzungsnutzen aus Periode 2.",
+          "Not correct. Compare Player 2's period-1 payoff with the continuation payoff from period 2 in each branch."
+        )
+      );
+      setTreeEx9P2Solved(false);
+      recordExerciseAttempt("tree_ex9", {
+        correct: false,
+        solved: false,
+        lastState: `p2resp:${treeEx9P2Responses.o1 || "-"},${treeEx9P2Responses.o2 || "-"}`
+      });
+      return;
+    }
+    setTreeEx9P2FeedbackType("success");
+    setTreeEx9P2Feedback(
+      t("Richtig. Die Reaktionen von Spieler 2 sind konsistent mit Rückwärtsinduktion.", "Correct. Player 2's responses are consistent with backward induction.")
+    );
+    setTreeEx9P2Solved(true);
+    recordExerciseAttempt("tree_ex9", {
+      correct: true,
+      solved: treeEx9Period2Solved && treeEx9P1Solved && treeEx9SpeSolved,
+      lastState: `p2resp:${treeEx9P2Responses.o1},${treeEx9P2Responses.o2}`
+    });
+  }
+
+  function checkTreeEx9P1() {
+    if (!treeEx9P1Choice) {
+      setTreeEx9P1FeedbackType("warning");
+      setTreeEx9P1Feedback(
+        t("Bitte wähle zuerst das Angebot von Spieler 1 in Periode 1.", "Please select Player 1's period-1 offer first.")
+      );
+      recordExerciseAttempt("tree_ex9", { correct: false, solved: false, lastState: "p1-missing" });
+      return;
+    }
+    if (treeEx9P1Choice !== treeEx9Solution.p1Choice) {
+      setTreeEx9P1FeedbackType("error");
+      setTreeEx9P1Feedback(
+        t(
+          "Nicht korrekt. Vergleiche die antizipierten Auszahlungen von Spieler 1 nach den Antworten von Spieler 2.",
+          "Not correct. Compare Player 1's anticipated payoffs after Player 2's responses."
+        )
+      );
+      setTreeEx9P1Solved(false);
+      recordExerciseAttempt("tree_ex9", { correct: false, solved: false, lastState: `p1:${treeEx9P1Choice}` });
+      return;
+    }
+    setTreeEx9P1FeedbackType("success");
+    setTreeEx9P1Feedback(
+      t("Richtig. Spieler 1 wählt das für ihn beste Anfangsangebot.", "Correct. Player 1 chooses the best initial offer for himself.")
+    );
+    setTreeEx9P1Solved(true);
+    recordExerciseAttempt("tree_ex9", {
+      correct: true,
+      solved: treeEx9Period2Solved && treeEx9P2Solved && treeEx9SpeSolved,
+      lastState: `p1:${treeEx9P1Choice}`
+    });
+  }
+
+  function checkTreeEx9Spe() {
+    if (!treeEx9SpeEntry.p1 || !treeEx9SpeEntry.o1 || !treeEx9SpeEntry.o2 || !treeEx9SpeEntry.p2) {
+      setTreeEx9SpeFeedbackType("warning");
+      setTreeEx9SpeFeedback(
+        t("Bitte vervollständige zuerst das SPE-Profil.", "Please complete the SPE profile first.")
+      );
+      recordExerciseAttempt("tree_ex9", { correct: false, solved: false, lastState: "spe-incomplete" });
+      return;
+    }
+    const isCorrect =
+      treeEx9SpeEntry.p1 === treeEx9Solution.p1Choice &&
+      treeEx9SpeEntry.o1 === treeEx9Solution.p2Responses.o1 &&
+      treeEx9SpeEntry.o2 === treeEx9Solution.p2Responses.o2 &&
+      treeEx9SpeEntry.p2 === treeEx9Solution.period2BestOffer;
+    if (!isCorrect) {
+      const correctEntry = {
+        p1: treeEx9Solution.p1Choice,
+        o1: treeEx9Solution.p2Responses.o1,
+        o2: treeEx9Solution.p2Responses.o2,
+        p2: treeEx9Solution.period2BestOffer
+      };
+      setTreeEx9SpeFeedbackType("error");
+      setTreeEx9SpeFeedback(
+        t(
+          `Nicht korrekt. Das korrekte SPE ist ${formatTreeEx9SpeEntry(treeEx9Game, correctEntry)}.`,
+          `Not correct. The correct SPE is ${formatTreeEx9SpeEntry(treeEx9Game, correctEntry)}.`
+        )
+      );
+      setTreeEx9SpeSolved(false);
+      recordExerciseAttempt("tree_ex9", {
+        correct: false,
+        solved: false,
+        lastState: `spe:${treeEx9SpeEntry.p1},${treeEx9SpeEntry.o1},${treeEx9SpeEntry.o2},${treeEx9SpeEntry.p2}`
+      });
+      return;
+    }
+    setTreeEx9SpeFeedbackType("success");
+    setTreeEx9SpeFeedback(
+      t(
+        `Richtig. Das SPE-Profil ist ${formatTreeEx9SpeEntry(treeEx9Game, treeEx9SpeEntry)}.`,
+        `Correct. The SPE profile is ${formatTreeEx9SpeEntry(treeEx9Game, treeEx9SpeEntry)}.`
+      )
+    );
+    setTreeEx9SpeSolved(true);
+    recordExerciseAttempt("tree_ex9", {
+      correct: true,
+      solved: treeEx9Period2Solved && treeEx9P2Solved && treeEx9P1Solved,
+      lastState: `spe:${treeEx9SpeEntry.p1},${treeEx9SpeEntry.o1},${treeEx9SpeEntry.o2},${treeEx9SpeEntry.p2}`
     });
   }
 
@@ -5226,35 +5809,54 @@ function App() {
 
   function checkTreeEx5Spe() {
     const cfg = getTreeEx5Config();
-    if (!treeEx5SpeChoice) {
+    const missingResponse = cfg.offers.some((offer) => !treeEx5SpeEntry.responses?.[offer.id]);
+    const requiresP1Choice = treeEx5ActiveLevel !== 1;
+    if ((requiresP1Choice && !treeEx5SpeEntry.p1) || missingResponse) {
       setTreeEx5SpeFeedbackType("warning");
       setTreeEx5SpeFeedback(
         t(
-          "Bitte wähle zuerst ein Profil aus.",
-          "Please select a profile first."
+          "Bitte vervollständige zuerst das SPE-Profil.",
+          "Please complete the SPE profile first."
         )
       );
-      recordExerciseAttempt(cfg.progressKey, { correct: false, solved: false, lastState: "spe-empty" });
+      recordExerciseAttempt(cfg.progressKey, { correct: false, solved: false, lastState: "spe-incomplete" });
       return;
     }
-    if (treeEx5SpeChoice !== cfg.speCorrect) {
+    const correctP1 = cfg.offers[0]?.id;
+    const allAccept = cfg.offers.every((offer) => treeEx5SpeEntry.responses?.[offer.id] === "A");
+    const isCorrect = (requiresP1Choice ? treeEx5SpeEntry.p1 === correctP1 : true) && allAccept;
+    if (!isCorrect) {
+      const correctEntry = {
+        p1: correctP1,
+        responses: Object.fromEntries(cfg.offers.map((offer) => [offer.id, "A"]))
+      };
       setTreeEx5SpeFeedbackType("error");
-      setTreeEx5SpeFeedback(cfg.speError);
+      setTreeEx5SpeFeedback(
+        t(
+          `${cfg.speError} ${formatTreeEx5SpeEntry(correctEntry, cfg.offers, treeEx5ActiveLevel === 1)}`,
+          `${cfg.speError} ${formatTreeEx5SpeEntry(correctEntry, cfg.offers, treeEx5ActiveLevel === 1)}`
+        )
+      );
       setTreeEx5SpeSolved(false);
       recordExerciseAttempt(cfg.progressKey, {
         correct: false,
         solved: false,
-        lastState: `spe:${treeEx5SpeChoice}`
+        lastState: `spe:${treeEx5SpeEntry.p1}|${cfg.offers.map((offer) => treeEx5SpeEntry.responses?.[offer.id] || "-").join("")}`
       });
       return;
     }
     setTreeEx5SpeFeedbackType("success");
-    setTreeEx5SpeFeedback(cfg.speSuccess);
+    setTreeEx5SpeFeedback(
+      t(
+        `${cfg.speSuccess} ${formatTreeEx5SpeEntry(treeEx5SpeEntry, cfg.offers, treeEx5ActiveLevel === 1)}`,
+        `${cfg.speSuccess} ${formatTreeEx5SpeEntry(treeEx5SpeEntry, cfg.offers, treeEx5ActiveLevel === 1)}`
+      )
+    );
     setTreeEx5SpeSolved(true);
     recordExerciseAttempt(cfg.progressKey, {
       correct: true,
       solved: false,
-      lastState: `spe:${treeEx5SpeChoice}`
+      lastState: `spe:${treeEx5SpeEntry.p1}|${cfg.offers.map((offer) => treeEx5SpeEntry.responses?.[offer.id] || "-").join("")}`
     });
   }
 
@@ -6367,11 +6969,18 @@ function App() {
               </span>
               <span className="exercise-link-meta">{buildProgressMeta("tree_ex8")}</span>
             </button>
-            <button type="button" className="exercise-link" disabled>
+            <button
+              type="button"
+              className="exercise-link"
+              onClick={() => {
+                resetTreeEx9(true);
+                setTreePage("ex9");
+              }}
+            >
               <span className="exercise-link-title">
-                {t("Übung 3 – Finite Bargaining (2 Perioden) light (bald)", "Exercise 3 - Finite bargaining (2 periods) light (soon)")}
+                {t("Übung 3 – Finite Bargaining (2 Perioden) light", "Exercise 3 - Finite bargaining (2 periods) light")}
               </span>
-              <span className="exercise-link-meta">{t("Bald", "Soon")}</span>
+              <span className="exercise-link-meta">{buildProgressMeta("tree_ex9")}</span>
             </button>
           </div>
         </section>
@@ -6445,8 +7054,8 @@ function App() {
               <div className="tree-example-wrap tree-example-wrap-ex2">
                 <svg viewBox="6 -14 724 644" className="tree-example-svg tree-example-svg-large tree-example-svg-ex2" role="img" aria-label={t("Komplexer Spielbaum", "Complex game tree")}>
                   <defs>
-                    <marker id="tree-arrow-ex2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                      <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
+                    <marker id="tree-arrow-ex2" markerWidth="14.4" markerHeight="12" refX="10.8" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                      <path d="M0,0 L14.4,6 L0,12 Z" className="tree-arrow" />
                     </marker>
                   </defs>
 
@@ -6848,8 +7457,8 @@ function App() {
               <div className="tree-example-wrap tree-example-wrap-ex4">
                 <svg viewBox="24 90 520 360" className="tree-example-svg tree-example-svg-large tree-example-svg-ex4" role="img" aria-label={t("Spiel mit Informationsmenge", "Game with information set")}>
                   <defs>
-                    <marker id="tree-arrow-ex6" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                      <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
+                    <marker id="tree-arrow-ex6" markerWidth="14.4" markerHeight="12" refX="10.8" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                      <path d="M0,0 L14.4,6 L0,12 Z" className="tree-arrow" />
                     </marker>
                   </defs>
                   <line x1="72" y1="262" x2="212" y2="162" className="tree-edge" markerEnd="url(#tree-arrow-ex6)" />
@@ -7037,6 +7646,7 @@ function App() {
 
     if (activeTreePage === "ex3") {
       const treeEx3AllAnswered = Boolean(treeEx3SpeFeedback && treeEx3NashFeedback && treeEx3ThreatFeedback);
+      const treeEx3CanShowThreat = treeEx3SpeSolved && treeEx3NashSolved;
       const ex3P1Label = (action) => (action === "yes" ? t("Ja", "Yes") : t("Nein", "No"));
       const ex3P2Label = (action) => (action === "fight" ? t("Kampf", "Fight") : t("Nachgeben", "Accommodate"));
       return (
@@ -7054,8 +7664,8 @@ function App() {
               <div className="tree-example-wrap tree-example-wrap-compact">
                 <svg viewBox="0 0 450 245" className="tree-example-svg tree-example-svg-compact" role="img" aria-label={t("Eintrittsspiel", "Entry game")}>
                   <defs>
-                    <marker id="tree-arrow-ex3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                      <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
+                    <marker id="tree-arrow-ex3" markerWidth="14.4" markerHeight="12" refX="10.8" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                      <path d="M0,0 L14.4,6 L0,12 Z" className="tree-arrow" />
                     </marker>
                   </defs>
 
@@ -7151,41 +7761,53 @@ function App() {
                 )}
               </div>
 
-              <div className="tree-ex3-question-block">
-                <h4>
-                  {t(
-                    "3) Welches Nash-GG basiert auf einer unglaubwürdigen Drohung?",
-                    "3) Which Nash equilibrium is based on a non-credible threat?"
-                  )}
-                </h4>
-                <div className="choice-list">
-                  {TREE_EX3_THREAT_OPTIONS.map((option) => (
-                    <label key={option.id} className="choice-item">
-                      <input
-                        type="radio"
-                        name="tree-ex3-threat"
-                        checked={treeEx3ThreatChoice === option.id}
-                        onChange={(e) => {
-                          setTreeEx3ThreatChoice(e.target.value);
-                          setTreeEx3ThreatFeedback("");
-                          setTreeEx3ThreatFeedbackType("neutral");
-                        }}
-                        value={option.id}
-                      />
-                      <span><code>({ex3P1Label(option.p1)}, {ex3P2Label(option.p2)})</code></span>
-                    </label>
-                  ))}
-                </div>
-                <div className="actions">
-                  <button type="button" onClick={checkTreeEx3Threat}>{t("Drohung prüfen", "Check threat")}</button>
-                </div>
-                {treeEx3ThreatFeedback && (
-                  <div className={`feedback-box feedback-card ${treeEx3ThreatFeedbackType}`}>
-                    <strong>{treeEx3ThreatFeedbackType === "success" ? t("Richtig", "Correct") : t("Hinweis", "Hint")}</strong>
-                    <p>{treeEx3ThreatFeedback}</p>
+              {treeEx3CanShowThreat ? (
+                <div className="tree-ex3-question-block">
+                  <h4>
+                    {t(
+                      "3) Welches Nash-GG basiert auf einer unglaubwürdigen Drohung?",
+                      "3) Which Nash equilibrium is based on a non-credible threat?"
+                    )}
+                  </h4>
+                  <div className="choice-list">
+                    {TREE_EX3_THREAT_OPTIONS.map((option) => (
+                      <label key={option.id} className="choice-item">
+                        <input
+                          type="radio"
+                          name="tree-ex3-threat"
+                          checked={treeEx3ThreatChoice === option.id}
+                          onChange={(e) => {
+                            setTreeEx3ThreatChoice(e.target.value);
+                            setTreeEx3ThreatFeedback("");
+                            setTreeEx3ThreatFeedbackType("neutral");
+                          }}
+                          value={option.id}
+                        />
+                        <span><code>({ex3P1Label(option.p1)}, {ex3P2Label(option.p2)})</code></span>
+                      </label>
+                    ))}
                   </div>
-                )}
-              </div>
+                  <div className="actions">
+                    <button type="button" onClick={checkTreeEx3Threat}>{t("Drohung prüfen", "Check threat")}</button>
+                  </div>
+                  {treeEx3ThreatFeedback && (
+                    <div className={`feedback-box feedback-card ${treeEx3ThreatFeedbackType}`}>
+                      <strong>{treeEx3ThreatFeedbackType === "success" ? t("Richtig", "Correct") : t("Hinweis", "Hint")}</strong>
+                      <p>{treeEx3ThreatFeedback}</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="tree-ex3-question-block">
+                  <h4>{t("3) Unglaubwürdige Drohung", "3) Non-credible threat")}</h4>
+                  <p className="hint">
+                    {t(
+                      "Frage 3 wird freigeschaltet, sobald 1) und 2) korrekt beantwortet sind.",
+                      "Question 3 unlocks once 1) and 2) are answered correctly."
+                    )}
+                  </p>
+                </div>
+              )}
 
               {treeEx3AllAnswered && (
                 <div className="notation-box">
@@ -7240,8 +7862,8 @@ function App() {
               <div className="tree-example-wrap tree-example-wrap-ex4">
                 <svg viewBox="24 76 510 450" className="tree-example-svg tree-example-svg-large tree-example-svg-ex4" role="img" aria-label={t("Dreistufiges Spiel", "Three-stage game")}>
                   <defs>
-                    <marker id="tree-arrow-ex4" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                      <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
+                    <marker id="tree-arrow-ex4" markerWidth="14.4" markerHeight="12" refX="10.8" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                      <path d="M0,0 L14.4,6 L0,12 Z" className="tree-arrow" />
                     </marker>
                   </defs>
 
@@ -7476,7 +8098,12 @@ function App() {
     if (activeTreePage === "ex5") {
       const isThreeStage = treeEx5ActiveLevel === 1;
       const ex5Offers = isThreeStage ? TREE_EX5_3_OFFERS : TREE_EX5_2_OFFERS;
-      const ex5SpeOptions = isThreeStage ? TREE_EX5_3_SPE_OPTIONS : TREE_EX5_2_SPE_OPTIONS;
+      const ex5P2EdgeClass = (offerId, action) => {
+        if (!treeEx5Phase1Solved) return "tree-edge";
+        const selected = treeEx5P2Answers[offerId];
+        if (!selected) return "tree-edge";
+        return `tree-edge ${selected === action ? "bi-active" : "bi-muted"}`;
+      };
       const solved2 = !!exerciseProgress.tree_ex5_2?.solved;
       const solved3 = !!exerciseProgress.tree_ex5_3?.solved;
       return (
@@ -7512,8 +8139,8 @@ function App() {
                 {!isThreeStage ? (
                   <svg viewBox="20 40 560 430" className="tree-example-svg tree-example-svg-large tree-example-svg-ex5 tree-example-svg-ex5-2" role="img" aria-label={t("Ultimatum-Spielbaum", "Ultimatum game tree")}>
                     <defs>
-                      <marker id="tree-arrow-ex5" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                        <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
+                      <marker id="tree-arrow-ex5" markerWidth="14.4" markerHeight="12" refX="10.8" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                        <path d="M0,0 L14.4,6 L0,12 Z" className="tree-arrow" />
                       </marker>
                     </defs>
                     <line x1="92" y1="260" x2="248" y2="100" className="tree-edge" markerEnd="url(#tree-arrow-ex5)" />
@@ -7522,12 +8149,12 @@ function App() {
                     <text x="170" y="170" className="tree-action" textAnchor="middle" dominantBaseline="middle">90/10</text>
                     <text x="170" y="246" className="tree-action" textAnchor="middle" dominantBaseline="middle">70/30</text>
                     <text x="170" y="352" className="tree-action" textAnchor="middle" dominantBaseline="middle">50/50</text>
-                    <line x1="276" y1="96" x2="446" y2="70" className="tree-edge" markerEnd="url(#tree-arrow-ex5)" />
-                    <line x1="276" y1="104" x2="446" y2="132" className="tree-edge" markerEnd="url(#tree-arrow-ex5)" />
-                    <line x1="276" y1="256" x2="446" y2="230" className="tree-edge" markerEnd="url(#tree-arrow-ex5)" />
-                    <line x1="276" y1="264" x2="446" y2="292" className="tree-edge" markerEnd="url(#tree-arrow-ex5)" />
-                    <line x1="276" y1="416" x2="446" y2="390" className="tree-edge" markerEnd="url(#tree-arrow-ex5)" />
-                    <line x1="276" y1="424" x2="446" y2="452" className="tree-edge" markerEnd="url(#tree-arrow-ex5)" />
+                    <line x1="276" y1="96" x2="446" y2="70" className={ex5P2EdgeClass("o1", "A")} markerEnd="url(#tree-arrow-ex5)" />
+                    <line x1="276" y1="104" x2="446" y2="132" className={ex5P2EdgeClass("o1", "R")} markerEnd="url(#tree-arrow-ex5)" />
+                    <line x1="276" y1="256" x2="446" y2="230" className={ex5P2EdgeClass("o2", "A")} markerEnd="url(#tree-arrow-ex5)" />
+                    <line x1="276" y1="264" x2="446" y2="292" className={ex5P2EdgeClass("o2", "R")} markerEnd="url(#tree-arrow-ex5)" />
+                    <line x1="276" y1="416" x2="446" y2="390" className={ex5P2EdgeClass("o3", "A")} markerEnd="url(#tree-arrow-ex5)" />
+                    <line x1="276" y1="424" x2="446" y2="452" className={ex5P2EdgeClass("o3", "R")} markerEnd="url(#tree-arrow-ex5)" />
                     <text x="361" y="82" className="tree-action" textAnchor="middle" dominantBaseline="middle">A</text>
                     <text x="361" y="124" className="tree-action" textAnchor="middle" dominantBaseline="middle">R</text>
                     <text x="361" y="242" className="tree-action" textAnchor="middle" dominantBaseline="middle">A</text>
@@ -7564,8 +8191,8 @@ function App() {
                 ) : (
                   <svg viewBox="40 30 1120 520" className="tree-example-svg tree-example-svg-large tree-example-svg-ex5 tree-example-svg-ex5-3" role="img" aria-label={t("Dreistufiges Ultimatum-Spiel", "Three-stage ultimatum game")}>
                     <defs>
-                      <marker id="tree-arrow-ex5-3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                        <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
+                      <marker id="tree-arrow-ex5-3" markerWidth="14.4" markerHeight="12" refX="10.8" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                        <path d="M0,0 L14.4,6 L0,12 Z" className="tree-arrow" />
                       </marker>
                     </defs>
                     <circle cx="96" cy="120" r="18" className="tree-node decision" />
@@ -7575,8 +8202,8 @@ function App() {
 
                     <circle cx="262" cy="120" r="18" className="tree-node decision" />
                     <text x="262" y="120" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
-                    <line x1="280" y1="118" x2="420" y2="92" className="tree-edge" markerEnd="url(#tree-arrow-ex5-3)" />
-                    <line x1="276" y1="132" x2="416" y2="184" className="tree-edge" markerEnd="url(#tree-arrow-ex5-3)" />
+                    <line x1="280" y1="118" x2="420" y2="92" className={ex5P2EdgeClass("r1", "A")} markerEnd="url(#tree-arrow-ex5-3)" />
+                    <line x1="276" y1="132" x2="416" y2="184" className={ex5P2EdgeClass("r1", "R")} markerEnd="url(#tree-arrow-ex5-3)" />
                     <text x="350" y="96" className="tree-action" textAnchor="middle" dominantBaseline="middle">A</text>
                     <text x="346" y="163" className="tree-action" textAnchor="middle" dominantBaseline="middle">R</text>
                     <circle cx="438" cy="90" r="8" className="tree-node terminal" />
@@ -7590,8 +8217,8 @@ function App() {
 
                     <circle cx="602" cy="192" r="18" className="tree-node decision" />
                     <text x="602" y="192" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
-                    <line x1="620" y1="190" x2="760" y2="164" className="tree-edge" markerEnd="url(#tree-arrow-ex5-3)" />
-                    <line x1="616" y1="204" x2="756" y2="256" className="tree-edge" markerEnd="url(#tree-arrow-ex5-3)" />
+                    <line x1="620" y1="190" x2="760" y2="164" className={ex5P2EdgeClass("r2", "A")} markerEnd="url(#tree-arrow-ex5-3)" />
+                    <line x1="616" y1="204" x2="756" y2="256" className={ex5P2EdgeClass("r2", "R")} markerEnd="url(#tree-arrow-ex5-3)" />
                     <text x="690" y="168" className="tree-action" textAnchor="middle" dominantBaseline="middle">A</text>
                     <text x="686" y="235" className="tree-action" textAnchor="middle" dominantBaseline="middle">R</text>
                     <circle cx="778" cy="162" r="8" className="tree-node terminal" />
@@ -7605,8 +8232,8 @@ function App() {
 
                     <circle cx="942" cy="264" r="18" className="tree-node decision" />
                     <text x="942" y="264" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
-                    <line x1="960" y1="262" x2="1010" y2="236" className="tree-edge" markerEnd="url(#tree-arrow-ex5-3)" />
-                    <line x1="958" y1="274" x2="1010" y2="300" className="tree-edge" markerEnd="url(#tree-arrow-ex5-3)" />
+                    <line x1="960" y1="262" x2="1010" y2="236" className={ex5P2EdgeClass("r3", "A")} markerEnd="url(#tree-arrow-ex5-3)" />
+                    <line x1="958" y1="274" x2="1010" y2="300" className={ex5P2EdgeClass("r3", "R")} markerEnd="url(#tree-arrow-ex5-3)" />
                     <text x="985" y="240" className="tree-action" textAnchor="middle" dominantBaseline="middle">A</text>
                     <text x="985" y="293" className="tree-action" textAnchor="middle" dominantBaseline="middle">R</text>
                     <circle cx="1026" cy="234" r="8" className="tree-node terminal" />
@@ -7615,6 +8242,23 @@ function App() {
                     <rect x="1044" y="290" width="90" height="24" rx="6" className="tree-payoff-bg" />
                     <text x="1089" y="234" className="tree-payoff" textAnchor="middle" dominantBaseline="middle">(5, 1)</text>
                     <text x="1089" y="302" className="tree-payoff" textAnchor="middle" dominantBaseline="middle">(0, 0)</text>
+
+                    <circle cx="96" cy="120" r="18" className="tree-node decision" />
+                    <text x="96" y="120" className="tree-label" textAnchor="middle" dominantBaseline="middle">P1</text>
+                    <circle cx="262" cy="120" r="18" className="tree-node decision" />
+                    <text x="262" y="120" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                    <circle cx="436" cy="192" r="18" className="tree-node decision" />
+                    <text x="436" y="192" className="tree-label" textAnchor="middle" dominantBaseline="middle">P1</text>
+                    <circle cx="602" cy="192" r="18" className="tree-node decision" />
+                    <text x="602" y="192" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                    <circle cx="776" cy="264" r="18" className="tree-node decision" />
+                    <text x="776" y="264" className="tree-label" textAnchor="middle" dominantBaseline="middle">P1</text>
+                    <circle cx="942" cy="264" r="18" className="tree-node decision" />
+                    <text x="942" y="264" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                    <circle cx="438" cy="90" r="8" className="tree-node terminal" />
+                    <circle cx="778" cy="162" r="8" className="tree-node terminal" />
+                    <circle cx="1026" cy="234" r="8" className="tree-node terminal" />
+                    <circle cx="1026" cy="302" r="8" className="tree-node terminal" />
                   </svg>
                 )}
               </div>
@@ -7677,30 +8321,77 @@ function App() {
 
               <div className="tree-ex3-question-block">
                 <h4>{t("2) SPE-Check: Welches Profil ist teilspielperfekt?", "2) SPE check: Which profile is subgame-perfect?")}</h4>
-                <div className="choice-list">
-                  {ex5SpeOptions.map((option) => (
-                    <label key={option.id} className="choice-item">
-                      <input
-                        type="radio"
-                        name="tree-ex5-spe"
-                        checked={treeEx5SpeChoice === option.id}
-                        onChange={(e) => {
-                          setTreeEx5SpeChoice(e.target.value);
-                          setTreeEx5SpeFeedback("");
-                          setTreeEx5SpeFeedbackType("neutral");
-                        }}
-                        value={option.id}
-                      />
-                      <span>
-                        <code>
-                          {!isThreeStage
-                            ? `(${option.p1}, (${option.p2.join(", ")}))`
-                            : `(${option.p2.join(", ")})`}
-                        </code>
+                {!isThreeStage ? (
+                  <div className="strategy-entry-row">
+                    <code>(</code>
+                    <select
+                      className="tree-ex5-spe-period1-select"
+                      value={treeEx5SpeEntry.p1}
+                      onChange={(e) => {
+                        setTreeEx5SpeEntry((prev) => ({ ...prev, p1: e.target.value }));
+                        setTreeEx5SpeFeedback("");
+                        setTreeEx5SpeFeedbackType("neutral");
+                      }}
+                    >
+                      <option value="">{t("-", "-")}</option>
+                      {ex5Offers.map((offer) => (
+                        <option key={`tree-ex5-spe-p1-${offer.id}`} value={offer.id}>
+                          {offer.label.replace(/^R\d+:\s*/, "")}
+                        </option>
+                      ))}
+                    </select>
+                    <code>, (</code>
+                    {ex5Offers.map((offer, index) => (
+                      <span key={`tree-ex5-spe-r-${offer.id}`}>
+                        {index > 0 && <code>,</code>}
+                        <select
+                          value={treeEx5SpeEntry.responses?.[offer.id] || ""}
+                          onChange={(e) => {
+                            setTreeEx5SpeEntry((prev) => ({
+                              ...prev,
+                              responses: { ...(prev.responses || {}), [offer.id]: e.target.value }
+                            }));
+                            setTreeEx5SpeFeedback("");
+                            setTreeEx5SpeFeedbackType("neutral");
+                          }}
+                        >
+                          <option value="">{t("-", "-")}</option>
+                          <option value="A">A</option>
+                          <option value="R">R</option>
+                        </select>
                       </span>
-                    </label>
-                  ))}
-                </div>
+                    ))}
+                    <code>)</code>
+                    <code>)</code>
+                  </div>
+                ) : (
+                  <div className="strategy-entry-row">
+                    <code>(</code>
+                    {ex5Offers.map((offer, index) => (
+                      <span key={`tree-ex5-spe-node-${offer.id}`}>
+                        {index > 0 && <code>,</code>}
+                        <code>{offer.label.replace(/^R\d+:\s*/, "")}</code>
+                        <code>,</code>
+                        <select
+                          value={treeEx5SpeEntry.responses?.[offer.id] || ""}
+                          onChange={(e) => {
+                            setTreeEx5SpeEntry((prev) => ({
+                              ...prev,
+                              responses: { ...(prev.responses || {}), [offer.id]: e.target.value }
+                            }));
+                            setTreeEx5SpeFeedback("");
+                            setTreeEx5SpeFeedbackType("neutral");
+                          }}
+                        >
+                          <option value="">{t("-", "-")}</option>
+                          <option value="A">A</option>
+                          <option value="R">R</option>
+                        </select>
+                      </span>
+                    ))}
+                    <code>)</code>
+                  </div>
+                )}
                 <div className="actions">
                   <button type="button" onClick={checkTreeEx5Spe}>{t("SPE prüfen", "Check SPE")}</button>
                 </div>
@@ -7739,15 +8430,19 @@ function App() {
 
     if (activeTreePage === "ex8") {
       const stepOneSolved = treeEx8P2Solved;
+      const p1ChoiceSet = !!treeEx8P1Choice;
       const highBest = treeEx8Solution.p2BestByOffer["q1-high"];
       const lowBest = treeEx8Solution.p2BestByOffer["q1-low"];
       const highQ21Active = stepOneSolved && highBest === "q2=1";
       const highQ23Active = stepOneSolved && highBest === "q2=3";
       const lowQ21Active = stepOneSolved && lowBest === "q2=1";
       const lowQ23Active = stepOneSolved && lowBest === "q2=3";
+      const highRootActive = p1ChoiceSet && treeEx8P1Choice === "q1=4";
+      const lowRootActive = p1ChoiceSet && treeEx8P1Choice === "q1=2";
       const edgeStateClass = (isActive) => (stepOneSolved ? (isActive ? "bi-active" : "bi-muted") : "");
       const terminalStateClass = (isActive) => (stepOneSolved ? (isActive ? "bi-selected-terminal" : "bi-muted-node") : "");
       const textStateClass = (isActive) => (stepOneSolved ? (isActive ? "bi-active" : "bi-muted") : "");
+      const rootEdgeStateClass = (isActive) => (p1ChoiceSet ? (isActive ? "bi-active" : "bi-muted") : "");
       return (
         <section className="panel">
           <h2>{t("Übung 2 – Stackelberg light", "Exercise 2 - Stackelberg light")}</h2>
@@ -7763,14 +8458,14 @@ function App() {
               <div className="tree-example-wrap tree-example-wrap-ex4">
                 <svg viewBox="24 108 530 360" className="tree-example-svg tree-example-svg-large tree-example-svg-ex4" role="img" aria-label={t("Stackelberg-Spielbaum", "Stackelberg game tree")}>
                   <defs>
-                    <marker id="tree-arrow-ex8" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                      <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
+                    <marker id="tree-arrow-ex8" markerWidth="14.4" markerHeight="12" refX="10.8" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                      <path d="M0,0 L14.4,6 L0,12 Z" className="tree-arrow" />
                     </marker>
                   </defs>
-                  <line x1="70" y1="276" x2="214" y2="178" className="tree-edge" markerEnd="url(#tree-arrow-ex8)" />
-                  <line x1="70" y1="276" x2="214" y2="370" className="tree-edge" markerEnd="url(#tree-arrow-ex8)" />
-                  <text x="146" y="216" className="tree-action" textAnchor="middle" dominantBaseline="middle">q1=4</text>
-                  <text x="146" y="338" className="tree-action" textAnchor="middle" dominantBaseline="middle">q1=2</text>
+                  <line x1="70" y1="276" x2="214" y2="178" className={`tree-edge ${rootEdgeStateClass(highRootActive)}`} markerEnd="url(#tree-arrow-ex8)" />
+                  <line x1="70" y1="276" x2="214" y2="370" className={`tree-edge ${rootEdgeStateClass(lowRootActive)}`} markerEnd="url(#tree-arrow-ex8)" />
+                  <text x="146" y="216" className={`tree-action ${rootEdgeStateClass(highRootActive)}`} textAnchor="middle" dominantBaseline="middle">q1=4</text>
+                  <text x="146" y="338" className={`tree-action ${rootEdgeStateClass(lowRootActive)}`} textAnchor="middle" dominantBaseline="middle">q1=2</text>
 
                   <line x1="244" y1="174" x2="404" y2="142" className={`tree-edge ${edgeStateClass(highQ21Active)}`} markerEnd="url(#tree-arrow-ex8)" />
                   <line x1="244" y1="174" x2="404" y2="206" className={`tree-edge ${edgeStateClass(highQ23Active)}`} markerEnd="url(#tree-arrow-ex8)" />
@@ -7927,24 +8622,54 @@ function App() {
 
               <div className="tree-ex3-question-block">
                 <h4>{t("3) SPE-Check", "3) SPE check")}</h4>
-                <div className="choice-list">
-                  {treeEx8SpeOptions.map((option) => (
-                    <label key={option.id} className="choice-item">
-                      <input
-                        type="radio"
-                        name="tree-ex8-spe"
-                        checked={treeEx8SpeChoice === option.id}
-                        onChange={(e) => {
-                          setTreeEx8SpeChoice(e.target.value);
-                          setTreeEx8SpeFeedback("");
-                          setTreeEx8SpeFeedbackType("neutral");
-                          setTreeEx8SpeSolved(false);
-                        }}
-                        value={option.id}
-                      />
-                      <span><code>{option.text}</code></span>
-                    </label>
-                  ))}
+                <div className="strategy-entry-row">
+                  <code>(</code>
+                  <select
+                    className="tree-ex8-spe-period1-select"
+                    value={treeEx8SpeEntry.p1}
+                    onChange={(e) => {
+                      setTreeEx8SpeEntry((prev) => ({ ...prev, p1: e.target.value }));
+                      setTreeEx8SpeFeedback("");
+                      setTreeEx8SpeFeedbackType("neutral");
+                      setTreeEx8SpeSolved(false);
+                    }}
+                  >
+                    <option value="">{t("-", "-")}</option>
+                    {TREE_EX8_Q1_ACTIONS.map((choice) => (
+                      <option key={`tree-ex8-spe-p1-${choice}`} value={choice}>{choice}</option>
+                    ))}
+                  </select>
+                  <code>,(</code>
+                  <select
+                    className="tree-ex8-spe-q2-select"
+                    value={treeEx8SpeEntry.high}
+                    onChange={(e) => {
+                      setTreeEx8SpeEntry((prev) => ({ ...prev, high: e.target.value }));
+                      setTreeEx8SpeFeedback("");
+                      setTreeEx8SpeFeedbackType("neutral");
+                      setTreeEx8SpeSolved(false);
+                    }}
+                  >
+                    <option value="">{t("-", "-")}</option>
+                    <option value="q2=1">q2=1</option>
+                    <option value="q2=3">q2=3</option>
+                  </select>
+                  <code>,</code>
+                  <select
+                    className="tree-ex8-spe-q2-select"
+                    value={treeEx8SpeEntry.low}
+                    onChange={(e) => {
+                      setTreeEx8SpeEntry((prev) => ({ ...prev, low: e.target.value }));
+                      setTreeEx8SpeFeedback("");
+                      setTreeEx8SpeFeedbackType("neutral");
+                      setTreeEx8SpeSolved(false);
+                    }}
+                  >
+                    <option value="">{t("-", "-")}</option>
+                    <option value="q2=1">q2=1</option>
+                    <option value="q2=3">q2=3</option>
+                  </select>
+                  <code>)</code>
                 </div>
                 <div className="actions">
                   <button type="button" onClick={checkTreeEx8Spe}>{t("SPE prüfen", "Check SPE")}</button>
@@ -7967,6 +8692,352 @@ function App() {
           </div>
           <div className="actions">
             <button type="button" className="nav-pill-btn" onClick={() => setTreePage("ex5")}>{t("Zurück", "Back")}</button>
+            <button
+              type="button"
+              className="nav-pill-btn"
+              onClick={() => {
+                resetTreeEx9(true);
+                setTreePage("ex9");
+              }}
+            >
+              {t("Weiter zu Übung 3", "Next to Exercise 3")}
+            </button>
+          </div>
+        </section>
+      );
+    }
+
+    if (activeTreePage === "ex9") {
+      const period2Best = treeEx9Solution.period2BestOffer;
+      const p2Cont = treeEx9Solution.continuation[1];
+      const o1 = treeEx9Game.period1Offers[0];
+      const o2 = treeEx9Game.period1Offers[1];
+      const p2O1 = treeEx9P2Responses.o1;
+      const p2O2 = treeEx9P2Responses.o2;
+      const ex9EdgeState = (isActive, gate) => (gate ? (isActive ? "bi-active" : "bi-muted") : "");
+      const ex9TextState = (isActive, gate) => (gate ? (isActive ? "bi-active" : "bi-muted") : "");
+      const ex9TerminalState = (isActive, gate) => (gate ? (isActive ? "bi-selected-terminal" : "bi-muted-node") : "");
+      return (
+        <section className="panel">
+          <h2>{t("Übung 3 – Finite Bargaining (2 Perioden) light", "Exercise 3 - Finite bargaining (2 periods) light")}</h2>
+          <p className="hint">
+            {t(
+              "Periode 1: Spieler 1 macht ein Angebot. Bei Ablehnung folgt Periode 2, in der Spieler 2 ein Angebot macht.",
+              "Period 1: Player 1 makes an offer. If rejected, period 2 follows where Player 2 makes an offer."
+            )}
+          </p>
+          <div className="exercise-layout tree-ex-layout">
+            <article className="panel nested-panel">
+              <h3>{t("Spiel", "Game")}</h3>
+              <div className="tree-example-wrap tree-example-wrap-ex4 tree-example-wrap-ex9">
+                <svg viewBox="0 0 860 470" className="tree-example-svg tree-example-svg-large tree-example-svg-ex9" role="img" aria-label={t("Finite-Bargaining-Spielbaum", "Finite bargaining game tree")}>
+                  <defs>
+                    <marker id="tree-arrow-ex9" markerWidth="14.4" markerHeight="12" refX="10.8" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                      <path d="M0,0 L14.4,6 L0,12 Z" className="tree-arrow" />
+                    </marker>
+                  </defs>
+                  <g transform="translate(10 -20) scale(1.12)">
+
+                  <line x1="120" y1="240" x2="264" y2="172" className={`tree-edge ${ex9EdgeState(treeEx9P1Choice === "o1", treeEx9P1Solved)}`} markerEnd="url(#tree-arrow-ex9)" />
+                  <line x1="120" y1="240" x2="264" y2="308" className={`tree-edge ${ex9EdgeState(treeEx9P1Choice === "o2", treeEx9P1Solved)}`} markerEnd="url(#tree-arrow-ex9)" />
+                  <text x="192" y="206" className={`tree-action ${ex9TextState(treeEx9P1Choice === "o1", treeEx9P1Solved)}`} textAnchor="middle" dominantBaseline="middle">{o1.label}</text>
+                  <text x="192" y="274" className={`tree-action ${ex9TextState(treeEx9P1Choice === "o2", treeEx9P1Solved)}`} textAnchor="middle" dominantBaseline="middle">{o2.label}</text>
+
+                  <line x1="264" y1="172" x2="408" y2="104" className={`tree-edge ${ex9EdgeState(p2O1 === "A", treeEx9P2Solved)}`} markerEnd="url(#tree-arrow-ex9)" />
+                  <line x1="264" y1="172" x2="408" y2="240" className={`tree-edge ${ex9EdgeState(p2O1 === "R", treeEx9P2Solved)}`} markerEnd="url(#tree-arrow-ex9)" />
+                  <text x="336" y="138" className={`tree-action ${ex9TextState(p2O1 === "A", treeEx9P2Solved)}`} textAnchor="middle" dominantBaseline="middle">A</text>
+                  <text x="336" y="206" className={`tree-action ${ex9TextState(p2O1 === "R", treeEx9P2Solved)}`} textAnchor="middle" dominantBaseline="middle">R</text>
+
+                  <line x1="264" y1="308" x2="408" y2="376" className={`tree-edge ${ex9EdgeState(p2O2 === "A", treeEx9P2Solved)}`} markerEnd="url(#tree-arrow-ex9)" />
+                  <line x1="264" y1="308" x2="408" y2="240" className={`tree-edge ${ex9EdgeState(p2O2 === "R", treeEx9P2Solved)}`} markerEnd="url(#tree-arrow-ex9)" />
+                  <text x="336" y="342" className={`tree-action ${ex9TextState(p2O2 === "A", treeEx9P2Solved)}`} textAnchor="middle" dominantBaseline="middle">A</text>
+                  <text x="336" y="274" className={`tree-action ${ex9TextState(p2O2 === "R", treeEx9P2Solved)}`} textAnchor="middle" dominantBaseline="middle">R</text>
+
+                  <line x1="408" y1="240" x2="552" y2="172" className={`tree-edge ${ex9EdgeState(treeEx9Period2Choice === "x", treeEx9Period2Solved)}`} markerEnd="url(#tree-arrow-ex9)" />
+                  <line x1="408" y1="240" x2="552" y2="308" className={`tree-edge ${ex9EdgeState(treeEx9Period2Choice === "y", treeEx9Period2Solved)}`} markerEnd="url(#tree-arrow-ex9)" />
+                  <text x="480" y="206" className={`tree-action ${ex9TextState(treeEx9Period2Choice === "x", treeEx9Period2Solved)}`} textAnchor="middle" dominantBaseline="middle">{treeEx9Game.period2Offers[0].label}</text>
+                  <text x="480" y="274" className={`tree-action ${ex9TextState(treeEx9Period2Choice === "y", treeEx9Period2Solved)}`} textAnchor="middle" dominantBaseline="middle">{treeEx9Game.period2Offers[1].label}</text>
+
+                  <circle cx="120" cy="240" r="20" className="tree-node decision" />
+                  <text x="120" y="240" className="tree-label" textAnchor="middle" dominantBaseline="middle">P1</text>
+                  <circle cx="264" cy="172" r="18" className="tree-node decision" />
+                  <circle cx="264" cy="308" r="18" className="tree-node decision" />
+                  <text x="264" y="172" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                  <text x="264" y="308" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+                  <circle cx="408" cy="240" r="18" className="tree-node decision" />
+                  <text x="408" y="240" className="tree-label" textAnchor="middle" dominantBaseline="middle">P2</text>
+
+                  <circle cx="408" cy="104" r="8" className={`tree-node terminal ${ex9TerminalState(p2O1 === "A", treeEx9P2Solved)}`} />
+                  <circle cx="408" cy="376" r="8" className={`tree-node terminal ${ex9TerminalState(p2O2 === "A", treeEx9P2Solved)}`} />
+                  <circle cx="552" cy="172" r="8" className={`tree-node terminal ${ex9TerminalState(treeEx9Period2Choice === "x", treeEx9Period2Solved)}`} />
+                  <circle cx="552" cy="308" r="8" className={`tree-node terminal ${ex9TerminalState(treeEx9Period2Choice === "y", treeEx9Period2Solved)}`} />
+
+                  <rect x="428" y="92" width="88" height="24" rx="6" className={`tree-payoff-bg ${ex9TextState(p2O1 === "A", treeEx9P2Solved)}`} />
+                  <rect x="428" y="364" width="88" height="24" rx="6" className={`tree-payoff-bg ${ex9TextState(p2O2 === "A", treeEx9P2Solved)}`} />
+                  <rect x="572" y="160" width="88" height="24" rx="6" className={`tree-payoff-bg ${ex9TextState(treeEx9Period2Choice === "x", treeEx9Period2Solved)}`} />
+                  <rect x="572" y="296" width="88" height="24" rx="6" className={`tree-payoff-bg ${ex9TextState(treeEx9Period2Choice === "y", treeEx9Period2Solved)}`} />
+
+                  <text x="472" y="104" className={`tree-payoff ${ex9TextState(p2O1 === "A", treeEx9P2Solved)}`} textAnchor="middle" dominantBaseline="middle">{`(${o1.payoff[0]}, ${o1.payoff[1]})`}</text>
+                  <text x="472" y="376" className={`tree-payoff ${ex9TextState(p2O2 === "A", treeEx9P2Solved)}`} textAnchor="middle" dominantBaseline="middle">{`(${o2.payoff[0]}, ${o2.payoff[1]})`}</text>
+                  <text x="616" y="172" className={`tree-payoff ${ex9TextState(treeEx9Period2Choice === "x", treeEx9Period2Solved)}`} textAnchor="middle" dominantBaseline="middle">{`(${treeEx9Game.period2Offers[0].payoff[0]}, ${treeEx9Game.period2Offers[0].payoff[1]})`}</text>
+                  <text x="616" y="308" className={`tree-payoff ${ex9TextState(treeEx9Period2Choice === "y", treeEx9Period2Solved)}`} textAnchor="middle" dominantBaseline="middle">{`(${treeEx9Game.period2Offers[1].payoff[0]}, ${treeEx9Game.period2Offers[1].payoff[1]})`}</text>
+                  </g>
+                </svg>
+              </div>
+              <div className="actions">
+                <button type="button" onClick={() => resetTreeEx9(true)}>{t("Neues Spiel", "New game")}</button>
+                <button type="button" onClick={() => setShowHelpTreeEx9((v) => !v)}>{t("Hilfe", "Help")}</button>
+              </div>
+              {showHelpTreeEx9 && (
+                <section className="panel nested-panel">
+                  <h4>{t("Hilfe", "Help")}</h4>
+                  <ul className="intro-list">
+                    <li>
+                      {t(
+                        "A = Annehmen, R = Ablehnen. Wird in Periode 1 abgelehnt, geht das Spiel in Periode 2 weiter.",
+                        "A = Accept, R = Reject. If period 1 is rejected, the game continues to period 2."
+                      )}
+                    </li>
+                    <li>
+                      {t(
+                        "Schritt 1 (Rückwärtsinduktion): Bestimme zuerst das optimale Angebot von Spieler 2 in Periode 2.",
+                        "Step 1 (backward induction): First determine Player 2's optimal offer in period 2."
+                      )}
+                    </li>
+                    <li>
+                      {t(
+                        "Schritt 2: Nutze daraus den Fortsetzungsnutzen von Spieler 2 und entscheide bei jedem Angebot aus Periode 1 zwischen A und R.",
+                        "Step 2: Use the continuation payoff for Player 2 and decide A vs R for each period-1 offer."
+                      )}
+                    </li>
+                    <li>
+                      {t(
+                        "Schritt 3: Spieler 1 antizipiert diese Reaktionen und wählt in Periode 1 das für ihn beste Angebot.",
+                        "Step 3: Player 1 anticipates these responses and chooses the best period-1 offer."
+                      )}
+                    </li>
+                    <li>
+                      {t(
+                        "Schritt 4: Das SPE enthält den Startzug von P1 und die optimalen Antworten von P2 in allen relevanten Teilspielen.",
+                        "Step 4: The SPE contains P1's initial move and P2's optimal responses in all relevant subgames."
+                      )}
+                    </li>
+                  </ul>
+                </section>
+              )}
+            </article>
+
+            <article className="panel nested-panel">
+              <h3>{t("Fragen", "Questions")}</h3>
+
+              <div className="tree-ex3-question-block">
+                <h4>{t("1) Rückwärtsinduktion: Welches Angebot wählt Spieler 2 in Periode 2?", "1) Backward induction: Which offer does Player 2 choose in period 2?")}</h4>
+                <div className="choice-list ex8-q2-inline">
+                  {treeEx9Game.period2Offers.map((offer) => (
+                    <label key={`tree-ex9-p2-offer-${offer.id}`} className="choice-item">
+                      <input
+                        type="radio"
+                        name="tree-ex9-p2-offer"
+                        checked={treeEx9Period2Choice === offer.id}
+                        onChange={(e) => {
+                          setTreeEx9Period2Choice(e.target.value);
+                          setTreeEx9Period2Feedback("");
+                          setTreeEx9Period2FeedbackType("neutral");
+                          setTreeEx9Period2Solved(false);
+                        }}
+                        value={offer.id}
+                      />
+                      <span><code>{offer.label}</code></span>
+                    </label>
+                  ))}
+                </div>
+                <div className="actions">
+                  <button type="button" onClick={checkTreeEx9Period2}>{t("Schritt prüfen", "Check step")}</button>
+                </div>
+                {treeEx9Period2Feedback && (
+                  <div className={`feedback-box feedback-card ${treeEx9Period2FeedbackType}`}>
+                    <strong>{treeEx9Period2FeedbackType === "success" ? t("Richtig", "Correct") : treeEx9Period2FeedbackType === "warning" ? t("Hinweis", "Hint") : t("Nicht korrekt", "Incorrect")}</strong>
+                    <p>{treeEx9Period2Feedback}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="tree-ex3-question-block">
+                <h4>{t("2) Antizipation von Spieler 2 in Periode 1", "2) Player 2 anticipation in period 1")}</h4>
+                <p className="hint">
+                  {t(`Fortsetzungsnutzen für Spieler 2 bei Ablehnung: ${p2Cont}.`, `Continuation payoff for Player 2 after rejection: ${p2Cont}.`)}
+                </p>
+                <div className="ex8-q1-list">
+                  {treeEx9Game.period1Offers.map((offer) => (
+                    <div key={`tree-ex9-p2-response-${offer.id}`} className="ex8-q1-row">
+                      <div className="ex8-response-title-inline">
+                        <span>{t("Nach Angebot", "After offer")}</span>
+                        <code>{offer.label}</code>
+                      </div>
+                      <div className="ex8-q1-options">
+                        <label className="choice-item ex8-small-choice">
+                          <input
+                            type="radio"
+                            name={`tree-ex9-p2-response-${offer.id}`}
+                            checked={treeEx9P2Responses[offer.id] === "A"}
+                            onChange={() => {
+                              setTreeEx9P2Responses((prev) => ({ ...prev, [offer.id]: "A" }));
+                              setTreeEx9P2Feedback("");
+                              setTreeEx9P2FeedbackType("neutral");
+                              setTreeEx9P2Solved(false);
+                            }}
+                            value="A"
+                          />
+                          <span><code>A</code></span>
+                        </label>
+                        <label className="choice-item ex8-small-choice">
+                          <input
+                            type="radio"
+                            name={`tree-ex9-p2-response-${offer.id}`}
+                            checked={treeEx9P2Responses[offer.id] === "R"}
+                            onChange={() => {
+                              setTreeEx9P2Responses((prev) => ({ ...prev, [offer.id]: "R" }));
+                              setTreeEx9P2Feedback("");
+                              setTreeEx9P2FeedbackType("neutral");
+                              setTreeEx9P2Solved(false);
+                            }}
+                            value="R"
+                          />
+                          <span><code>R</code></span>
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="actions">
+                  <button type="button" onClick={checkTreeEx9P2}>{t("Schritt prüfen", "Check step")}</button>
+                </div>
+                {treeEx9P2Feedback && (
+                  <div className={`feedback-box feedback-card ${treeEx9P2FeedbackType}`}>
+                    <strong>{treeEx9P2FeedbackType === "success" ? t("Richtig", "Correct") : treeEx9P2FeedbackType === "warning" ? t("Hinweis", "Hint") : t("Nicht korrekt", "Incorrect")}</strong>
+                    <p>{treeEx9P2Feedback}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="tree-ex3-question-block">
+                <h4>{t("3) Antizipation: Was wählt Spieler 1 in Periode 1?", "3) Anticipation: What does Player 1 choose in period 1?")}</h4>
+                <div className="choice-list ex8-q2-inline">
+                  {treeEx9Game.period1Offers.map((offer) => (
+                    <label key={`tree-ex9-p1-choice-${offer.id}`} className="choice-item">
+                      <input
+                        type="radio"
+                        name="tree-ex9-p1-choice"
+                        checked={treeEx9P1Choice === offer.id}
+                        onChange={(e) => {
+                          setTreeEx9P1Choice(e.target.value);
+                          setTreeEx9P1Feedback("");
+                          setTreeEx9P1FeedbackType("neutral");
+                          setTreeEx9P1Solved(false);
+                        }}
+                        value={offer.id}
+                      />
+                      <span><code>{offer.label}</code></span>
+                    </label>
+                  ))}
+                </div>
+                <div className="actions">
+                  <button type="button" onClick={checkTreeEx9P1}>{t("Schritt prüfen", "Check step")}</button>
+                </div>
+                {treeEx9P1Feedback && (
+                  <div className={`feedback-box feedback-card ${treeEx9P1FeedbackType}`}>
+                    <strong>{treeEx9P1FeedbackType === "success" ? t("Richtig", "Correct") : treeEx9P1FeedbackType === "warning" ? t("Hinweis", "Hint") : t("Nicht korrekt", "Incorrect")}</strong>
+                    <p>{treeEx9P1Feedback}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="tree-ex3-question-block">
+                <h4>{t("4) SPE-Check", "4) SPE check")}</h4>
+                <div className="strategy-entry-row">
+                  <code>(</code>
+                  <select
+                    className="tree-ex9-spe-period1-select"
+                    value={treeEx9SpeEntry.p1}
+                    onChange={(e) => {
+                      setTreeEx9SpeEntry((prev) => ({ ...prev, p1: e.target.value }));
+                      setTreeEx9SpeFeedback("");
+                      setTreeEx9SpeFeedbackType("neutral");
+                      setTreeEx9SpeSolved(false);
+                    }}
+                  >
+                    <option value="">{t("-", "-")}</option>
+                    {treeEx9Game.period1Offers.map((offer) => (
+                      <option key={`tree-ex9-spe-p1-${offer.id}`} value={offer.id}>{offer.label}</option>
+                    ))}
+                  </select>
+                  <code>, (</code>
+                  <select
+                    value={treeEx9SpeEntry.o1}
+                    onChange={(e) => {
+                      setTreeEx9SpeEntry((prev) => ({ ...prev, o1: e.target.value }));
+                      setTreeEx9SpeFeedback("");
+                      setTreeEx9SpeFeedbackType("neutral");
+                      setTreeEx9SpeSolved(false);
+                    }}
+                  >
+                    <option value="">{t("-", "-")}</option>
+                    <option value="A">A</option>
+                    <option value="R">R</option>
+                  </select>
+                  <code>,</code>
+                  <select
+                    value={treeEx9SpeEntry.o2}
+                    onChange={(e) => {
+                      setTreeEx9SpeEntry((prev) => ({ ...prev, o2: e.target.value }));
+                      setTreeEx9SpeFeedback("");
+                      setTreeEx9SpeFeedbackType("neutral");
+                      setTreeEx9SpeSolved(false);
+                    }}
+                  >
+                    <option value="">{t("-", "-")}</option>
+                    <option value="A">A</option>
+                    <option value="R">R</option>
+                  </select>
+                  <code>),</code>
+                  <select
+                    className="tree-ex9-spe-period2-select"
+                    value={treeEx9SpeEntry.p2}
+                    onChange={(e) => {
+                      setTreeEx9SpeEntry((prev) => ({ ...prev, p2: e.target.value }));
+                      setTreeEx9SpeFeedback("");
+                      setTreeEx9SpeFeedbackType("neutral");
+                      setTreeEx9SpeSolved(false);
+                    }}
+                  >
+                    <option value="">{t("-", "-")}</option>
+                    {treeEx9Game.period2Offers.map((offer) => (
+                      <option key={`tree-ex9-spe-p2-${offer.id}`} value={offer.id}>{offer.label}</option>
+                    ))}
+                  </select>
+                  <code>)</code>
+                </div>
+                <div className="actions">
+                  <button type="button" onClick={checkTreeEx9Spe}>{t("SPE prüfen", "Check SPE")}</button>
+                </div>
+                {treeEx9SpeFeedback && (
+                  <div className={`feedback-box feedback-card ${treeEx9SpeFeedbackType}`}>
+                    <strong>{treeEx9SpeFeedbackType === "success" ? t("Richtig", "Correct") : treeEx9SpeFeedbackType === "warning" ? t("Hinweis", "Hint") : t("Nicht korrekt", "Incorrect")}</strong>
+                    <p>{treeEx9SpeFeedback}</p>
+                  </div>
+                )}
+              </div>
+
+              {treeEx9OverallFeedback && (
+                <div className={`feedback-box feedback-card ${treeEx9OverallFeedbackType}`}>
+                  <strong>{treeEx9OverallFeedbackType === "success" ? t("Abgeschlossen", "Completed") : t("Hinweis", "Hint")}</strong>
+                  <p>{treeEx9OverallFeedback}</p>
+                </div>
+              )}
+            </article>
+          </div>
+          <div className="actions">
+            <button type="button" className="nav-pill-btn" onClick={() => setTreePage("ex8")}>{t("Zurück", "Back")}</button>
             <button type="button" className="nav-pill-btn" onClick={() => setTreePage("toc")}>{t("Zur Übersicht", "Back to overview")}</button>
           </div>
         </section>
@@ -8003,8 +9074,8 @@ function App() {
             <div className="tree-example-wrap tree-example-wrap-compact">
               <svg viewBox="0 0 450 245" className="tree-example-svg tree-example-svg-compact" role="img" aria-label="Einfacher Spielbaum">
                 <defs>
-                  <marker id="tree-arrow-ex1" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                    <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
+                  <marker id="tree-arrow-ex1" markerWidth="14.4" markerHeight="12" refX="10.8" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                    <path d="M0,0 L14.4,6 L0,12 Z" className="tree-arrow" />
                   </marker>
                 </defs>
 
@@ -8229,6 +9300,12 @@ function App() {
         <section className="panel">
           <h2>{t("Trainiere Simultane Spiele (Normalform)", "Train simultaneous games (normal form)")}</h2>
           <h3>{t("Teil 1: Grundlagen statischer Normalformspiele", "Part 1: Foundations of static simultaneous games")}</h3>
+          <p className="hint">
+            {t(
+              "Du trainierst beste Antworten, dominante Strategien und reine Nash-Gleichgewichte als Kernwerkzeuge für statische Spiele.",
+              "You practice best responses, dominant strategies, and pure Nash equilibria as core tools for static games."
+            )}
+          </p>
           <div className="exercise-link-grid">
             {exLinksTeil1.map((link) => (
               <button
@@ -8243,6 +9320,12 @@ function App() {
             ))}
           </div>
           <h3>{t("Teil 2: Gleichgewichte und Gleichgewichtsverfeinerungen in statischen Normalformspielen", "Part 2: Equilibria and equilibrium refinements in static simultaneous games")}</h3>
+          <p className="hint">
+            {t(
+              "Du vertiefst die Gleichgewichtsanalyse mit Trembling-Hand-Perfektion und evolutionär stabilen Strategien.",
+              "You deepen equilibrium analysis with trembling-hand perfection and evolutionarily stable strategies."
+            )}
+          </p>
           <div className="exercise-link-grid">
             {exLinksTeil2.map((link) => (
               <button
@@ -8257,6 +9340,12 @@ function App() {
             ))}
           </div>
           <h3>{t("Teil 3: Simultanes Marktauswahlspiel", "Part 3: Simultaneous market selection game")}</h3>
+          <p className="hint">
+            {t(
+              "Du wendest gemischte Strategien auf ein klassisches Marktauswahlspiel an und berechnest das gemischte Nash-Gleichgewicht.",
+              "You apply mixed strategies to a classic market-selection game and compute the mixed Nash equilibrium."
+            )}
+          </p>
           <div className="exercise-link-grid">
             {exLinksTeil3.map((link) => (
               <button
@@ -9223,8 +10312,8 @@ function App() {
         <div className="tree-example-wrap tree-example-wrap-compact">
           <svg viewBox="0 0 560 250" className="tree-example-svg tree-example-svg-compact" role="img" aria-label={t("Rückwärtsinduktions-Spielbaum", "Backward induction game tree")}>
             <defs>
-              <marker id="bi-arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
+              <marker id="bi-arrow" markerWidth="14.4" markerHeight="12" refX="10.8" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                <path d="M0,0 L14.4,6 L0,12 Z" className="tree-arrow" />
               </marker>
             </defs>
 
@@ -9564,8 +10653,8 @@ function App() {
             <div className="tree-example-wrap tree-example-wrap-compact">
               <svg viewBox="0 0 560 250" className="tree-example-svg tree-example-svg-compact" role="img" aria-label={t("Beispiel Spielbaum", "Example game tree")}>
                 <defs>
-                  <marker id="tree-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
-                    <path d="M0,0 L10,4 L0,8 Z" className="tree-arrow" />
+                  <marker id="tree-arrow" markerWidth="14.4" markerHeight="12" refX="10.8" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                    <path d="M0,0 L14.4,6 L0,12 Z" className="tree-arrow" />
                   </marker>
                 </defs>
 
@@ -9646,8 +10735,8 @@ function App() {
             <div className="tree-example-wrap tree-example-wrap-compact profile-notation-tree-wrap">
               <svg viewBox="0 0 560 290" className="tree-example-svg profile-notation-tree" role="img" aria-label={t("Beispielbaum zur Notation von Strategieprofilen", "Example tree for strategy profile notation")}>
                 <defs>
-                  <marker id="profile-arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                    <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
+                  <marker id="profile-arrow" markerWidth="14.4" markerHeight="12" refX="10.8" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                    <path d="M0,0 L14.4,6 L0,12 Z" className="tree-arrow" />
                   </marker>
                 </defs>
 
@@ -9969,8 +11058,8 @@ function App() {
             <div className="tree-example-wrap tree-example-wrap-compact">
               <svg viewBox="0 0 560 280" className="tree-example-svg tree-example-svg-compact" role="img" aria-label={t("Spielbaum mit Informationsmenge", "Game tree with an information set")}>
                 <defs>
-                  <marker id="infoset-arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                    <path d="M0,0 L8,3 L0,6 Z" className="tree-arrow" />
+                  <marker id="infoset-arrow" markerWidth="14.4" markerHeight="12" refX="10.8" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+                    <path d="M0,0 L14.4,6 L0,12 Z" className="tree-arrow" />
                   </marker>
                 </defs>
 
@@ -11418,7 +12507,7 @@ function App() {
                 }}
               >
                 <span>{t("Sequenzielle Spiele (Extensivform)", "Sequential games (extensive form)")}</span>
-                <span className="home-link-count">{solvedCountLabel(["tree_ex1_easy", "tree_ex1_hard", "tree_ex2_easy", "tree_ex2_hard", "tree_ex6", "tree_ex3", "tree_ex4", "tree_ex5_2", "tree_ex5_3", "tree_ex8"])}</span>
+                <span className="home-link-count">{solvedCountLabel(["tree_ex1_easy", "tree_ex1_hard", "tree_ex2_easy", "tree_ex2_hard", "tree_ex6", "tree_ex3", "tree_ex4", "tree_ex5_2", "tree_ex5_3", "tree_ex8", "tree_ex9"])}</span>
               </button>
               <button
                 type="button"
